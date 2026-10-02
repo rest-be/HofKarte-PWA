@@ -1,0 +1,478 @@
+:root {
+  --primary-color: #fb8c00;
+  --primary-color-dark: #ef6c00;
+  --text-color: #1b1b1b;
+  --muted-color: #6b6b6b;
+  --bg-color: #fafafa;
+  --card-bg: #ffffff;
+  --border-color: #e2e2e2;
+  --danger-color: #c62828;
+  --success-color: #2e7d32;
+  --radius: 12px;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html,
+body {
+  margin: 0;
+  height: 100%;
+  background: var(--bg-color);
+  color: var(--text-color);
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+  -webkit-tap-highlight-color: transparent;
+}
+
+#app {
+  min-height: 100%;
+  padding-bottom: calc(64px + env(safe-area-inset-bottom));
+}
+
+.lade-hinweis {
+  padding: 40px 20px;
+  text-align: center;
+  color: var(--muted-color);
+}
+
+/* --- Kopfzeile --- */
+
+.kopfzeile {
+  position: sticky;
+  top: 0;
+  z-index: 10;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  padding: calc(10px + env(safe-area-inset-top)) 16px 10px;
+  background: var(--primary-color);
+  color: white;
+}
+
+.kopfzeile h1 {
+  font-size: 1.15rem;
+  margin: 0;
+  font-weight: 600;
+}
+
+.kopfzeile button {
+  background: rgba(255, 255, 255, 0.18);
+  border: none;
+  color: white;
+  border-radius: 8px;
+  padding: 8px 12px;
+  font-size: 0.95rem;
+}
+
+/* --- Tableiste unten --- */
+
+.tableiste {
+  position: fixed;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  display: flex;
+  background: var(--card-bg);
+  border-top: 1px solid var(--border-color);
+  padding-bottom: env(safe-area-inset-bottom);
+  z-index: 10;
+}
+
+.tableiste button {
+  flex: 1;
+  border: none;
+  background: none;
+  padding: 10px 4px 8px;
+  color: var(--muted-color);
+  font-size: 0.78rem;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 2px;
+}
+
+.tableiste button .icon {
+  font-size: 1.3rem;
+}
+
+.tableiste button.aktiv {
+  color: var(--primary-color-dark);
+  font-weight: 600;
+}
+
+/* --- Inhalt --- */
+
+.inhalt {
+  padding: 12px 16px 24px;
+  max-width: 720px;
+  margin: 0 auto;
+}
+
+.hinweis-leiste {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 12px;
+  border-radius: var(--radius);
+  background: #fff3e0;
+  color: #8a5300;
+  font-size: 0.85rem;
+  margin-bottom: 12px;
+}
+
+.hinweis-leiste.fehler {
+  background: #fdecea;
+  color: var(--danger-color);
+}
+
+/* --- Nähe-Karte --- */
+
+.naehe-karte {
+  background: var(--card-bg);
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius);
+  padding: 12px 14px;
+  margin-bottom: 14px;
+}
+
+.naehe-karte h2 {
+  font-size: 0.95rem;
+  margin: 0 0 8px;
+}
+
+.naehe-eintrag {
+  display: flex;
+  justify-content: space-between;
+  padding: 6px 0;
+  border-top: 1px solid var(--border-color);
+  font-size: 0.9rem;
+}
+
+.naehe-eintrag:first-of-type {
+  border-top: none;
+}
+
+.naehe-karte button.aktualisieren {
+  margin-top: 8px;
+  background: var(--primary-color);
+  color: white;
+  border: none;
+  border-radius: 8px;
+  padding: 8px 12px;
+  font-size: 0.85rem;
+}
+
+/* --- Suche/Sortierung --- */
+
+.such-leiste {
+  display: flex;
+  gap: 8px;
+  margin-bottom: 12px;
+}
+
+.such-leiste input[type="search"] {
+  flex: 1;
+  padding: 10px 12px;
+  border-radius: 10px;
+  border: 1px solid var(--border-color);
+  font-size: 0.95rem;
+}
+
+.such-leiste select {
+  border-radius: 10px;
+  border: 1px solid var(--border-color);
+  padding: 0 8px;
+}
+
+/* --- Listenkarten --- */
+
+.hofladen-karte {
+  background: var(--card-bg);
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius);
+  padding: 12px 14px;
+  margin-bottom: 10px;
+  display: flex;
+  gap: 12px;
+  align-items: center;
+}
+
+.hofladen-karte img.miniatur {
+  width: 56px;
+  height: 56px;
+  border-radius: 8px;
+  object-fit: cover;
+  background: var(--bg-color);
+  flex-shrink: 0;
+}
+
+.hofladen-karte .info {
+  flex: 1;
+  min-width: 0;
+}
+
+.hofladen-karte .name {
+  font-weight: 600;
+  margin: 0 0 2px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.hofladen-karte .ort {
+  color: var(--muted-color);
+  font-size: 0.85rem;
+  margin: 0;
+}
+
+.status-badge {
+  display: inline-block;
+  font-size: 0.75rem;
+  padding: 2px 8px;
+  border-radius: 999px;
+  font-weight: 600;
+}
+
+.status-badge.offen {
+  background: #e3f3e3;
+  color: var(--success-color);
+}
+
+.status-badge.geschlossen {
+  background: #fdecea;
+  color: var(--danger-color);
+}
+
+.status-badge.unbekannt {
+  background: #eee;
+  color: var(--muted-color);
+}
+
+.bewertung-sterne {
+  color: var(--primary-color-dark);
+  font-size: 0.9rem;
+  white-space: nowrap;
+}
+
+/* --- Detailansicht --- */
+
+.detail-bild {
+  width: 100%;
+  max-height: 220px;
+  object-fit: cover;
+  border-radius: var(--radius);
+  margin-bottom: 12px;
+  background: var(--card-bg);
+}
+
+.detail-abschnitt {
+  background: var(--card-bg);
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius);
+  padding: 12px 14px;
+  margin-bottom: 12px;
+}
+
+.detail-abschnitt h3 {
+  margin: 0 0 8px;
+  font-size: 0.9rem;
+  color: var(--muted-color);
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+.kontakt-zeile {
+  margin: 4px 0;
+}
+
+.kontakt-zeile a {
+  color: var(--primary-color-dark);
+  text-decoration: none;
+}
+
+.tag-liste {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.tag {
+  background: var(--bg-color);
+  border: 1px solid var(--border-color);
+  border-radius: 999px;
+  padding: 4px 10px;
+  font-size: 0.82rem;
+}
+
+.aktions-reihe {
+  display: flex;
+  gap: 10px;
+  margin: 14px 0;
+}
+
+.aktions-reihe button {
+  flex: 1;
+  padding: 11px;
+  border-radius: 10px;
+  border: 1px solid var(--border-color);
+  background: var(--card-bg);
+  font-size: 0.92rem;
+}
+
+.aktions-reihe button.primaer {
+  background: var(--primary-color);
+  border-color: var(--primary-color);
+  color: white;
+  font-weight: 600;
+}
+
+.aktions-reihe button.gefahr {
+  color: var(--danger-color);
+  border-color: var(--danger-color);
+}
+
+/* --- Formular (Editor) --- */
+
+.feld-gruppe {
+  margin-bottom: 16px;
+}
+
+.feld-gruppe label {
+  display: block;
+  font-size: 0.82rem;
+  color: var(--muted-color);
+  margin-bottom: 4px;
+}
+
+.feld-gruppe input[type="text"],
+.feld-gruppe input[type="email"],
+.feld-gruppe input[type="tel"],
+.feld-gruppe input[type="number"],
+.feld-gruppe input[type="url"],
+.feld-gruppe textarea {
+  width: 100%;
+  padding: 10px 12px;
+  border-radius: 10px;
+  border: 1px solid var(--border-color);
+  font-size: 0.95rem;
+  background: var(--card-bg);
+}
+
+.feld-gruppe textarea {
+  min-height: 70px;
+  resize: vertical;
+}
+
+.feld-zeile {
+  display: flex;
+  gap: 10px;
+}
+
+.feld-zeile .feld-gruppe {
+  flex: 1;
+}
+
+.sterne-reihe {
+  display: flex;
+  gap: 4px;
+}
+
+.stern-btn {
+  background: none;
+  border: none;
+  font-size: 1.6rem;
+  color: var(--border-color);
+  padding: 0;
+  line-height: 1;
+}
+
+.stern-btn.stern-gefuellt {
+  color: var(--primary-color-dark);
+}
+
+.oeffnungszeit-zeile,
+.liste-zeile {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  margin-bottom: 8px;
+}
+
+.liste-zeile input {
+  flex: 1;
+}
+
+.entfernen-btn {
+  background: none;
+  border: none;
+  color: var(--danger-color);
+  font-size: 1.2rem;
+  padding: 4px 8px;
+}
+
+.hinzufuegen-btn {
+  background: none;
+  border: 1px dashed var(--border-color);
+  border-radius: 8px;
+  padding: 8px;
+  width: 100%;
+  color: var(--muted-color);
+  font-size: 0.85rem;
+}
+
+.speichern-btn {
+  width: 100%;
+  background: var(--primary-color);
+  color: white;
+  border: none;
+  border-radius: 10px;
+  padding: 13px;
+  font-size: 1rem;
+  font-weight: 600;
+  margin-top: 8px;
+}
+
+/* --- Karte --- */
+
+#leaflet-karte {
+  width: 100%;
+  height: calc(100vh - 150px);
+  border-radius: var(--radius);
+  overflow: hidden;
+}
+
+/* --- Einrichtungsbildschirm --- */
+
+.einrichtung {
+  max-width: 420px;
+  margin: 10vh auto 0;
+  padding: 24px;
+  text-align: center;
+}
+
+.einrichtung .carrot-logo {
+  width: 72px;
+  margin-bottom: 12px;
+}
+
+.einrichtung h1 {
+  margin: 0 0 4px;
+}
+
+.einrichtung p.untertitel {
+  color: var(--muted-color);
+  margin: 0 0 24px;
+}
+
+.einrichtung form {
+  text-align: left;
+}
+
+.einrichtung .hinweistext {
+  font-size: 0.8rem;
+  color: var(--muted-color);
+  margin-top: 16px;
+  line-height: 1.4;
+}

@@ -1,0 +1,43 @@
+name: Deploy auf GitHub Pages
+
+# Kein Bundler/Build-Schritt nötig (reines, statisches HTML/JS/CSS) –
+# der komplette Repo-Inhalt wird 1:1 als Pages-Artefakt veröffentlicht.
+# Voraussetzung: in den Repo-Settings unter "Pages" die Quelle auf
+# "GitHub Actions" stellen (siehe README, Phase 5 im Vorgehensplan).
+
+on:
+  push:
+    branches:
+      - main
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+concurrency:
+  group: pages
+  cancel-in-progress: true
+
+jobs:
+  deploy:
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    runs-on: ubuntu-latest
+    steps:
+      - name: Repo auschecken
+        uses: actions/checkout@v4
+
+      - name: Pages konfigurieren
+        uses: actions/configure-pages@v5
+
+      - name: Artefakt hochladen
+        uses: actions/upload-pages-artifact@v3
+        with:
+          path: .
+
+      - name: Auf GitHub Pages veröffentlichen
+        id: deployment
+        uses: actions/deploy-pages@v4
