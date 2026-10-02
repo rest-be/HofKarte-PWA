@@ -274,13 +274,24 @@ export function renderEditor(container, app, hofladenId) {
         </div>
       </section>
 
-      <button type="submit" class="speichern-btn" id="speichern-btn">Speichern</button>
+      <div class="aktions-reihe">
+        <button type="button" class="abbrechen-btn" id="abbrechen-btn">Abbrechen</button>
+        <button type="submit" class="primaer" id="speichern-btn">Speichern</button>
+      </div>
     </form>
   `;
 
   zeichneOeffnungszeiten();
   zeichneBilder();
   zeichneSterne();
+
+  container.querySelector("#abbrechen-btn").addEventListener("click", () => {
+    if (bestehender) {
+      app.navigate(`#/hofladen/${bestehender.id}`);
+    } else {
+      app.navigate("#/");
+    }
+  });
 
   container.querySelector("#oz-hinzufuegen-btn").addEventListener("click", () => {
     oeffnungszeiten.push({ wochentag: 1, beginn: "08:00", ende: "18:00" });

@@ -93,11 +93,6 @@ export function renderDetail(container, app, hofladenId) {
 
     ${h.beschreibung ? `<p>${escapeHtml(h.beschreibung)}</p>` : ""}
 
-    <div class="aktions-reihe">
-      <button class="primaer" id="bearbeiten-btn">Bearbeiten</button>
-      <button class="gefahr" id="loeschen-btn">Löschen</button>
-    </div>
-
     ${h.bemerkung ? `<div class="detail-abschnitt"><h3>Bemerkung</h3><p>${escapeHtml(h.bemerkung)}</p></div>` : ""}
 
     ${
@@ -162,6 +157,11 @@ export function renderDetail(container, app, hofladenId) {
     <div class="detail-abschnitt">
       <h3>Bewertung</h3>
       ${bewertungSternenHtml(h.bewertung)}
+    </div>
+
+    <div class="aktions-reihe">
+      <button class="primaer" id="bearbeiten-btn">Bearbeiten</button>
+      <button class="gefahr" id="loeschen-btn">Löschen</button>
     </div>
   `;
 
