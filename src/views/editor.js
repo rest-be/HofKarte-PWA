@@ -166,89 +166,113 @@ export function renderEditor(container, app, hofladenId) {
     <div id="editor-fehler" class="hinweis-leiste fehler" hidden></div>
 
     <form id="editor-form">
-      <div class="feld-gruppe">
-        <label for="f-name">Name *</label>
-        <input type="text" id="f-name" required value="${escapeHtml(daten.name)}" />
-      </div>
-
-      <div class="feld-gruppe">
-        <label for="f-beschreibung">Beschreibung</label>
-        <textarea id="f-beschreibung">${escapeHtml(daten.beschreibung || "")}</textarea>
-      </div>
-
-      <div class="feld-gruppe">
-        <label for="f-bemerkung">Bemerkung (intern)</label>
-        <textarea id="f-bemerkung">${escapeHtml(daten.bemerkung || "")}</textarea>
-      </div>
-
-      <div class="feld-gruppe">
-        <label for="f-adresse">Adresse</label>
-        <input type="text" id="f-adresse" value="${escapeHtml(daten.adresse || "")}" />
-      </div>
-      <div class="feld-zeile">
+      <section class="formular-abschnitt">
+        <h2>Allgemeine Informationen</h2>
         <div class="feld-gruppe">
-          <label for="f-plz">PLZ</label>
-          <input type="text" id="f-plz" value="${escapeHtml(daten.plz || "")}" />
+          <label for="f-name">Name *</label>
+          <input type="text" id="f-name" required value="${escapeHtml(daten.name)}" />
+        </div>
+
+        <div class="feld-gruppe">
+          <label for="f-beschreibung">Beschreibung</label>
+          <textarea id="f-beschreibung">${escapeHtml(daten.beschreibung || "")}</textarea>
+        </div>
+
+        <div class="feld-gruppe">
+          <label for="f-bemerkung">Bemerkung (intern)</label>
+          <textarea id="f-bemerkung">${escapeHtml(daten.bemerkung || "")}</textarea>
+        </div>
+      </section>
+
+      <section class="formular-abschnitt">
+        <h2>Adresse</h2>
+        <div class="feld-gruppe">
+          <label for="f-adresse">Adresse</label>
+          <input type="text" id="f-adresse" value="${escapeHtml(daten.adresse || "")}" />
+        </div>
+        <div class="feld-zeile">
+          <div class="feld-gruppe">
+            <label for="f-plz">PLZ</label>
+            <input type="text" id="f-plz" value="${escapeHtml(daten.plz || "")}" />
+          </div>
+          <div class="feld-gruppe">
+            <label for="f-ort">Ort</label>
+            <input type="text" id="f-ort" value="${escapeHtml(daten.ort || "")}" />
+          </div>
         </div>
         <div class="feld-gruppe">
-          <label for="f-ort">Ort</label>
-          <input type="text" id="f-ort" value="${escapeHtml(daten.ort || "")}" />
+          <label for="f-land">Land</label>
+          <input type="text" id="f-land" value="${escapeHtml(daten.land || "")}" />
         </div>
-      </div>
-      <div class="feld-gruppe">
-        <label for="f-land">Land</label>
-        <input type="text" id="f-land" value="${escapeHtml(daten.land || "")}" />
-      </div>
+      </section>
 
-      <div class="feld-zeile">
+      <section class="formular-abschnitt">
+        <h2>Standort / Koordinaten</h2>
+        <div class="feld-zeile">
+          <div class="feld-gruppe">
+            <label for="f-latitude">Breitengrad</label>
+            <input type="text" id="f-latitude" inputmode="decimal" value="${escapeHtml(String(daten.latitude ?? ""))}" />
+          </div>
+          <div class="feld-gruppe">
+            <label for="f-longitude">Längengrad</label>
+            <input type="text" id="f-longitude" inputmode="decimal" value="${escapeHtml(String(daten.longitude ?? ""))}" />
+          </div>
+        </div>
+        <button type="button" class="hinzufuegen-btn" id="standort-uebernehmen-btn">📍 Aktuellen Standort übernehmen</button>
+      </section>
+
+      <section class="formular-abschnitt">
+        <h2>Kontakt &amp; Webseite</h2>
         <div class="feld-gruppe">
-          <label for="f-latitude">Breitengrad</label>
-          <input type="text" id="f-latitude" inputmode="decimal" value="${escapeHtml(String(daten.latitude ?? ""))}" />
+          <label for="f-mobilnummer">Mobilnummer</label>
+          <input type="tel" id="f-mobilnummer" value="${escapeHtml(daten.mobilnummer || "")}" />
         </div>
         <div class="feld-gruppe">
-          <label for="f-longitude">Längengrad</label>
-          <input type="text" id="f-longitude" inputmode="decimal" value="${escapeHtml(String(daten.longitude ?? ""))}" />
+          <label for="f-email">E-Mail</label>
+          <input type="email" id="f-email" value="${escapeHtml(daten.email || "")}" />
         </div>
-      </div>
-      <button type="button" class="hinzufuegen-btn" id="standort-uebernehmen-btn">📍 Aktuellen Standort übernehmen</button>
+        <div class="feld-gruppe">
+          <label for="f-website">Website</label>
+          <input type="url" id="f-website" value="${escapeHtml(daten.website || "")}" />
+        </div>
+      </section>
 
-      <h2>Kontakt &amp; Webseite</h2>
-      <div class="feld-gruppe">
-        <label for="f-website">Website</label>
-        <input type="url" id="f-website" value="${escapeHtml(daten.website || "")}" />
-      </div>
-      <button type="button" class="hinzufuegen-btn" id="webseite-info-btn">🔎 Infos von Website ermitteln</button>
-      <div class="feld-gruppe" style="margin-top:12px">
-        <label for="f-mobilnummer">Mobilnummer</label>
-        <input type="tel" id="f-mobilnummer" value="${escapeHtml(daten.mobilnummer || "")}" />
-      </div>
-      <div class="feld-gruppe">
-        <label for="f-email">E-Mail</label>
-        <input type="email" id="f-email" value="${escapeHtml(daten.email || "")}" />
-      </div>
+      <section class="formular-abschnitt">
+        <h2>Automatisch ausfüllen</h2>
+        <p class="muted">Übernimmt Name, Beschreibung, Adresse, Mobilnummer und E-Mail von der oben eingetragenen Website, sofern dort auffindbar.</p>
+        <button type="button" class="hinzufuegen-btn" id="webseite-info-btn">🔎 Infos von Website ermitteln</button>
+      </section>
 
-      <h2>Bewertung</h2>
-      <div class="feld-gruppe">
-        <div class="sterne-reihe" id="bewertung-sterne"></div>
-      </div>
+      <section class="formular-abschnitt">
+        <h2>Öffnungszeiten</h2>
+        <div id="oeffnungszeiten-liste"></div>
+        <button type="button" class="hinzufuegen-btn" id="oz-hinzufuegen-btn">+ Öffnungszeit hinzufügen</button>
+      </section>
 
-      <h2>Öffnungszeiten</h2>
-      <div id="oeffnungszeiten-liste"></div>
-      <button type="button" class="hinzufuegen-btn" id="oz-hinzufuegen-btn">+ Öffnungszeit hinzufügen</button>
+      <section class="formular-abschnitt">
+        <h2>Angebote und Zahlungsarten</h2>
+        <div class="feld-gruppe">
+          <label for="f-angebote">Angebote (durch Komma getrennt)</label>
+          <input type="text" id="f-angebote" value="${escapeHtml(tagsZuText(daten.angebote))}" />
+        </div>
+        <div class="feld-gruppe">
+          <label for="f-zahlungsarten">Zahlungsarten (durch Komma getrennt)</label>
+          <input type="text" id="f-zahlungsarten" value="${escapeHtml(tagsZuText(daten.zahlungsarten))}" />
+        </div>
+      </section>
 
-      <h2 style="margin-top:20px">Angebote &amp; Zahlungsarten</h2>
-      <div class="feld-gruppe">
-        <label for="f-angebote">Angebote (durch Komma getrennt)</label>
-        <input type="text" id="f-angebote" value="${escapeHtml(tagsZuText(daten.angebote))}" />
-      </div>
-      <div class="feld-gruppe">
-        <label for="f-zahlungsarten">Zahlungsarten (durch Komma getrennt)</label>
-        <input type="text" id="f-zahlungsarten" value="${escapeHtml(tagsZuText(daten.zahlungsarten))}" />
-      </div>
+      <section class="formular-abschnitt">
+        <h2>Bilder</h2>
+        <div id="bilder-liste"></div>
+        <button type="button" class="hinzufuegen-btn" id="bild-hinzufuegen-btn">+ Bild hinzufügen</button>
+      </section>
 
-      <h2 style="margin-top:20px">Bilder (URL)</h2>
-      <div id="bilder-liste"></div>
-      <button type="button" class="hinzufuegen-btn" id="bild-hinzufuegen-btn">+ Bild hinzufügen</button>
+      <section class="formular-abschnitt">
+        <h2>Bewertung</h2>
+        <div class="feld-gruppe">
+          <div class="sterne-reihe" id="bewertung-sterne"></div>
+        </div>
+      </section>
 
       <button type="submit" class="speichern-btn" id="speichern-btn">Speichern</button>
     </form>

@@ -98,17 +98,13 @@ export function renderDetail(container, app, hofladenId) {
       <button class="gefahr" id="loeschen-btn">Löschen</button>
     </div>
 
-    <div class="detail-abschnitt">
-      <h3>Bewertung</h3>
-      ${bewertungSternenHtml(h.bewertung)}
-    </div>
+    ${h.bemerkung ? `<div class="detail-abschnitt"><h3>Bemerkung</h3><p>${escapeHtml(h.bemerkung)}</p></div>` : ""}
 
     ${
-      adresseZeile || kartenLink
+      adresseZeile
         ? `<div class="detail-abschnitt">
              <h3>Adresse</h3>
              <div class="kontakt-zeile">${escapeHtml(adresseZeile)}</div>
-             ${kartenLink ? `<div class="kontakt-zeile"><a href="${kartenLink}" target="_blank" rel="noopener">📍 Auf der Karte öffnen</a></div>` : ""}
            </div>`
         : ""
     }
@@ -116,6 +112,16 @@ export function renderDetail(container, app, hofladenId) {
     ${
       kontaktZeilen.length
         ? `<div class="detail-abschnitt"><h3>Kontakt</h3>${kontaktZeilen.join("")}</div>`
+        : ""
+    }
+
+    ${
+      h.latitude != null && h.longitude != null
+        ? `<div class="detail-abschnitt">
+             <h3>Standort / Koordinaten</h3>
+             <div class="kontakt-zeile">${h.latitude}, ${h.longitude}</div>
+             ${kartenLink ? `<div class="kontakt-zeile"><a href="${kartenLink}" target="_blank" rel="noopener">📍 Auf der Karte öffnen</a></div>` : ""}
+           </div>`
         : ""
     }
 
@@ -142,7 +148,21 @@ export function renderDetail(container, app, hofladenId) {
         : ""
     }
 
-    ${h.bemerkung ? `<div class="detail-abschnitt"><h3>Bemerkung</h3><p>${escapeHtml(h.bemerkung)}</p></div>` : ""}
+    ${
+      h.bilder?.length
+        ? `<div class="detail-abschnitt">
+             <h3>Bilder</h3>
+             <div class="tag-liste">${h.bilder
+               .map((b) => `<img class="miniatur" src="${escapeHtml(b.url)}" alt="" style="width:72px;height:72px;object-fit:cover;border-radius:8px" />`)
+               .join("")}</div>
+           </div>`
+        : ""
+    }
+
+    <div class="detail-abschnitt">
+      <h3>Bewertung</h3>
+      ${bewertungSternenHtml(h.bewertung)}
+    </div>
   `;
 
   container.querySelector("#bearbeiten-btn").addEventListener("click", () => {
