@@ -27,15 +27,16 @@ Progressive Web App für HofKarte – ein reiner, zustandsloser Client für die
 ## Deployment (GitHub Pages)
 
 Das Deployment läuft automatisch über `.github/workflows/deploy.yml` bei
-jedem Push auf `main` (kein Build-Schritt nötig, da kein Bundler verwendet
-wird – der Repo-Inhalt wird 1:1 veröffentlicht). Einmalig einzurichten:
+jedem Push auf `develop` (kein Build-Schritt nötig, da kein Bundler
+verwendet wird – der Repo-Inhalt wird 1:1 veröffentlicht). Einmalig
+eingerichtet:
 
 1. Repo-Settings → **Pages** → unter "Build and deployment" die Quelle auf
    **"GitHub Actions"** stellen (nicht "Deploy from a branch").
-2. Danach einen Push auf `main` auslösen (oder den Workflow manuell unter
+2. Push auf `develop` löst den Workflow automatisch aus (oder manuell unter
    "Actions" → "Deploy auf GitHub Pages" → "Run workflow" starten).
-3. Die PWA ist danach unter `https://rest-be.github.io/HofKarte-PWA/`
-   erreichbar.
+3. Die PWA ist unter `https://rest-be.github.io/HofKarte-PWA/` erreichbar
+   – live seit 2026-10-02.
 
 ## Struktur
 
@@ -58,6 +59,52 @@ src/
     map.js                 Kartenansicht
 icons/                  App-Icons (192/512/Apple Touch/Favicon)
 ```
+
+## Installation auf dem iPhone
+
+1. **Im Heimnetz oder mit aktiver VPN-Verbindung** in Safari
+   `https://rest-be.github.io/HofKarte-PWA/` öffnen (ohne eine der beiden
+   Verbindungen kann die PWA keine Daten von Home Assistant laden – siehe
+   Hinweis unten).
+2. Auf das Teilen-Symbol tippen → **„Zum Home-Bildschirm“** auswählen →
+   mit „Hofkarte“ als Namen bestätigen. Die App erscheint danach als
+   eigenes Icon auf dem Home-Bildschirm und startet im Standalone-Modus
+   (ohne Safari-Oberfläche).
+3. Beim allerersten Start erscheint der Einrichtungsbildschirm:
+   - **HA-Adresse:** ist bereits mit `https://hofkarte.duckdns.org:8123`
+     vorausgefüllt.
+   - **Long-Lived Access Token:** das für dieses Gerät erzeugte Token
+     einfügen (siehe nächster Abschnitt).
+   - Danach lädt die App automatisch die Hofladen-Liste.
+
+Die Einrichtung ist pro Gerät nur einmal nötig – die Verbindungsdaten
+bleiben lokal in IndexedDB gespeichert, bis sie über „Einrichtung
+zurücksetzen“ (geplant) oder durch Löschen der App entfernt werden.
+
+### Eigenes Token pro Gerät/Person
+
+Jedes Gerät bekommt sein **eigenes** Long-Lived Access Token unter dem
+HA-Benutzer `hofkarte` (siehe Vorgehensplan, Phase 1):
+
+1. In Home Assistant als `hofkarte`-Benutzer anmelden (oder als Admin im
+   Benutzerprofil von `hofkarte`).
+2. Profil → ganz unten **„Long-Lived Access Tokens“** → „Token erstellen“.
+3. Sprechenden Namen vergeben, z. B. „HofKarte-PWA – iPhone Martina“.
+4. Das angezeigte Token sofort in die PWA auf dem jeweiligen Gerät
+   eintragen (wird danach nicht nochmal angezeigt).
+
+Vorteil des Pro-Gerät-Ansatzes: Geht ein Gerät verloren, wird nur dessen
+Token in Home Assistant widerrufen – alle anderen Geräte bleiben
+unberührt, keine Neueinrichtung nötig.
+
+### Wichtig: VPN unterwegs nicht vergessen
+
+Die PWA ist aus Sicherheitsgründen nur aus dem Heimnetz oder per VPN mit
+Home Assistant erreichbar (kein öffentlicher Zugriff). Wird die PWA
+unterwegs **ohne aktive VPN-Verbindung** geöffnet, zeigt sie automatisch
+den zuletzt gecachten Stand mit einem Offline-Hinweis an, statt aktuelle
+Daten zu laden oder Änderungen zu ermöglichen. Vor dem Öffnen der App
+unterwegs also kurz prüfen, ob das VPN aktiv ist.
 
 ## Voraussetzungen auf HA-Seite
 

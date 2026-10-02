@@ -1,6 +1,6 @@
 :root {
-  --primary-color: #fb8c00;
-  --primary-color-dark: #ef6c00;
+  --primary-color: #5a8f3c;
+  --primary-color-dark: #466e2f;
   --text-color: #1b1b1b;
   --muted-color: #6b6b6b;
   --bg-color: #fafafa;
@@ -334,9 +334,43 @@ body {
 }
 
 /* --- Formular (Editor) --- */
+/* Gruppierung in Karten mit Überschrift, analog zu den Abschnitten
+   ("Allgemeine Informationen", "Adresse", "Standort / Koordinaten", …)
+   der Home-Assistant-eigenen Verwaltungsoberfläche (hofkarte-panel.js). */
+
+.formular-abschnitt {
+  background: var(--card-bg);
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius);
+  padding: 14px;
+  margin-bottom: 14px;
+}
+
+.formular-abschnitt h2 {
+  margin: 0 0 12px;
+  font-size: 1rem;
+}
+
+.formular-abschnitt h3 {
+  margin: 14px 0 8px;
+  font-size: 0.85rem;
+  color: var(--muted-color);
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+}
+
+.formular-abschnitt p.muted {
+  color: var(--muted-color);
+  font-size: 0.85rem;
+  margin: 0 0 10px;
+}
 
 .feld-gruppe {
   margin-bottom: 16px;
+}
+
+.feld-gruppe:last-child {
+  margin-bottom: 0;
 }
 
 .feld-gruppe label {
