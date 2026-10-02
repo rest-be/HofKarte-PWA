@@ -21,11 +21,26 @@ Progressive Web App für HofKarte – ein reiner, zustandsloser Client für die
   DuckDNS/HTTPS erreichbare HA-Instanz (Phase 2).
 - **Kartenansicht** via Leaflet + OpenStreetMap, farbige Marker analog zum
   HA-Panel.
-- **Hosting** als statische Seite über GitHub Pages aus diesem Repository.
+- **Hosting** als statische Seite über GitHub Pages aus diesem Repository,
+  erreichbar unter **`https://rest-be.github.io/HofKarte-PWA/`**.
+
+## Deployment (GitHub Pages)
+
+Das Deployment läuft automatisch über `.github/workflows/deploy.yml` bei
+jedem Push auf `main` (kein Build-Schritt nötig, da kein Bundler verwendet
+wird – der Repo-Inhalt wird 1:1 veröffentlicht). Einmalig einzurichten:
+
+1. Repo-Settings → **Pages** → unter "Build and deployment" die Quelle auf
+   **"GitHub Actions"** stellen (nicht "Deploy from a branch").
+2. Danach einen Push auf `main` auslösen (oder den Workflow manuell unter
+   "Actions" → "Deploy auf GitHub Pages" → "Run workflow" starten).
+3. Die PWA ist danach unter `https://rest-be.github.io/HofKarte-PWA/`
+   erreichbar.
 
 ## Struktur
 
 ```
+.github/workflows/deploy.yml  GitHub-Actions-Deploy auf GitHub Pages
 index.html            App-Shell
 manifest.json          PWA-Manifest (Icons, Standalone-Modus)
 service-worker.js       Cache-first App-Shell-Cache (kein WebSocket-Caching)
