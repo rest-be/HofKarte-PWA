@@ -13,8 +13,8 @@ export function renderEinstellungen(container, app) {
     <section class="formular-abschnitt">
       <h2>Verbindung</h2>
       <div class="feld-gruppe">
-        <label>Home-Assistant-Adresse</label>
-        <input type="text" value="${app.haUrl ? escapeAttr(app.haUrl) : "–"}" disabled />
+        <label for="f-ha-adresse">Home-Assistant-Adresse</label>
+        <input type="text" id="f-ha-adresse" value="${app.haUrl ? escapeAttr(app.haUrl) : "–"}" disabled />
       </div>
     </section>
 

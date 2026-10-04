@@ -162,6 +162,20 @@ offline ändern (aktuell gewinnt schlicht die zuletzt erfolgreich
 synchronisierte Version) – das ist Phase 8b und setzt eine kleine
 Erweiterung der Home-Assistant-Integration voraus.
 
+## iOS-/Accessibility-Feinschliff (Phase 8c)
+
+- Alle interaktiven Elemente (Buttons, Eingabefelder) sind mindestens
+  44×44px gross (WCAG 2.2 / iOS-Empfehlung für Touch-Targets).
+- Die Kartenansicht respektiert `prefers-reduced-motion`: ist das in den
+  iOS-/Browser-Einstellungen aktiviert, werden Leaflets Zoom-/Fade-
+  Animationen abgeschaltet.
+- Icon-only-Bedienelemente (Sterne-Bewertung, Öffnungszeiten entfernen,
+  Sortierrichtung, Bild-Aktionen) haben `aria-label`/`title` für
+  Screenreader; der aktive Tab in der unteren Navigation ist per
+  `aria-current` ausgezeichnet.
+- Schriftgrössen sind durchgehend in `rem` definiert und folgen damit
+  automatisch der iOS-Systemschriftgrösse (Dynamic Type).
+
 ## Bekannte Einschränkungen (MVP)
 
 - Sonderöffnungszeiten werden in der PWA nicht bearbeitet (nur angezeigt) –

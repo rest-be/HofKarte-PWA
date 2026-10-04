@@ -114,17 +114,17 @@ export function renderListe(container, app) {
       }
 
       <div class="such-leiste">
-        <input type="search" id="such-feld" placeholder="Suchen …" value="${escapeHtml(
+        <input type="search" id="such-feld" placeholder="Suchen …" aria-label="Hofläden suchen" value="${escapeHtml(
           suchbegriff
         )}" />
-        <select id="sort-spalte">
+        <select id="sort-spalte" aria-label="Sortieren nach">
           ${SORT_SPALTEN.map(
             (s) => `<option value="${s.wert}" ${s.wert === sortSpalte ? "selected" : ""}>${s.label}</option>`
           ).join("")}
         </select>
-        <button id="sort-richtung" title="Sortierrichtung umkehren">${
-          sortRichtung === "asc" ? "↑" : "↓"
-        }</button>
+        <button id="sort-richtung" title="Sortierrichtung umkehren" aria-label="${
+          sortRichtung === "asc" ? "Aufsteigend sortiert, umkehren für absteigend" : "Absteigend sortiert, umkehren für aufsteigend"
+        }">${sortRichtung === "asc" ? "↑" : "↓"}</button>
       </div>
 
       <div id="hofladen-liste">${listeHtml}</div>

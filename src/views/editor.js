@@ -151,14 +151,14 @@ export function renderEditor(container, app, hofladenId) {
         .map(
           (o, i) => `
       <div class="oeffnungszeit-zeile" data-index="${i}">
-        <select class="oz-wochentag">
+        <select class="oz-wochentag" aria-label="Wochentag">
           ${WOCHENTAGE.map(
             (w) => `<option value="${w.wert}" ${w.wert === o.wochentag ? "selected" : ""}>${w.label}</option>`
           ).join("")}
         </select>
-        <input type="time" class="oz-beginn" value="${o.beginn || ""}" />
-        <input type="time" class="oz-ende" value="${o.ende || ""}" />
-        <button type="button" class="entfernen-btn" data-remove="${i}">✕</button>
+        <input type="time" class="oz-beginn" value="${o.beginn || ""}" aria-label="Beginn" />
+        <input type="time" class="oz-ende" value="${o.ende || ""}" aria-label="Ende" />
+        <button type="button" class="entfernen-btn" data-remove="${i}" title="Öffnungszeit entfernen" aria-label="Öffnungszeit entfernen">✕</button>
       </div>`
         )
         .join("") || `<p class="ort">Keine regelmässigen Öffnungszeiten.</p>`;
@@ -230,8 +230,8 @@ export function renderEditor(container, app, hofladenId) {
           <div class="bild-zeile-meta">${i === 0 ? "Hauptbild · " : ""}${b.hochgeladen ? "hochgeladen" : "externe Adresse"}</div>
         </div>
         <div class="bild-zeile-aktionen">
-          ${i !== 0 ? `<button type="button" class="sekundaer-btn" data-hauptbild="${i}" title="Als Hauptbild festlegen">⭐</button>` : ""}
-          <button type="button" class="entfernen-btn" data-remove="${i}" title="Bild entfernen">✕</button>
+          ${i !== 0 ? `<button type="button" class="sekundaer-btn" data-hauptbild="${i}" title="Als Hauptbild festlegen" aria-label="Als Hauptbild festlegen">⭐</button>` : ""}
+          <button type="button" class="entfernen-btn" data-remove="${i}" title="Bild entfernen" aria-label="Bild entfernen">✕</button>
         </div>
       </div>`
           )
@@ -284,8 +284,10 @@ export function renderEditor(container, app, hofladenId) {
     const box = container.querySelector("#bewertung-sterne");
     let html = "";
     for (let i = 1; i <= 5; i++) {
-      html += `<button type="button" class="stern-btn${i <= bewertung ? " stern-gefuellt" : ""}" data-stern="${i}">★</button>`;
+      html += `<button type="button" class="stern-btn${i <= bewertung ? " stern-gefuellt" : ""}" data-stern="${i}" aria-label="${i} von 5 Sternen" aria-pressed="${i <= bewertung}">★</button>`;
     }
+    box.setAttribute("role", "group");
+    box.setAttribute("aria-label", "Bewertung in Sternen");
     box.innerHTML = html;
     box.querySelectorAll("[data-stern]").forEach((btn) => {
       btn.addEventListener("click", () => {

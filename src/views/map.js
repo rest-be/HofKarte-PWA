@@ -74,7 +74,17 @@ export async function renderKarte(container, app) {
     ? [hoflaeden[0].latitude, hoflaeden[0].longitude]
     : [46.8182, 8.2275]; // Schweiz-Mittelpunkt als Fallback ohne Daten
 
-  const karte = L.map("leaflet-karte").setView(mitte, hoflaeden.length ? 12 : 8);
+  // Phase 8c (Accessibility): Leaflets eigene Zoom-/Fade-Animationen
+  // respektieren `prefers-reduced-motion` nicht von sich aus - hier
+  // explizit abschalten, wenn der Nutzer reduzierte Bewegung bevorzugt.
+  const reduzierteBewegung =
+    window.matchMedia && window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+
+  const karte = L.map("leaflet-karte", {
+    zoomAnimation: !reduzierteBewegung,
+    fadeAnimation: !reduzierteBewegung,
+    markerZoomAnimation: !reduzierteBewegung,
+  }).setView(mitte, hoflaeden.length ? 12 : 8);
 
   L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", {
     attribution: "&copy; OpenStreetMap-Mitwirkende",

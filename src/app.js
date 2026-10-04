@@ -351,7 +351,10 @@ function renderMitRahmen(viewRender, aktiverTab) {
   const tabZiele = { liste: "#/", karte: "#/karte", neu: "#/neu" };
   appContainer.querySelectorAll(".tableiste button").forEach((btn) => {
     const tab = btn.dataset.tab;
-    if (tab === aktiverTab) btn.classList.add("aktiv");
+    if (tab === aktiverTab) {
+      btn.classList.add("aktiv");
+      btn.setAttribute("aria-current", "page");
+    }
     btn.addEventListener("click", () => app.navigate(tabZiele[tab]));
   });
 

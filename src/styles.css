@@ -70,6 +70,12 @@ body {
   font-size: 0.85rem;
   white-space: nowrap;
   flex-shrink: 0;
+  /* Touch-Target mindestens 44x44px (Phase 8c, siehe
+     PWA-HA-Vorgehensplan.md Abschnitt 10.3) - padding allein reicht bei
+     kleiner Schrift nicht aus. */
+  min-height: 44px;
+  display: flex;
+  align-items: center;
 }
 
 /* Sync-Status (Phase 8a): bewusst dezent, erscheint nur bei Offline bzw.
@@ -132,8 +138,9 @@ body {
 .inhalt {
   /* Oben Platz für die fixe Kopfzeile, unten für die fixe Tableiste
      (siehe .kopfzeile/.tableiste) - Werte entsprechen deren jeweiliger
-     Gesamthöhe inkl. Safe-Area. */
-  padding: calc(56px + env(safe-area-inset-top)) 16px calc(76px + env(safe-area-inset-bottom));
+     Gesamthöhe inkl. Safe-Area. 64px oben seit Phase 8c (44px
+     Mindest-Touch-Target des Einstellungen-Buttons + 2x10px Padding). */
+  padding: calc(64px + env(safe-area-inset-top)) 16px calc(76px + env(safe-area-inset-bottom));
   max-width: 720px;
   margin: 0 auto;
 }
@@ -200,6 +207,8 @@ body {
   border-radius: 8px;
   padding: 8px 12px;
   font-size: 0.85rem;
+  /* Touch-Target mindestens 44x44px (Phase 8c). */
+  min-height: 44px;
 }
 
 /* --- Suche/Sortierung --- */
@@ -216,12 +225,15 @@ body {
   border-radius: 10px;
   border: 1px solid var(--border-color);
   font-size: 0.95rem;
+  /* Touch-Target mindestens 44x44px (Phase 8c). */
+  min-height: 44px;
 }
 
 .such-leiste select {
   border-radius: 10px;
   border: 1px solid var(--border-color);
   padding: 0 8px;
+  min-height: 44px;
 }
 
 /* --- Listenkarten --- */
@@ -357,6 +369,8 @@ body {
   border: 1px solid var(--border-color);
   background: var(--card-bg);
   font-size: 0.92rem;
+  /* Touch-Target mindestens 44x44px (Phase 8c). */
+  min-height: 44px;
 }
 
 .aktions-reihe button.primaer {
@@ -430,6 +444,9 @@ body {
   border: 1px solid var(--border-color);
   font-size: 0.95rem;
   background: var(--card-bg);
+  /* Touch-Target mindestens 44x44px (Phase 8c) - gilt nicht für
+     textarea, die ohnehin über min-height hinausragt. */
+  min-height: 44px;
 }
 
 .feld-gruppe textarea {
@@ -458,6 +475,12 @@ body {
   color: var(--border-color);
   padding: 0;
   line-height: 1;
+  /* Touch-Target mindestens 44x44px (Phase 8c). */
+  min-width: 44px;
+  min-height: 44px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
 }
 
 .stern-btn.stern-gefuellt {
@@ -482,6 +505,12 @@ body {
   color: var(--danger-color);
   font-size: 1.2rem;
   padding: 4px 8px;
+  /* Touch-Target mindestens 44x44px (Phase 8c). */
+  min-width: 44px;
+  min-height: 44px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
 }
 
 .hinzufuegen-btn {
@@ -492,6 +521,10 @@ body {
   width: 100%;
   color: var(--muted-color);
   font-size: 0.85rem;
+  min-height: 44px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
 }
 
 /* --- Bilder (Editor): Vorschau-Zeilen + Upload --- */
@@ -548,6 +581,12 @@ body {
   border: none;
   font-size: 1.1rem;
   padding: 4px 6px;
+  /* Touch-Target mindestens 44x44px (Phase 8c). */
+  min-width: 44px;
+  min-height: 44px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
 }
 
 .upload-row {
@@ -585,6 +624,8 @@ body {
   font-size: 1rem;
   font-weight: 600;
   margin-top: 8px;
+  /* Touch-Target mindestens 44x44px (Phase 8c). */
+  min-height: 48px;
 }
 
 /* --- Karte --- */
