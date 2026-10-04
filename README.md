@@ -58,7 +58,18 @@ src/
     editor.js              Erstellen/Bearbeiten
     map.js                 Kartenansicht
 icons/                  App-Icons (192/512/Apple Touch/Favicon)
+tests/                  Playwright-Smoke-Tests (siehe tests/README.md)
+package.json            nur für die Test-Tooling-Installation, kein Build-Schritt
 ```
+
+## Tests
+
+Playwright-Smoke-Tests laufen automatisch bei jedem Pull Request gegen
+`develop` (`.github/workflows/test.yml`) und lokal über
+`npm install && npx playwright install chromium --with-deps && npm run
+test:smoke` – Details siehe `tests/README.md`. Die PWA selbst bleibt
+davon unberührt und weiterhin bundlerfrei; `package.json` dient
+ausschliesslich der Installation von Playwright für diese Tests.
 
 ## Installation auf dem iPhone
 
