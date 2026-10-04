@@ -1,5 +1,8 @@
 # HofKarte-PWA
 
+**Version: 1.5.0** – siehe Abschnitt [Version](#version) unten für die
+installierte Version auf einem konkreten Gerät.
+
 Progressive Web App für HofKarte – ein reiner, zustandsloser Client für die
 [HofKarte-HA](https://github.com/rest-be/HofKarte-HA) Home-Assistant-Integration.
 
@@ -70,6 +73,29 @@ Playwright-Smoke-Tests laufen automatisch bei jedem Pull Request gegen
 test:smoke` – Details siehe `tests/README.md`. Die PWA selbst bleibt
 davon unberührt und weiterhin bundlerfrei; `package.json` dient
 ausschliesslich der Installation von Playwright für diese Tests.
+
+## Version
+
+Die installierte App-Version ist seit Phase 8e in **Einstellungen**
+(⚙️-Button in der Kopfzeile) sichtbar – nützlich, um bei mehreren
+Geräten im Haushalt zu prüfen, ob alle denselben Stand haben, oder beim
+Melden eines Problems die Version anzugeben.
+
+Die einzige Quelle der Wahrheit ist `src/version.js`
+(`export const APP_VERSION = "…"`). Bei einer für Nutzer sichtbaren,
+nennenswerten Änderung (nicht bei jedem kleinen Fix) wird diese Nummer
+erhöht – zusammen mit `CACHE_VERSION` in `service-worker.js`, falls
+gecachte Dateien betroffen sind, und mit der Version am Anfang dieses
+READMEs.
+
+| Version | Datum | Wesentliche Änderungen |
+|---|---|---|
+| 1.5.0 | 2026-10-04 | Versionsanzeige in Einstellungen + README eingeführt (Phase 8e). |
+| 1.4.0 | 2026-10-04 | Testdisziplin formalisiert: Playwright-Smoke-Tests unter `tests/` + CI-Workflow (Phase 8d). |
+| 1.3.0 | 2026-10-04 | iOS-/Accessibility-Lücken geschlossen: Touch-Targets, `prefers-reduced-motion`, ARIA-Attribute (Phase 8c). |
+| 1.2.0 | 2026-10-04 | Offline-Schreib-Outbox für Anlegen/Ändern/Löschen (Phase 8a). |
+| 1.1.0 | 2026-10-02 bis 2026-10-04 | GUI-Grundstruktur, Theming, Icon, Foto-Upload (Phase 7). |
+| 1.0.0 | 2026-10-02 | Erster produktiver Stand (Phasen 0–6: MVP, CI/CD, Dokumentation). |
 
 ## Installation auf dem iPhone
 

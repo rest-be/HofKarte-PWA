@@ -16,6 +16,7 @@
  *   und teilweise fehlschlagendem Sync).
  * - Phase 8c: iOS-/Accessibility-Lücken (Touch-Target-Grössen,
  *   ARIA-Attribute, Label-Verknüpfungen).
+ * - Phase 8e: Versionsanzeige in den Einstellungen.
  *
  * Nutzt absichtlich kein Test-Framework (kein Vitest/Jest) – die PWA
  * selbst ist bewusst bundlerfrei (siehe Vorgehensplan, Phase 5), ein
@@ -216,6 +217,17 @@ export async function fuehreSmokeTestsAus(page, baseUrl) {
     (await page.$eval("section.formular-abschnitt label", (el) => el.getAttribute("for"))) === "f-ha-adresse"
   );
   check("Zugehöriges Input-Feld existiert", !!(await page.$("#f-ha-adresse")));
+
+  // --- Phase 8e: Versionsanzeige -----------------------------------------
+  const angezeigteVersion = await page.$eval("#app-version", (el) => el.textContent.trim());
+  const erwarteteVersion = await page.evaluate(async () => {
+    const mod = await import("/src/version.js");
+    return mod.APP_VERSION;
+  });
+  check(
+    `Einstellungen zeigen die installierte Version an (${angezeigteVersion})`,
+    !!angezeigteVersion && angezeigteVersion === erwarteteVersion
+  );
 
   check(
     "Keine Konsolen-/Laufzeitfehler (ohne CDN-Netzwerkfehler aus der Sandbox)",

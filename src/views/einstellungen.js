@@ -6,7 +6,12 @@
  * - Long-Lived Access Token ändern (z. B. nach Widerruf/Ablauf), ohne
  *   die App neu einrichten zu müssen (HA-Adresse bleibt erhalten).
  * - Abmelden (Verbindungsdaten auf diesem Gerät löschen).
+ * - Anzeige der installierten App-Version (Phase 8e), damit sich beim
+ *   Support/Vergleich zwischen Geräten nachvollziehen lässt, welcher
+ *   Stand gerade läuft.
  */
+
+import { APP_VERSION } from "../version.js";
 
 export function renderEinstellungen(container, app) {
   container.innerHTML = `
@@ -16,6 +21,17 @@ export function renderEinstellungen(container, app) {
         <label for="f-ha-adresse">Home-Assistant-Adresse</label>
         <input type="text" id="f-ha-adresse" value="${app.haUrl ? escapeAttr(app.haUrl) : "–"}" disabled />
       </div>
+    </section>
+
+    <section class="formular-abschnitt">
+      <h2>Version</h2>
+      <p class="muted">
+        Installierte Version dieser PWA auf diesem Gerät:
+        <strong id="app-version">${escapeAttr(APP_VERSION)}</strong>.
+        Zeigt ein anderes Gerät eine ältere Version, einmal die Seite in
+        Safari neu laden bzw. die App ganz schliessen und erneut öffnen
+        – Updates werden automatisch beim nächsten Start geladen.
+      </p>
     </section>
 
     <section class="formular-abschnitt">
