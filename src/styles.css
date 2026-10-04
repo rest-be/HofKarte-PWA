@@ -27,7 +27,6 @@ body {
 
 #app {
   min-height: 100%;
-  padding-bottom: calc(64px + env(safe-area-inset-bottom));
 }
 
 .lade-hinweis {
@@ -37,10 +36,15 @@ body {
 }
 
 /* --- Kopfzeile --- */
+/* Header und Fusszeile (.tableiste) sind beide fix positioniert und
+   damit immer sichtbar ("statisch") - nur der dazwischenliegende
+   Inhaltsbereich (.inhalt) scrollt, siehe dessen Padding unten. */
 
 .kopfzeile {
-  position: sticky;
+  position: fixed;
   top: 0;
+  left: 0;
+  right: 0;
   z-index: 10;
   display: flex;
   align-items: center;
@@ -62,8 +66,10 @@ body {
   border: none;
   color: white;
   border-radius: 8px;
-  padding: 8px 12px;
-  font-size: 0.95rem;
+  padding: 8px 10px;
+  font-size: 0.85rem;
+  white-space: nowrap;
+  flex-shrink: 0;
 }
 
 /* --- Tableiste unten --- */
@@ -105,7 +111,10 @@ body {
 /* --- Inhalt --- */
 
 .inhalt {
-  padding: 12px 16px 24px;
+  /* Oben Platz für die fixe Kopfzeile, unten für die fixe Tableiste
+     (siehe .kopfzeile/.tableiste) - Werte entsprechen deren jeweiliger
+     Gesamthöhe inkl. Safe-Area. */
+  padding: calc(56px + env(safe-area-inset-top)) 16px calc(76px + env(safe-area-inset-bottom));
   max-width: 720px;
   margin: 0 auto;
 }
@@ -125,6 +134,16 @@ body {
 .hinweis-leiste.fehler {
   background: #fdecea;
   color: var(--danger-color);
+}
+
+/* Bugfix: `hidden`-Attribut wurde bisher durch `.hinweis-leiste { display:
+   flex }` überschrieben (zwei Klassen schlagen eine Attribut-Selektor in
+   der CSS-Spezifität) - das "versteckte" Element blieb dadurch als
+   schmaler, leerer Farbstreifen sichtbar (z. B. unterhalb von "Neuer
+   Hofladen" im Editor, auch ohne Fehler). !important stellt sicher, dass
+   dieser Fall unabhängig von der Regel-Reihenfolge immer gewinnt. */
+.hinweis-leiste[hidden] {
+  display: none !important;
 }
 
 /* --- Nähe-Karte --- */
@@ -454,6 +473,87 @@ body {
   width: 100%;
   color: var(--muted-color);
   font-size: 0.85rem;
+}
+
+/* --- Bilder (Editor): Vorschau-Zeilen + Upload --- */
+
+.bild-zeile {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 8px 0;
+  border-top: 1px solid var(--border-color);
+}
+
+.bild-zeile:first-child {
+  border-top: none;
+}
+
+.bild-zeile img {
+  width: 56px;
+  height: 56px;
+  border-radius: 8px;
+  object-fit: cover;
+  background: var(--bg-color);
+  flex-shrink: 0;
+}
+
+.bild-zeile-felder {
+  flex: 1;
+  min-width: 0;
+}
+
+.bild-zeile-felder input {
+  width: 100%;
+  padding: 6px 8px;
+  border-radius: 8px;
+  border: 1px solid var(--border-color);
+  font-size: 0.85rem;
+}
+
+.bild-zeile-meta {
+  color: var(--muted-color);
+  font-size: 0.75rem;
+  margin-top: 4px;
+}
+
+.bild-zeile-aktionen {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  flex-shrink: 0;
+}
+
+.sekundaer-btn {
+  background: none;
+  border: none;
+  font-size: 1.1rem;
+  padding: 4px 6px;
+}
+
+.upload-row {
+  display: flex;
+  gap: 8px;
+  margin-top: 10px;
+}
+
+.upload-row .hinzufuegen-btn {
+  width: auto;
+  flex: 1;
+}
+
+.upload-status {
+  display: block;
+  margin-top: 6px;
+  font-size: 0.82rem;
+}
+
+.upload-status.error {
+  color: var(--danger-color);
+}
+
+.upload-status.success {
+  color: var(--success-color);
 }
 
 .speichern-btn {

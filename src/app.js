@@ -3,11 +3,12 @@
  * Zustand, der an die Views weitergereicht wird.
  *
  * Views (jeweils `render(container, app)`):
- * - setup   → src/views/setup.js   (Einrichtungsbildschirm)
- * - liste   → src/views/list.js    (Übersicht + "Hofläden in der Nähe")
- * - karte   → src/views/map.js     (Leaflet-Kartenansicht)
- * - detail  → src/views/detail.js  (Detailansicht eines Hofladens)
- * - editor  → src/views/editor.js  (Neu anlegen/Bearbeiten)
+ * - setup         → src/views/setup.js         (Einrichtungsbildschirm)
+ * - liste         → src/views/list.js          (Übersicht + "Hofläden in der Nähe")
+ * - karte         → src/views/map.js           (Leaflet-Kartenansicht)
+ * - detail        → src/views/detail.js        (Detailansicht eines Hofladens)
+ * - editor        → src/views/editor.js        (Neu anlegen/Bearbeiten)
+ * - einstellungen → src/views/einstellungen.js (Token ändern, Abmelden)
  */
 
 import { ladeVerbindung, speichereVerbindung, loescheVerbindung, ladeCache } from "./storage.js";
@@ -17,6 +18,7 @@ import { renderListe } from "./views/list.js";
 import { renderKarte } from "./views/map.js";
 import { renderDetail } from "./views/detail.js";
 import { renderEditor } from "./views/editor.js";
+import { renderEinstellungen } from "./views/einstellungen.js";
 
 const appContainer = document.getElementById("app");
 
@@ -27,6 +29,9 @@ const appContainer = document.getElementById("app");
  */
 const app = {
   haClient: null,
+  /** Zuletzt verwendete HA-Adresse (für Foto-Upload-URLs und die
+   * Einstellungen-View, siehe aktualisiereToken()). */
+  haUrl: null,
   /** true, wenn keine Live-Verbindung besteht, aber zuvor erfolgreich
    * eingerichtet wurde (z. B. VPN gerade nicht aktiv) - dann wird der
    * Lesecache angezeigt statt des Einrichtungsbildschirms. */
@@ -101,9 +106,30 @@ const app = {
   async abmelden() {
     this.haClient?.trennen();
     this.haClient = null;
+    this.haUrl = null;
     await loescheVerbindung();
     this.navigate("#/");
     starteApp();
+  },
+
+  /** Token ändern (Einstellungen-View, src/views/einstellungen.js): baut
+   * zuerst eine neue Verbindung mit dem neuen Token auf, ohne die
+   * bestehende zu kappen - schlägt das fehl (z. B. Tippfehler), bleibt
+   * die alte Verbindung unangetastet nutzbar. Erst bei Erfolg wird die
+   * alte Verbindung getrennt und die neue dauerhaft gespeichert. */
+  async aktualisiereToken(neuesToken) {
+    if (!this.haUrl) {
+      throw new Error("Keine bestehende Verbindung - bitte die App neu einrichten.");
+    }
+    const neuerClient = new HaClient(this.haUrl, neuesToken);
+    await neuerClient.verbinden();
+
+    this.haClient?.trennen();
+    this.haClient = neuerClient;
+    await speichereVerbindung(this.haUrl, neuesToken);
+
+    this.state.einstellungen = await neuerClient.einstellungen().catch(() => null);
+    await this.aktualisiereListe();
   },
 };
 
@@ -139,16 +165,22 @@ function route() {
     renderMitRahmen(() => renderKarte(appContainer.querySelector(".inhalt"), app), "karte");
     return;
   }
+  if (teile[0] === "einstellungen") {
+    renderMitRahmen(() => renderEinstellungen(appContainer.querySelector(".inhalt"), app));
+    return;
+  }
 
   renderMitRahmen(() => renderListe(appContainer.querySelector(".inhalt"), app), "liste");
 }
 
-/** Gemeinsamer Rahmen (Kopfzeile + Tableiste) um die eigentliche View. */
+/** Gemeinsamer Rahmen (Kopfzeile + Tableiste) um die eigentliche View. Kopf-
+ * und Fusszeile sind fix positioniert und damit immer sichtbar, nur der
+ * dazwischenliegende Inhaltsbereich (.inhalt) scrollt (siehe styles.css). */
 function renderMitRahmen(viewRender, aktiverTab) {
   appContainer.innerHTML = `
     <header class="kopfzeile">
       <h1>🥕 HofKarte</h1>
-      <button id="abmelden-btn" title="Verbindung trennen">⎋</button>
+      <button id="einstellungen-btn" title="Einstellungen">⚙️ Einstellungen</button>
     </header>
     <main class="inhalt"></main>
     <nav class="tableiste">
@@ -158,10 +190,8 @@ function renderMitRahmen(viewRender, aktiverTab) {
     </nav>
   `;
 
-  appContainer.querySelector("#abmelden-btn").addEventListener("click", () => {
-    if (confirm("Verbindung zu Home Assistant auf diesem Gerät trennen?")) {
-      app.abmelden();
-    }
+  appContainer.querySelector("#einstellungen-btn").addEventListener("click", () => {
+    app.navigate("#/einstellungen");
   });
 
   const tabZiele = { liste: "#/", karte: "#/karte", neu: "#/neu" };
@@ -179,6 +209,7 @@ async function verbinden(haUrl, token) {
   await client.verbinden();
 
   app.haClient = client;
+  app.haUrl = haUrl;
   await speichereVerbindung(haUrl, token);
 
   app.state.einstellungen = await client.einstellungen().catch(() => null);
@@ -209,6 +240,7 @@ async function starteApp() {
     const client = new HaClient(gespeichert.haUrl, gespeichert.token);
     await client.verbinden();
     app.haClient = client;
+    app.haUrl = gespeichert.haUrl;
     app.state.einstellungen = await client.einstellungen().catch(() => null);
     await app.aktualisiereListe();
   } catch (err) {
@@ -220,6 +252,7 @@ async function starteApp() {
       // bleiben, aber mit dem Lesecache weiterarbeiten, statt zum
       // Einrichtungsbildschirm zurückzufallen.
       app.offlineModus = true;
+      app.haUrl = gespeichert.haUrl;
       await app.aktualisiereListe();
     }
   }

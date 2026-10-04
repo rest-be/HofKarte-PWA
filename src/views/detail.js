@@ -148,7 +148,10 @@ export function renderDetail(container, app, hofladenId) {
         ? `<div class="detail-abschnitt">
              <h3>Bilder</h3>
              <div class="tag-liste">${h.bilder
-               .map((b) => `<img class="miniatur" src="${escapeHtml(b.url)}" alt="" style="width:72px;height:72px;object-fit:cover;border-radius:8px" />`)
+               .map(
+                 (b) =>
+                   `<img class="miniatur" src="${escapeHtml(b.url)}" alt="${escapeHtml(b.beschreibung || "")}" loading="lazy" style="width:72px;height:72px;object-fit:cover;border-radius:8px" />`
+               )
                .join("")}</div>
            </div>`
         : ""

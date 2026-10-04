@@ -33,6 +33,14 @@ import { ladeCache, speichereCache } from "./storage.js";
 
 const CACHE_KEY_LISTE = "hoflaeden-liste";
 
+/** Bild-ID aus einer von bildHochladen() erzeugten Serve-URL extrahieren
+ * (für bildLoeschen()). Liefert `null` für extern verlinkte Bilder (die
+ * haben kein zugehöriges, in HA zu löschendes Bild-Objekt). */
+export function extractImageId(url) {
+  const treffer = /\/api\/image\/serve\/([^/]+)\//.exec(url || "");
+  return treffer ? treffer[1] : null;
+}
+
 /** Wird ausgelöst (CustomEvent auf `window`), wenn die Verbindung
  * dauerhaft verloren geht bzw. das Token ungültig ist – die App zeigt
  * dann den Einrichtungsbildschirm wieder an. */
@@ -172,6 +180,70 @@ export class HaClient {
     }
     const antwort = await this._connection.sendMessagePromise(msg);
     return antwort.orte;
+  }
+
+  /**
+   * Bild hochladen über Home Assistants eigene `image_upload`-Komponente
+   * (`POST /api/image/upload`, Ausliefern unter
+   * `/api/image/serve/<id>/original`) – dieselbe Komponente, die auch
+   * die HA-eigene Verwaltungsoberfläche (hofkarte-panel.js,
+   * `uploadBild()`) nutzt, statt eines eigenen Upload-Endpunkts.
+   *
+   * Anders als im HA-Panel (dort `window.location.origin`, da von HA
+   * selbst ausgeliefert) muss hier die volle HA-Adresse verwendet
+   * werden, da die PWA von einer anderen Origin (GitHub Pages) läuft –
+   * das erfordert `cors_allowed_origins` in der HA-`configuration.yaml`
+   * (siehe README, Abschnitt „Voraussetzungen auf HA-Seite“), ohne das
+   * blockiert der Browser die Anfrage mit einem CORS-Fehler.
+   *
+   * Die Authentifizierung läuft über das ohnehin gespeicherte
+   * Long-Lived Access Token als Bearer-Token (REST-Endpunkte akzeptieren
+   * dieses genau wie ein per OAuth erhaltenes Zugriffstoken) - kein
+   * eigener Token-Refresh nötig.
+   *
+   * Gibt `{url, hochgeladen: true}` zurück (passend zum `bilder`-Feld
+   * des Hofladens, siehe editor.js).
+   */
+  async bildHochladen(file) {
+    const formData = new FormData();
+    formData.append("file", file);
+
+    let response;
+    try {
+      response = await fetch(`${this._haUrl}/api/image/upload`, {
+        method: "POST",
+        headers: { Authorization: `Bearer ${this._token}` },
+        body: formData,
+      });
+    } catch (netzwerkFehler) {
+      throw new Error(
+        "Upload fehlgeschlagen - Home Assistant nicht erreichbar (VPN/Heimnetz prüfen) " +
+          "oder die HA-Instanz lässt Anfragen von dieser Adresse nicht zu " +
+          "(cors_allowed_origins in configuration.yaml prüfen)."
+      );
+    }
+
+    if (response.status === 401) {
+      throw new Error("Anmeldung abgelaufen/ungültig. Bitte Token in den Einstellungen prüfen.");
+    }
+    if (!response.ok) {
+      throw new Error(
+        response.status === 413 ? "Datei ist zu gross (maximal 10 MB)." : `Upload fehlgeschlagen (${response.status}).`
+      );
+    }
+
+    const ergebnis = await response.json();
+    const url = `${this._haUrl}/api/image/serve/${ergebnis.id}/original`;
+    return { url, hochgeladen: true };
+  }
+
+  /** Über bildHochladen() erzeugtes Bild wieder entfernen (WS-Befehl
+   * `image/delete` der HA-eigenen `image_upload`-Komponente). */
+  async bildLoeschen(imageId) {
+    await this._connection.sendMessagePromise({
+      type: "image/delete",
+      image_id: imageId,
+    });
   }
 
   /**

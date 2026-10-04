@@ -2,17 +2,17 @@
  * Editor zum Anlegen/Bearbeiten eines Hofladens (siehe Vorgehensplan
  * Phase 4, Schritt 35/36).
  *
- * Bewusste Vereinfachungen gegenüber `hofkarte-panel.js` (der
- * Home-Assistant-eigenen Verwaltungsoberfläche):
- * - Sonderöffnungszeiten (Ferien/Feiertage) werden hier nicht
- *   bearbeitet – dafür weiterhin die HA-eigene Oberfläche nutzen.
- * - Bilder werden nur als externe URL erfasst; ein eigener Bild-Upload
- *   aus der PWA (`image_upload`) ist nicht Teil dieses MVP.
- * Beides ändert nichts an den gespeicherten Daten selbst – nur an dem,
- * was aus der PWA heraus direkt editierbar ist.
+ * Bewusste Vereinfachung gegenüber `hofkarte-panel.js` (der
+ * Home-Assistant-eigenen Verwaltungsoberfläche): Sonderöffnungszeiten
+ * (Ferien/Feiertage) werden hier nicht bearbeitet – dafür weiterhin die
+ * HA-eigene Oberfläche nutzen. Bilder können dagegen wie im HA-Panel
+ * sowohl per geführtem Upload (Kamera/Fotobibliothek, über Home
+ * Assistants `image_upload`-Komponente) als auch per externer
+ * Bild-Adresse hinzugefügt werden (siehe zeichneBilder()).
  */
 
 import { escapeHtml } from "./list.js";
+import { extractImageId } from "../ha-client.js";
 
 const WOCHENTAGE = [
   { wert: 1, label: "Montag" },
@@ -53,6 +53,64 @@ function neueId(praefix) {
 
 function tagsZuText(liste) {
   return (liste || []).map((e) => e.name).join(", ");
+}
+
+function holeStandort(optionen) {
+  return new Promise((resolve, reject) => {
+    navigator.geolocation.getCurrentPosition(resolve, reject, optionen);
+  });
+}
+
+function standortFehlermeldung(err) {
+  switch (err?.code) {
+    case 1: // PERMISSION_DENIED
+      return (
+        "Standortzugriff wurde verweigert. Bitte in den iPhone-Einstellungen " +
+        "unter „HofKarte“ (bzw. „Safari“ → „Websites“, falls die App nicht im " +
+        "Home-Bildschirm installiert ist) den Standortzugriff erlauben und " +
+        "erneut versuchen."
+      );
+    case 2: // POSITION_UNAVAILABLE
+      return "Standort konnte nicht ermittelt werden (Position aktuell nicht verfügbar).";
+    case 3: // TIMEOUT
+      return "Zeitüberschreitung beim Ermitteln des Standorts. Am besten im Freien bzw. bei gutem GPS-/WLAN-Empfang erneut versuchen.";
+    default:
+      return "Standort konnte nicht ermittelt werden.";
+  }
+}
+
+/** "📍 Aktuellen Standort übernehmen": erster Versuch mit hoher
+ * Genauigkeit (GPS), bei Zeitüberschreitung/nicht verfügbarer Position
+ * ein zweiter, grosszügigerer Versuch ohne High-Accuracy (WLAN-/
+ * Mobilfunk-Ortung) - viele Fehlschläge in der Praxis sind reine
+ * GPS-Timeouts (z. B. in Gebäuden), kein grundsätzliches Problem. */
+async function standortUebernehmen(container) {
+  const btn = container.querySelector("#standort-uebernehmen-btn");
+  if (!("geolocation" in navigator)) {
+    alert("Dieser Browser unterstützt keine Standortabfrage.");
+    return;
+  }
+
+  btn.disabled = true;
+  btn.textContent = "📍 Ermittle Standort …";
+
+  try {
+    let pos;
+    try {
+      pos = await holeStandort({ enableHighAccuracy: true, timeout: 15_000, maximumAge: 0 });
+    } catch (err) {
+      if (err?.code === 1) throw err; // Berechtigung verweigert: kein zweiter Versuch sinnvoll
+      btn.textContent = "📍 Erneuter Versuch …";
+      pos = await holeStandort({ enableHighAccuracy: false, timeout: 20_000, maximumAge: 60_000 });
+    }
+    container.querySelector("#f-latitude").value = pos.coords.latitude.toFixed(6);
+    container.querySelector("#f-longitude").value = pos.coords.longitude.toFixed(6);
+  } catch (err) {
+    alert(standortFehlermeldung(err));
+  } finally {
+    btn.disabled = false;
+    btn.textContent = "📍 Aktuellen Standort übernehmen";
+  }
 }
 
 function textZuTags(text, praefix) {
@@ -122,27 +180,104 @@ export function renderEditor(container, app, hofladenId) {
     });
   }
 
+  function setUploadStatus(text, art = "") {
+    const el = container.querySelector("#upload-status");
+    if (!el) return;
+    el.textContent = text;
+    el.className = `upload-status muted${art ? " " + art : ""}`;
+  }
+
+  /** Bild an Index `i` als Hauptbild festlegen (= an den Anfang der
+   * Liste verschieben, siehe images.py:get_main_image_url - das erste
+   * Bild mit gültiger URL ist das Hauptbild). */
+  function alsHauptbildFestlegen(i) {
+    const [b] = bilder.splice(i, 1);
+    bilder.unshift(b);
+    zeichneBilder();
+  }
+
+  async function bildEntfernen(i) {
+    const bild = bilder[i];
+    if (!bild) return;
+    if (bild.hochgeladen) {
+      const imageId = extractImageId(bild.url);
+      if (imageId && app.haClient) {
+        try {
+          await app.haClient.bildLoeschen(imageId);
+        } catch (err) {
+          // Zugrunde liegende Datei liess sich nicht bereinigen (z. B.
+          // bereits anderweitig gelöscht) - Bild trotzdem aus der Liste
+          // entfernen, um nicht zu blockieren; kein Datenverlust an
+          // Hofladen-Seite dadurch.
+          console.warn("Hochgeladenes Bild konnte nicht bereinigt werden:", err);
+        }
+      }
+    }
+    bilder.splice(i, 1);
+    zeichneBilder();
+  }
+
   function zeichneBilder() {
     const box = container.querySelector("#bilder-liste");
-    box.innerHTML = bilder
-      .map(
-        (b, i) => `
-      <div class="liste-zeile" data-index="${i}">
-        <input type="url" class="bild-url" placeholder="https://…" value="${escapeHtml(b.url || "")}" />
-        <button type="button" class="entfernen-btn" data-remove="${i}">✕</button>
+    box.innerHTML = bilder.length
+      ? bilder
+          .map(
+            (b, i) => `
+      <div class="bild-zeile" data-index="${i}">
+        <img src="${escapeHtml(b.url || "")}" alt="" loading="lazy" />
+        <div class="bild-zeile-felder">
+          <input type="text" class="bild-beschreibung" placeholder="Beschreibung (optional)" value="${escapeHtml(b.beschreibung || "")}" />
+          <div class="bild-zeile-meta">${i === 0 ? "Hauptbild · " : ""}${b.hochgeladen ? "hochgeladen" : "externe Adresse"}</div>
+        </div>
+        <div class="bild-zeile-aktionen">
+          ${i !== 0 ? `<button type="button" class="sekundaer-btn" data-hauptbild="${i}" title="Als Hauptbild festlegen">⭐</button>` : ""}
+          <button type="button" class="entfernen-btn" data-remove="${i}" title="Bild entfernen">✕</button>
+        </div>
       </div>`
-      )
-      .join("");
+          )
+          .join("")
+      : `<p class="muted">Noch keine Bilder hinterlegt.</p>`;
 
-    box.querySelectorAll(".bild-url").forEach((el, i) => {
-      el.addEventListener("change", (e) => (bilder[i].url = e.target.value));
+    box.querySelectorAll(".bild-beschreibung").forEach((el, i) => {
+      el.addEventListener("change", (e) => (bilder[i].beschreibung = e.target.value || null));
+    });
+    box.querySelectorAll("[data-hauptbild]").forEach((btn) => {
+      btn.addEventListener("click", () => alsHauptbildFestlegen(Number(btn.dataset.hauptbild)));
     });
     box.querySelectorAll("[data-remove]").forEach((btn) => {
-      btn.addEventListener("click", () => {
-        bilder.splice(Number(btn.dataset.remove), 1);
-        zeichneBilder();
-      });
+      btn.addEventListener("click", () => bildEntfernen(Number(btn.dataset.remove)));
     });
+  }
+
+  const UPLOAD_MAX_BYTES = 10 * 1024 * 1024; // entspricht image_upload.MAX_SIZE in HA
+  const UPLOAD_ERLAUBTE_TYPEN = ["image/jpeg", "image/png", "image/gif"];
+
+  async function fotoHochladen(file) {
+    if (!file) return;
+    if (!UPLOAD_ERLAUBTE_TYPEN.includes(file.type)) {
+      setUploadStatus("Nicht unterstütztes Dateiformat. Erlaubt: JPEG, PNG, GIF.", "error");
+      return;
+    }
+    if (file.size > UPLOAD_MAX_BYTES) {
+      setUploadStatus("Datei ist zu gross (maximal 10 MB erlaubt).", "error");
+      return;
+    }
+    try {
+      app._pruefeVerbindung();
+    } catch (err) {
+      setUploadStatus(err.message, "error");
+      return;
+    }
+
+    setUploadStatus(`„${file.name}“ wird hochgeladen …`);
+    try {
+      const bild = await app.haClient.bildHochladen(file);
+      bilder.push({ url: bild.url, beschreibung: null, hochgeladen: true });
+      setUploadStatus(`„${file.name}“ erfolgreich hochgeladen.`, "success");
+      zeichneBilder();
+    } catch (err) {
+      setUploadStatus(err?.message || "Upload fehlgeschlagen.", "error");
+    }
   }
 
   function zeichneSterne() {
@@ -263,8 +398,22 @@ export function renderEditor(container, app, hofladenId) {
 
       <section class="formular-abschnitt">
         <h2>Bilder</h2>
+        <p class="muted">Das erste Bild in der Liste ist das Hauptbild.</p>
         <div id="bilder-liste"></div>
-        <button type="button" class="hinzufuegen-btn" id="bild-hinzufuegen-btn">+ Bild hinzufügen</button>
+        <div class="upload-row">
+          <button type="button" class="hinzufuegen-btn" id="foto-aufnehmen-btn">📷 Foto aufnehmen</button>
+          <button type="button" class="hinzufuegen-btn" id="foto-bibliothek-btn">🖼️ Aus Fotos wählen</button>
+        </div>
+        <input type="file" id="foto-kamera-input" accept="image/jpeg,image/png,image/gif" capture="environment" hidden />
+        <input type="file" id="foto-bibliothek-input" accept="image/jpeg,image/png,image/gif" hidden />
+        <span class="upload-status muted" id="upload-status"></span>
+        <details style="margin-top:10px">
+          <summary class="muted" style="cursor:pointer">Oder externe Bild-Adresse manuell hinzufügen</summary>
+          <div class="liste-zeile" style="margin-top:8px">
+            <input type="url" id="externe-bild-url" placeholder="https://…" />
+            <button type="button" class="hinzufuegen-btn" id="bild-hinzufuegen-btn" style="width:auto">Hinzufügen</button>
+          </div>
+        </details>
       </section>
 
       <section class="formular-abschnitt">
@@ -298,23 +447,31 @@ export function renderEditor(container, app, hofladenId) {
     zeichneOeffnungszeiten();
   });
   container.querySelector("#bild-hinzufuegen-btn").addEventListener("click", () => {
-    bilder.push({ url: "", hochgeladen: false });
+    const urlFeld = container.querySelector("#externe-bild-url");
+    const url = urlFeld.value.trim();
+    if (!url) return;
+    bilder.push({ url, beschreibung: null, hochgeladen: false });
+    urlFeld.value = "";
     zeichneBilder();
   });
 
+  container.querySelector("#foto-aufnehmen-btn").addEventListener("click", () => {
+    container.querySelector("#foto-kamera-input").click();
+  });
+  container.querySelector("#foto-bibliothek-btn").addEventListener("click", () => {
+    container.querySelector("#foto-bibliothek-input").click();
+  });
+  container.querySelector("#foto-kamera-input").addEventListener("change", (e) => {
+    fotoHochladen(e.target.files[0]);
+    e.target.value = "";
+  });
+  container.querySelector("#foto-bibliothek-input").addEventListener("change", (e) => {
+    fotoHochladen(e.target.files[0]);
+    e.target.value = "";
+  });
+
   container.querySelector("#standort-uebernehmen-btn").addEventListener("click", () => {
-    if (!("geolocation" in navigator)) {
-      alert("Dieser Browser unterstützt keine Standortabfrage.");
-      return;
-    }
-    navigator.geolocation.getCurrentPosition(
-      (pos) => {
-        container.querySelector("#f-latitude").value = pos.coords.latitude.toFixed(6);
-        container.querySelector("#f-longitude").value = pos.coords.longitude.toFixed(6);
-      },
-      () => alert("Standort konnte nicht ermittelt werden."),
-      { enableHighAccuracy: true, timeout: 10_000 }
-    );
+    standortUebernehmen(container);
   });
 
   container.querySelector("#webseite-info-btn").addEventListener("click", async () => {
@@ -366,7 +523,9 @@ export function renderEditor(container, app, hofladenId) {
       oeffnungszeiten: oeffnungszeiten.filter((o) => o.beginn && o.ende),
       angebote: textZuTags(wert("#f-angebote"), "angebot"),
       zahlungsarten: textZuTags(wert("#f-zahlungsarten"), "zahlungsart"),
-      bilder: bilder.filter((b) => b.url).map((b) => ({ url: b.url, hochgeladen: false })),
+      bilder: bilder
+        .filter((b) => b.url)
+        .map((b) => ({ url: b.url, beschreibung: b.beschreibung || null, hochgeladen: !!b.hochgeladen })),
     };
 
     const submitBtn = container.querySelector("#speichern-btn");

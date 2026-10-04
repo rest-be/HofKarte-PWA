@@ -114,9 +114,28 @@ Siehe Projekt-Dokument `PWA-HA-Vorgehensplan.md`:
 - Dedizierter Admin-Benutzer `hofkarte` mit Long-Lived Access Token pro
   Gerät.
 - HA extern/intern per HTTPS erreichbar (z. B. via DuckDNS-Add-on).
+- **`cors_allowed_origins`** in `configuration.yaml`, damit der Browser
+  Anfragen von `https://rest-be.github.io` akzeptiert – sowohl für die
+  WebSocket-Verbindung selbst als auch für den Foto-Upload (`POST
+  /api/image/upload`, siehe unten). Ohne diese Einstellung schlagen
+  Verbindungsaufbau bzw. Upload mit einem CORS-Fehler fehl.
+
+## Fotos hinzufügen
+
+Im Editor können Bilder auf zwei Arten direkt aus der PWA heraus
+hinzugefügt werden, zusätzlich zur bisherigen Möglichkeit, eine externe
+Bild-Adresse einzutragen:
+
+- **📷 Foto aufnehmen** – öffnet die Kamera direkt.
+- **🖼️ Aus Fotos wählen** – öffnet die Fotobibliothek des Geräts.
+
+Beides läuft über Home Assistants eigene `image_upload`-Komponente
+(`POST /api/image/upload`, Ausliefern unter
+`/api/image/serve/<id>/original`) – dieselbe, die auch die native
+HA-Verwaltungsoberfläche nutzt. Es gibt dafür keinen eigenen
+HofKarte-PWA-Speicher; die Bilder liegen wie gewohnt in Home Assistant.
 
 ## Bekannte Einschränkungen (MVP)
 
 - Sonderöffnungszeiten werden in der PWA nicht bearbeitet (nur angezeigt) –
   dafür die native HA-Verwaltungsoberfläche verwenden.
-- Bilder werden nur als URL hinterlegt, kein direkter Upload aus der PWA.
