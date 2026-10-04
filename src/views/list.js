@@ -92,7 +92,7 @@ export function renderListe(container, app) {
               : `<div class="miniatur" aria-hidden="true"></div>`
           }
           <div class="info">
-            <p class="name">${escapeHtml(h.name)}</p>
+            <p class="name">${escapeHtml(h.name)}${h._synchronisierungAusstehend ? ` <span title="Noch nicht synchronisiert">⌁</span>` : ""}</p>
             <p class="ort">${escapeHtml(h.ort || "")}</p>
             ${statusBadge(h.geoeffnet)} ${bewertungSterne(h.bewertung)}
           </div>

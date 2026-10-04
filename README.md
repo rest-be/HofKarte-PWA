@@ -135,7 +135,38 @@ Beides läuft über Home Assistants eigene `image_upload`-Komponente
 HA-Verwaltungsoberfläche nutzt. Es gibt dafür keinen eigenen
 HofKarte-PWA-Speicher; die Bilder liegen wie gewohnt in Home Assistant.
 
+## Offline-Betrieb (Phase 8a)
+
+Hofläden anlegen, ändern und löschen funktioniert auch ohne aktive
+Verbindung zu Home Assistant (z. B. gerade kein VPN/Heimnetz). Die
+Änderung wird sofort lokal sichtbar und automatisch synchronisiert,
+sobald die Verbindung wieder besteht – die App versucht dazu alle 30
+Sekunden, sich erneut zu verbinden, solange sie im Vordergrund offen ist.
+
+Die Kopfzeile zeigt den Sync-Status dezent an (nur bei Bedarf):
+
+- **⌁ Offline (n ausstehend)** – keine Verbindung, n Änderungen warten.
+- **↻ Wird synchronisiert …** – Verbindung besteht, Warteschlange wird
+  gerade abgearbeitet.
+- ohne Anzeige – alles synchronisiert, nichts zu tun.
+
+Noch nicht synchronisierte Hofläden sind in der Liste mit ⌁ markiert und
+zeigen in der Detailansicht einen entsprechenden Hinweis.
+
+**Bewusst noch nicht Teil dieser Version:** Fotos hinzufügen/entfernen
+(Kamera, Fotobibliothek) benötigt weiterhin eine aktive Verbindung und
+zeigt ohne Verbindung eine Fehlermeldung – siehe
+`PWA-HA-Vorgehensplan.md`, Phase 8a, für die Begründung. Ebenso noch
+offen: eine echte Konflikterkennung, falls zwei Geräte denselben Hofladen
+offline ändern (aktuell gewinnt schlicht die zuletzt erfolgreich
+synchronisierte Version) – das ist Phase 8b und setzt eine kleine
+Erweiterung der Home-Assistant-Integration voraus.
+
 ## Bekannte Einschränkungen (MVP)
 
 - Sonderöffnungszeiten werden in der PWA nicht bearbeitet (nur angezeigt) –
   dafür die native HA-Verwaltungsoberfläche verwenden.
+- Fotos hinzufügen/entfernen erfordert eine aktive Verbindung zu Home
+  Assistant (siehe Abschnitt „Offline-Betrieb“ oben).
+- Keine Konflikterkennung, falls zwei Geräte denselben Hofladen offline
+  ändern (siehe Abschnitt „Offline-Betrieb“ oben) – geplant für Phase 8b.

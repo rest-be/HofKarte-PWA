@@ -72,6 +72,25 @@ body {
   flex-shrink: 0;
 }
 
+/* Sync-Status (Phase 8a): bewusst dezent, erscheint nur bei Offline bzw.
+   solange noch Operationen in der Warteschlange sind (siehe app.js,
+   syncStatusHtml()) - im Normalzustand unsichtbar. */
+.sync-status {
+  font-size: 0.75rem;
+  white-space: nowrap;
+  margin-left: auto;
+  margin-right: 8px;
+  opacity: 0.9;
+}
+
+.sync-status.offline {
+  color: #ffe0b2;
+}
+
+.sync-status.wird-synchronisiert {
+  color: #e8f5e9;
+}
+
 /* --- Tableiste unten --- */
 
 .tableiste {

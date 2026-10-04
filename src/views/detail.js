@@ -80,6 +80,12 @@ export function renderDetail(container, app, hofladenId) {
       : null;
 
   container.innerHTML = `
+    ${
+      h._synchronisierungAusstehend
+        ? `<p class="hinweis-leiste">⌁ Noch nicht synchronisiert - wird automatisch übernommen, sobald wieder eine Verbindung zu Home Assistant besteht.</p>`
+        : ""
+    }
+
     ${h.hauptbild_url ? `<img class="detail-bild" src="${h.hauptbild_url}" alt="" />` : ""}
 
     <h2>${escapeHtml(h.name)}</h2>
