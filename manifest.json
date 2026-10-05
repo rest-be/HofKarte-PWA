@@ -6,8 +6,8 @@
   "scope": "/HofKarte-PWA/",
   "display": "standalone",
   "orientation": "portrait-primary",
-  "background_color": "#ffffff",
-  "theme_color": "#7cb342",
+  "background_color": "#f2f2f7",
+  "theme_color": "#f2f2f7",
   "lang": "de-CH",
   "icons": [
     {

@@ -299,7 +299,6 @@ export function renderEditor(container, app, hofladenId) {
   }
 
   container.innerHTML = `
-    <h2>${bestehender ? "Hofladen bearbeiten" : "Neuer Hofladen"}</h2>
     <div id="editor-fehler" class="hinweis-leiste fehler" hidden></div>
 
     <form id="editor-form">

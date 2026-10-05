@@ -357,32 +357,61 @@ function route() {
 
   const teile = parsePfad();
 
+  const detailHash = (id) => `#/hofladen/${id}`;
+
   if (teile[0] === "hofladen" && teile[1] && teile[2] === "bearbeiten") {
-    renderMitRahmen(() => renderEditor(appContainer.querySelector(".inhalt"), app, teile[1]));
+    renderMitRahmen(() => renderEditor(appContainer.querySelector(".inhalt"), app, teile[1]), null, {
+      titel: "Bearbeiten",
+      tiefe: 2,
+      zurueck: detailHash(teile[1]),
+    });
     return;
   }
   if (teile[0] === "konflikt" && teile[1]) {
-    renderMitRahmen(() => renderKonflikt(appContainer.querySelector(".inhalt"), app, teile[1]));
+    renderMitRahmen(() => renderKonflikt(appContainer.querySelector(".inhalt"), app, teile[1]), null, {
+      titel: "Konflikt",
+      tiefe: 2,
+      zurueck: detailHash(teile[1]),
+    });
     return;
   }
   if (teile[0] === "neu") {
-    renderMitRahmen(() => renderEditor(appContainer.querySelector(".inhalt"), app, null));
+    renderMitRahmen(() => renderEditor(appContainer.querySelector(".inhalt"), app, null), "neu", {
+      titel: "Neuer Hofladen",
+      tiefe: 0,
+    });
     return;
   }
   if (teile[0] === "hofladen" && teile[1]) {
-    renderMitRahmen(() => renderDetail(appContainer.querySelector(".inhalt"), app, teile[1]));
+    renderMitRahmen(() => renderDetail(appContainer.querySelector(".inhalt"), app, teile[1]), null, {
+      titel: "Details",
+      tiefe: 1,
+      zurueck: "#/",
+    });
     return;
   }
   if (teile[0] === "karte") {
-    renderMitRahmen(() => renderKarte(appContainer.querySelector(".inhalt"), app), "karte");
+    renderMitRahmen(() => renderKarte(appContainer.querySelector(".inhalt"), app), "karte", {
+      titel: "Karte",
+      tiefe: 0,
+    });
     return;
   }
   if (teile[0] === "einstellungen") {
-    renderMitRahmen(() => renderEinstellungen(appContainer.querySelector(".inhalt"), app));
+    renderMitRahmen(() => renderEinstellungen(appContainer.querySelector(".inhalt"), app), null, {
+      titel: "Einstellungen",
+      gross: true,
+      tiefe: 1,
+      zurueck: "#/",
+    });
     return;
   }
 
-  renderMitRahmen(() => renderListe(appContainer.querySelector(".inhalt"), app), "liste");
+  renderMitRahmen(() => renderListe(appContainer.querySelector(".inhalt"), app), "liste", {
+    titel: "Hofläden",
+    gross: true,
+    tiefe: 0,
+  });
 }
 
 /** Sync-Status für die Kopfzeile (Phase 8a): bewusst dezent - erscheint
@@ -404,27 +433,133 @@ function syncStatusHtml() {
   return "";
 }
 
-/** Gemeinsamer Rahmen (Kopfzeile + Tableiste) um die eigentliche View. Kopf-
- * und Fusszeile sind fix positioniert und damit immer sichtbar, nur der
- * dazwischenliegende Inhaltsbereich (.inhalt) scrollt (siehe styles.css). */
-function renderMitRahmen(viewRender, aktiverTab) {
+/* Tab-Icons als Inline-SVG (SF-Symbols-ähnlich, Strich + dezente Füllung). */
+const TAB_ICONS = {
+  liste:
+    '<svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="4.5" cy="6.5" r="1" /><circle cx="4.5" cy="12" r="1" /><circle cx="4.5" cy="17.5" r="1" /><path d="M9 6.5h11M9 12h11M9 17.5h11" /></svg>',
+  karte:
+    '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 6.5l6-2.5 6 2.5 6-2.5v13.5l-6 2.5-6-2.5-6 2.5z" /><path d="M9 4v13.5M15 6.5V20" /></svg>',
+  neu: '<svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="9" /><path d="M12 7.5v9M7.5 12h9" /></svg>',
+};
+const ICON_ZURUECK =
+  '<svg viewBox="0 0 13 22" aria-hidden="true"><path d="M11 2L2 11l9 9" /></svg>';
+const ICON_EINSTELLUNGEN =
+  '<svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="3" /><path d="M19.4 15a1.7 1.7 0 0 0 .3 1.8l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.7 1.7 0 0 0-1.8-.3 1.7 1.7 0 0 0-1 1.5V21a2 2 0 1 1-4 0v-.1a1.7 1.7 0 0 0-1.1-1.5 1.7 1.7 0 0 0-1.8.3l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1a1.7 1.7 0 0 0 .3-1.8 1.7 1.7 0 0 0-1.5-1H3a2 2 0 1 1 0-4h.1a1.7 1.7 0 0 0 1.5-1.1 1.7 1.7 0 0 0-.3-1.8l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1a1.7 1.7 0 0 0 1.8.3H9a1.7 1.7 0 0 0 1-1.5V3a2 2 0 1 1 4 0v.1a1.7 1.7 0 0 0 1 1.5 1.7 1.7 0 0 0 1.8-.3l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1a1.7 1.7 0 0 0-.3 1.8V9a1.7 1.7 0 0 0 1.5 1H21a2 2 0 1 1 0 4h-.1a1.7 1.7 0 0 0-1.5 1z" /></svg>';
+
+let letzteTiefe = 0;
+let letzterHash = null;
+let aktuelleKopfzeile = null;
+let aktuellerGrosserTitel = null;
+
+/** Large-Title-Verhalten: Navigationsleiste blendet beim Scrollen ein
+ * (Blur + kleiner Titel), sobald der grosse Titel aus dem Blick ist. */
+function aktualisiereKopfzeilenZustand() {
+  if (!aktuelleKopfzeile) return;
+  const grenze = aktuellerGrosserTitel ? aktuellerGrosserTitel.offsetHeight - 6 : 0;
+  aktuelleKopfzeile.classList.toggle("gescrollt", window.scrollY > Math.max(grenze, 4));
+}
+window.addEventListener("scroll", aktualisiereKopfzeilenZustand, { passive: true });
+
+/** Wischen vom linken Rand zurück (wie iOS): die Seite folgt dem Finger, ab
+ * ~35 % Breite oder schnellem Wischen wird zurücknavigiert. */
+function aktiviereSwipeZurueck(seite, zielHash) {
+  let start = null;
+  seite.addEventListener(
+    "touchstart",
+    (e) => {
+      const t = e.touches[0];
+      start = t.clientX <= 24 ? { x: t.clientX, y: t.clientY, zeit: Date.now(), aktiv: false } : null;
+    },
+    { passive: true }
+  );
+  seite.addEventListener(
+    "touchmove",
+    (e) => {
+      if (!start) return;
+      const t = e.touches[0];
+      const dx = t.clientX - start.x;
+      const dy = Math.abs(t.clientY - start.y);
+      if (!start.aktiv && dx > 10 && dx > dy * 1.5) start.aktiv = true;
+      if (start.aktiv) {
+        seite.style.transition = "none";
+        seite.style.transform = `translateX(${Math.max(0, dx)}px)`;
+      }
+    },
+    { passive: true }
+  );
+  seite.addEventListener("touchend", (e) => {
+    if (!start || !start.aktiv) {
+      start = null;
+      return;
+    }
+    const dx = e.changedTouches[0].clientX - start.x;
+    const schnell = dx / Math.max(1, Date.now() - start.zeit) > 0.5;
+    start = null;
+    if (dx > window.innerWidth * 0.35 || (schnell && dx > 60)) {
+      seite.style.transition = "transform 0.2s ease-out";
+      seite.style.transform = `translateX(${window.innerWidth}px)`;
+      setTimeout(() => app.navigate(zielHash), 180);
+    } else {
+      seite.style.transition = "transform 0.2s ease-out";
+      seite.style.transform = "";
+    }
+  });
+}
+
+/** Gemeinsamer Rahmen (Navigationsleiste + Tableiste) um die eigentliche
+ * View, im Stil einer iOS-App. Leiste und Tableiste sind fix positioniert
+ * (mit Blur), dazwischen scrollt die Seite.
+ * opts: { titel, gross (Large Title), tiefe (0 = Tab-Ebene), zurueck (Hash) } */
+function renderMitRahmen(viewRender, aktiverTab, opts = {}) {
+  const { titel = "HofKarte", gross = false, tiefe = 0, zurueck = null } = opts;
+  const richtung = tiefe > letzteTiefe ? "slide-vor" : tiefe < letzteTiefe ? "slide-zurueck" : "";
+  letzteTiefe = tiefe;
+
   appContainer.innerHTML = `
-    <header class="kopfzeile">
-      <h1>🥕 HofKarte</h1>
-      ${syncStatusHtml()}
-      <button id="einstellungen-btn" title="Einstellungen">⚙️ Einstellungen</button>
+    <header class="kopfzeile${gross ? "" : " ohne-gross"}">
+      <div class="nav-zeile">
+        <div class="nav-links">
+          ${zurueck ? `<button type="button" class="nav-btn zurueck" id="zurueck-btn" aria-label="Zurück">${ICON_ZURUECK}Zurück</button>` : ""}
+        </div>
+        <h1 class="nav-titel">${titel}</h1>
+        <div class="nav-rechts">
+          ${
+            tiefe === 0 || opts.einstellungenBtn
+              ? `<button type="button" class="nav-btn" id="einstellungen-btn" title="Einstellungen" aria-label="Einstellungen">${ICON_EINSTELLUNGEN}</button>`
+              : ""
+          }
+        </div>
+      </div>
+      ${(() => {
+        const status = syncStatusHtml();
+        return status ? `<div class="sync-leiste">${status}</div>` : "";
+      })()}
     </header>
-    <main class="inhalt"></main>
-    <nav class="tableiste">
-      <button data-tab="liste"><span class="icon">📋</span>Liste</button>
-      <button data-tab="karte"><span class="icon">🗺️</span>Karte</button>
-      <button data-tab="neu"><span class="icon">➕</span>Neu</button>
+    <div class="seite ${richtung}">
+      ${gross ? `<h1 class="grosser-titel">${titel}</h1>` : ""}
+      <main class="inhalt"></main>
+    </div>
+    <nav class="tableiste" aria-label="Hauptnavigation">
+      <button data-tab="liste"><span class="icon">${TAB_ICONS.liste}</span>Liste</button>
+      <button data-tab="karte"><span class="icon">${TAB_ICONS.karte}</span>Karte</button>
+      <button data-tab="neu"><span class="icon">${TAB_ICONS.neu}</span>Neu</button>
     </nav>
   `;
 
-  appContainer.querySelector("#einstellungen-btn").addEventListener("click", () => {
+  const kopfzeile = appContainer.querySelector(".kopfzeile");
+  aktuelleKopfzeile = kopfzeile;
+  aktuellerGrosserTitel = appContainer.querySelector(".grosser-titel");
+  // Höhe der (evtl. durch die Sync-Kapsel höheren) Leiste für das Seiten-Padding.
+  document.documentElement.style.setProperty("--kopf-h", `${kopfzeile.offsetHeight}px`);
+  if (window.location.hash !== letzterHash) window.scrollTo(0, 0);
+  letzterHash = window.location.hash;
+  aktualisiereKopfzeilenZustand();
+
+  appContainer.querySelector("#einstellungen-btn")?.addEventListener("click", () => {
     app.navigate("#/einstellungen");
   });
+  appContainer.querySelector("#zurueck-btn")?.addEventListener("click", () => app.navigate(zurueck));
+  if (zurueck) aktiviereSwipeZurueck(appContainer.querySelector(".seite"), zurueck);
 
   const tabZiele = { liste: "#/", karte: "#/karte", neu: "#/neu" };
   appContainer.querySelectorAll(".tableiste button").forEach((btn) => {

@@ -1,14 +1,60 @@
+/* ==========================================================================
+   HofKarte-PWA - iOS-Optik (Phase 9)
+   Orientiert sich an den Human Interface Guidelines: System-Schrift,
+   System-Farben (hell/dunkel), "Inset Grouped"-Listen, Large Titles,
+   halbtransparente Leisten (Blur), 44-pt-Touch-Targets, Safe Areas.
+   Klassennamen bleiben wie bisher, damit Views und Tests unverändert nutzbar
+   sind. Akzentfarbe: --tint (iOS-Blau); für die Karotten-Marke einfach
+   einen anderen Wert setzen (z. B. #34c759).
+   ========================================================================== */
+
 :root {
-  --primary-color: #7cb342;
-  --primary-color-dark: #558b2f;
-  --text-color: #1b1b1b;
-  --muted-color: #6b6b6b;
-  --bg-color: #fafafa;
-  --card-bg: #ffffff;
-  --border-color: #e2e2e2;
-  --danger-color: #c62828;
-  --success-color: #2e7d32;
-  --radius: 12px;
+  color-scheme: light dark;
+
+  --tint: #007aff;
+  --tint-pressed: #0062cc;
+  --bg-color: #f2f2f7;            /* systemGroupedBackground */
+  --card-bg: #ffffff;             /* secondarySystemGroupedBackground */
+  --fill: rgba(118, 118, 128, 0.12); /* tertiarySystemFill */
+  --fill-stark: rgba(118, 118, 128, 0.2);
+  --text-color: #000000;
+  --muted-color: rgba(60, 60, 67, 0.6);
+  --border-color: rgba(60, 60, 67, 0.29);
+  --separator: rgba(60, 60, 67, 0.2);
+  --danger-color: #ff3b30;
+  --success-color: #248a3d;
+  --warn-bg: rgba(255, 149, 0, 0.14);
+  --warn-text: #9a5b00;
+  --danger-bg: rgba(255, 59, 48, 0.12);
+  --stern: #ff9f0a;
+  --leiste-bg: rgba(249, 249, 249, 0.82);
+  --radius: 10px;
+  --radius-gross: 12px;
+  --kopf-h: calc(44px + env(safe-area-inset-top));
+  --tab-h: calc(49px + env(safe-area-inset-bottom));
+  --schrift: -apple-system, BlinkMacSystemFont, "SF Pro Text", "SF Pro Display", "Helvetica Neue", Helvetica, Arial, sans-serif;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    --tint: #0a84ff;
+    --tint-pressed: #409cff;
+    --bg-color: #000000;
+    --card-bg: #1c1c1e;
+    --fill: rgba(118, 118, 128, 0.24);
+    --fill-stark: rgba(118, 118, 128, 0.36);
+    --text-color: #ffffff;
+    --muted-color: rgba(235, 235, 245, 0.6);
+    --border-color: rgba(84, 84, 88, 0.65);
+    --separator: rgba(84, 84, 88, 0.6);
+    --danger-color: #ff453a;
+    --success-color: #30d158;
+    --warn-bg: rgba(255, 159, 10, 0.18);
+    --warn-text: #ffb340;
+    --danger-bg: rgba(255, 69, 58, 0.18);
+    --stern: #ff9f0a;
+    --leiste-bg: rgba(29, 29, 31, 0.82);
+  }
 }
 
 * {
@@ -18,11 +64,48 @@
 html,
 body {
   margin: 0;
-  height: 100%;
+  min-height: 100%;
   background: var(--bg-color);
   color: var(--text-color);
-  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+  font-family: var(--schrift);
+  font-size: 17px;
+  line-height: 1.3;
+  letter-spacing: -0.01em;
+  -webkit-font-smoothing: antialiased;
+  -webkit-text-size-adjust: 100%;
   -webkit-tap-highlight-color: transparent;
+  -webkit-touch-callout: none;
+}
+
+button,
+input,
+select,
+textarea {
+  font-family: inherit;
+  letter-spacing: inherit;
+  color: inherit;
+}
+
+/* Buttons verhalten sich wie in nativen Apps: kein Textmarkieren, Pressed-State. */
+button {
+  -webkit-user-select: none;
+  user-select: none;
+  cursor: pointer;
+  touch-action: manipulation;
+}
+
+button:active:not(:disabled),
+a:active {
+  opacity: 0.45;
+}
+
+button:disabled {
+  opacity: 0.4;
+}
+
+a {
+  color: var(--tint);
+  text-decoration: none;
 }
 
 #app {
@@ -35,226 +118,454 @@ body {
   color: var(--muted-color);
 }
 
-/* --- Kopfzeile --- */
-/* Header und Fusszeile (.tableiste) sind beide fix positioniert und
-   damit immer sichtbar ("statisch") - nur der dazwischenliegende
-   Inhaltsbereich (.inhalt) scrollt, siehe dessen Padding unten. */
+/* --- Navigationsleiste (oben, fix, mit Blur) --------------------------- */
 
 .kopfzeile {
   position: fixed;
   top: 0;
   left: 0;
   right: 0;
-  z-index: 10;
+  z-index: 20;
+  padding-top: env(safe-area-inset-top);
+  background: transparent;
+  -webkit-backdrop-filter: saturate(180%) blur(20px);
+  backdrop-filter: saturate(180%) blur(20px);
+  border-bottom: 0.5px solid transparent;
+  transition: background 0.2s, border-color 0.2s;
+}
+
+/* Seiten ohne Large Title zeigen die Leiste immer; mit Large Title erst
+   nach dem Scrollen (Klasse .gescrollt, siehe app.js). */
+.kopfzeile.ohne-gross,
+.kopfzeile.gescrollt {
+  background: var(--leiste-bg);
+  border-bottom-color: var(--separator);
+}
+
+.nav-zeile {
+  position: relative;
   display: flex;
   align-items: center;
   justify-content: space-between;
-  gap: 8px;
-  padding: calc(10px + env(safe-area-inset-top)) 16px 10px;
-  background: var(--primary-color);
-  color: white;
+  height: 44px;
+  padding: 0 8px;
 }
 
-.kopfzeile h1 {
-  font-size: 1.15rem;
-  margin: 0;
-  font-weight: 600;
-}
-
-.kopfzeile button {
-  background: rgba(255, 255, 255, 0.18);
-  border: none;
-  color: white;
-  border-radius: 8px;
-  padding: 8px 10px;
-  font-size: 0.85rem;
-  white-space: nowrap;
-  flex-shrink: 0;
-  /* Touch-Target mindestens 44x44px (Phase 8c, siehe
-     PWA-HA-Vorgehensplan.md Abschnitt 10.3) - padding allein reicht bei
-     kleiner Schrift nicht aus. */
-  min-height: 44px;
+.nav-links,
+.nav-rechts {
   display: flex;
   align-items: center;
+  min-width: 72px;
+  z-index: 1;
 }
 
-/* Sync-Status (Phase 8a): bewusst dezent, erscheint nur bei Offline bzw.
-   solange noch Operationen in der Warteschlange sind (siehe app.js,
-   syncStatusHtml()) - im Normalzustand unsichtbar. */
-.sync-status {
-  font-size: 0.75rem;
+.nav-rechts {
+  justify-content: flex-end;
+}
+
+.nav-titel {
+  position: absolute;
+  left: 72px;
+  right: 72px;
+  margin: 0;
+  text-align: center;
+  font-size: 17px;
+  font-weight: 600;
   white-space: nowrap;
-  margin-left: auto;
-  margin-right: 8px;
-  opacity: 0.9;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  opacity: 0;
+  transition: opacity 0.2s;
+  pointer-events: none;
+}
+
+.kopfzeile.ohne-gross .nav-titel,
+.kopfzeile.gescrollt .nav-titel {
+  opacity: 1;
+}
+
+.nav-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 2px;
+  min-height: 44px;
+  min-width: 44px;
+  padding: 0 8px;
+  background: none;
+  border: none;
+  color: var(--tint);
+  font-size: 17px;
+}
+
+.nav-btn svg {
+  width: 22px;
+  height: 22px;
+  stroke: currentColor;
+  fill: none;
+  stroke-width: 2;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
+.nav-btn.zurueck svg {
+  width: 13px;
+  height: 22px;
+  stroke-width: 2.6;
+  margin-right: 2px;
+}
+
+#einstellungen-btn {
+  justify-content: center;
+}
+
+/* Sync-Status (Phase 8a/8b): als dezente Kapsel unter der Titelzeile. */
+.sync-leiste {
+  display: flex;
+  justify-content: center;
+  padding: 0 16px 6px;
+}
+
+.sync-status {
+  display: inline-block;
+  font-size: 13px;
+  font-weight: 500;
+  padding: 3px 10px;
+  border-radius: 999px;
+  background: var(--fill);
+  color: var(--muted-color);
+  white-space: nowrap;
 }
 
 .sync-status.offline {
-  color: #ffe0b2;
+  background: var(--warn-bg);
+  color: var(--warn-text);
 }
 
 .sync-status.wird-synchronisiert {
-  color: #e8f5e9;
+  color: var(--tint);
 }
 
-/* --- Tableiste unten --- */
+a.sync-status.konflikt {
+  background: var(--danger-bg);
+  color: var(--danger-color);
+  font-weight: 600;
+}
+
+/* --- Tableiste (unten, fix, mit Blur) ---------------------------------- */
 
 .tableiste {
   position: fixed;
   bottom: 0;
   left: 0;
   right: 0;
+  z-index: 20;
   display: flex;
-  background: var(--card-bg);
-  border-top: 1px solid var(--border-color);
+  background: var(--leiste-bg);
+  -webkit-backdrop-filter: saturate(180%) blur(20px);
+  backdrop-filter: saturate(180%) blur(20px);
+  border-top: 0.5px solid var(--separator);
   padding-bottom: env(safe-area-inset-bottom);
-  z-index: 10;
 }
 
 .tableiste button {
   flex: 1;
+  min-height: 49px;
   border: none;
   background: none;
-  padding: 10px 4px 8px;
+  padding: 6px 4px 4px;
   color: var(--muted-color);
-  font-size: 0.78rem;
+  font-size: 10px;
+  font-weight: 500;
+  letter-spacing: 0.01em;
   display: flex;
   flex-direction: column;
   align-items: center;
+  justify-content: center;
   gap: 2px;
 }
 
 .tableiste button .icon {
-  font-size: 1.3rem;
+  display: flex;
+  height: 26px;
+}
+
+.tableiste button .icon svg {
+  width: 26px;
+  height: 26px;
+  stroke: currentColor;
+  fill: none;
+  stroke-width: 1.8;
+  stroke-linecap: round;
+  stroke-linejoin: round;
 }
 
 .tableiste button.aktiv {
-  color: var(--primary-color-dark);
-  font-weight: 600;
+  color: var(--tint);
 }
 
-/* --- Inhalt --- */
+.tableiste button.aktiv .icon svg {
+  fill: currentColor;
+  fill-opacity: 0.18;
+}
+
+/* --- Seite / Large Title / Inhalt ---------------------------------------- */
+
+.seite {
+  padding-top: var(--kopf-h);
+  min-height: 100vh;
+  will-change: transform;
+}
+
+.grosser-titel {
+  max-width: 720px;
+  margin: 0 auto;
+  padding: 2px 20px 6px;
+  font-size: 34px;
+  line-height: 1.15;
+  font-weight: 700;
+  letter-spacing: 0.01em;
+}
 
 .inhalt {
-  /* Oben Platz für die fixe Kopfzeile, unten für die fixe Tableiste
-     (siehe .kopfzeile/.tableiste) - Werte entsprechen deren jeweiliger
-     Gesamthöhe inkl. Safe-Area. 64px oben seit Phase 8c (44px
-     Mindest-Touch-Target des Einstellungen-Buttons + 2x10px Padding). */
-  padding: calc(64px + env(safe-area-inset-top)) 16px calc(76px + env(safe-area-inset-bottom));
+  padding: 8px 16px calc(var(--tab-h) + 24px);
   max-width: 720px;
   margin: 0 auto;
 }
+
+/* Seitenübergänge (Push/Pop wie UINavigationController); aus bei
+   "Bewegung reduzieren". */
+@keyframes slide-vor {
+  from { transform: translateX(32%); opacity: 0.6; }
+  to { transform: none; opacity: 1; }
+}
+
+@keyframes slide-zurueck {
+  from { transform: translateX(-24%); opacity: 0.6; }
+  to { transform: none; opacity: 1; }
+}
+
+.seite.slide-vor {
+  animation: slide-vor 0.32s cubic-bezier(0.22, 0.8, 0.28, 1);
+}
+
+.seite.slide-zurueck {
+  animation: slide-zurueck 0.32s cubic-bezier(0.22, 0.8, 0.28, 1);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .seite.slide-vor,
+  .seite.slide-zurueck {
+    animation: none;
+  }
+  .kopfzeile,
+  .nav-titel {
+    transition: none;
+  }
+}
+
+/* --- Hinweise (Banner) ------------------------------------------------- */
 
 .hinweis-leiste {
   display: flex;
   align-items: center;
   gap: 8px;
-  padding: 8px 12px;
-  border-radius: var(--radius);
-  background: #fff3e0;
-  color: #8a5300;
-  font-size: 0.85rem;
-  margin-bottom: 12px;
+  padding: 12px 16px;
+  border-radius: var(--radius-gross);
+  background: var(--warn-bg);
+  color: var(--warn-text);
+  font-size: 15px;
+  margin: 0 0 16px;
 }
 
 .hinweis-leiste.fehler {
-  background: #fdecea;
+  background: var(--danger-bg);
   color: var(--danger-color);
 }
 
-/* Bugfix: `hidden`-Attribut wurde bisher durch `.hinweis-leiste { display:
-   flex }` überschrieben (zwei Klassen schlagen eine Attribut-Selektor in
-   der CSS-Spezifität) - das "versteckte" Element blieb dadurch als
-   schmaler, leerer Farbstreifen sichtbar (z. B. unterhalb von "Neuer
-   Hofladen" im Editor, auch ohne Fehler). !important stellt sicher, dass
-   dieser Fall unabhängig von der Regel-Reihenfolge immer gewinnt. */
+/* `hidden` muss gegen display:flex gewinnen (Bugfix Phase 7). */
 .hinweis-leiste[hidden] {
   display: none !important;
 }
 
-/* --- Nähe-Karte --- */
+/* --- Gruppen (Inset Grouped) -------------------------------------------- */
+
+.naehe-karte,
+.detail-abschnitt,
+.formular-abschnitt {
+  position: relative;
+  background: var(--card-bg);
+  border-radius: var(--radius-gross);
+  padding: 4px 16px;
+  margin: 34px 0 0;
+}
+
+/* Abschnittsüberschriften stehen wie in iOS ausserhalb über der Gruppe. */
+.detail-abschnitt > h3,
+.formular-abschnitt > h2 {
+  position: absolute;
+  left: 16px;
+  right: 16px;
+  top: -26px;
+  margin: 0;
+  font-size: 13px;
+  font-weight: 400;
+  line-height: 1.2;
+  color: var(--muted-color);
+  text-transform: uppercase;
+  letter-spacing: 0;
+}
 
 .naehe-karte {
-  background: var(--card-bg);
-  border: 1px solid var(--border-color);
-  border-radius: var(--radius);
-  padding: 12px 14px;
-  margin-bottom: 14px;
+  margin-top: 0;
+  margin-bottom: 16px;
+  padding: 12px 16px;
 }
 
 .naehe-karte h2 {
-  font-size: 0.95rem;
+  font-size: 17px;
+  font-weight: 600;
   margin: 0 0 8px;
 }
 
 .naehe-eintrag {
   display: flex;
   justify-content: space-between;
-  padding: 6px 0;
-  border-top: 1px solid var(--border-color);
-  font-size: 0.9rem;
+  padding: 10px 0;
+  border-top: 0.5px solid var(--separator);
+  font-size: 17px;
 }
 
 .naehe-eintrag:first-of-type {
   border-top: none;
 }
 
-.naehe-karte button.aktualisieren {
+.naehe-karte button.aktualisieren,
+button.aktualisieren {
   margin-top: 8px;
-  background: var(--primary-color);
-  color: white;
+  background: none;
+  color: var(--tint);
   border: none;
-  border-radius: 8px;
-  padding: 8px 12px;
-  font-size: 0.85rem;
-  /* Touch-Target mindestens 44x44px (Phase 8c). */
+  padding: 0;
+  font-size: 17px;
   min-height: 44px;
 }
 
-/* --- Suche/Sortierung --- */
+.formular-abschnitt h3 {
+  margin: 12px 0 6px;
+  font-size: 13px;
+  font-weight: 400;
+  color: var(--muted-color);
+  text-transform: uppercase;
+}
+
+.formular-abschnitt p.muted,
+p.muted {
+  color: var(--muted-color);
+  font-size: 13px;
+  margin: 8px 0 10px;
+}
+
+/* --- Suche / Sortierung --------------------------------------------------- */
 
 .such-leiste {
   display: flex;
   gap: 8px;
-  margin-bottom: 12px;
+  margin-bottom: 16px;
 }
 
 .such-leiste input[type="search"] {
   flex: 1;
-  padding: 10px 12px;
-  border-radius: 10px;
-  border: 1px solid var(--border-color);
-  font-size: 0.95rem;
-  /* Touch-Target mindestens 44x44px (Phase 8c). */
+  min-width: 0;
   min-height: 44px;
+  padding: 0 12px;
+  border-radius: var(--radius);
+  border: none;
+  background: var(--fill);
+  font-size: 17px;
+  -webkit-appearance: none;
+  appearance: none;
+}
+
+.such-leiste input[type="search"]::placeholder {
+  color: var(--muted-color);
+}
+
+.such-leiste select,
+#sort-richtung {
+  border-radius: var(--radius);
+  border: none;
+  background: var(--fill);
+  min-height: 44px;
+  font-size: 15px;
+  color: var(--tint);
 }
 
 .such-leiste select {
-  border-radius: 10px;
-  border: 1px solid var(--border-color);
   padding: 0 8px;
-  min-height: 44px;
 }
 
-/* --- Listenkarten --- */
+#sort-richtung {
+  min-width: 44px;
+  font-size: 19px;
+}
+
+/* --- Liste der Hofläden (Inset Grouped mit Chevron) ----------------------- */
+
+#hofladen-liste {
+  background: var(--card-bg);
+  border-radius: var(--radius-gross);
+  overflow: hidden;
+}
+
+#hofladen-liste > .hinweis-leiste {
+  margin: 0;
+  border-radius: 0;
+}
 
 .hofladen-karte {
-  background: var(--card-bg);
-  border: 1px solid var(--border-color);
-  border-radius: var(--radius);
-  padding: 12px 14px;
-  margin-bottom: 10px;
+  position: relative;
   display: flex;
   gap: 12px;
   align-items: center;
+  padding: 10px 40px 10px 16px;
+  min-height: 72px;
+  background: var(--card-bg);
 }
 
-.hofladen-karte img.miniatur {
+.hofladen-karte::after {
+  content: "";
+  position: absolute;
+  right: 18px;
+  top: 50%;
+  width: 8px;
+  height: 8px;
+  border-top: 2px solid var(--fill-stark);
+  border-right: 2px solid var(--fill-stark);
+  transform: translateY(-50%) rotate(45deg);
+}
+
+/* Trennlinie beginnt erst nach dem Vorschaubild (wie in Mail/Kontakte). */
+.hofladen-karte + .hofladen-karte::before {
+  content: "";
+  position: absolute;
+  top: 0;
+  left: 84px;
+  right: 0;
+  height: 0.5px;
+  background: var(--separator);
+}
+
+.hofladen-karte:active {
+  background: var(--fill);
+}
+
+.hofladen-karte img.miniatur,
+.hofladen-karte div.miniatur {
   width: 56px;
   height: 56px;
-  border-radius: 8px;
+  border-radius: 12px;
   object-fit: cover;
-  background: var(--bg-color);
+  background: var(--fill);
   flex-shrink: 0;
 }
 
@@ -264,174 +575,157 @@ body {
 }
 
 .hofladen-karte .name {
+  font-size: 17px;
   font-weight: 600;
-  margin: 0 0 2px;
+  margin: 0 0 1px;
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
 }
 
-.hofladen-karte .ort {
+.hofladen-karte .ort,
+p.ort {
   color: var(--muted-color);
-  font-size: 0.85rem;
-  margin: 0;
+  font-size: 15px;
+  margin: 0 0 3px;
 }
 
 .status-badge {
   display: inline-block;
-  font-size: 0.75rem;
+  font-size: 12px;
   padding: 2px 8px;
   border-radius: 999px;
   font-weight: 600;
 }
 
 .status-badge.offen {
-  background: #e3f3e3;
+  background: rgba(52, 199, 89, 0.16);
   color: var(--success-color);
 }
 
 .status-badge.geschlossen {
-  background: #fdecea;
+  background: var(--danger-bg);
   color: var(--danger-color);
 }
 
 .status-badge.unbekannt {
-  background: #eee;
+  background: var(--fill);
   color: var(--muted-color);
 }
 
 .bewertung-sterne {
-  color: var(--primary-color-dark);
-  font-size: 0.9rem;
+  color: var(--stern);
+  font-size: 14px;
   white-space: nowrap;
 }
 
-/* --- Detailansicht --- */
+/* --- Detailansicht ---------------------------------------------------------- */
 
 .detail-bild {
+  display: block;
   width: 100%;
-  max-height: 220px;
+  max-height: 240px;
   object-fit: cover;
-  border-radius: var(--radius);
-  margin-bottom: 12px;
+  border-radius: var(--radius-gross);
+  margin-bottom: 16px;
   background: var(--card-bg);
 }
 
-.detail-abschnitt {
-  background: var(--card-bg);
-  border: 1px solid var(--border-color);
-  border-radius: var(--radius);
-  padding: 12px 14px;
-  margin-bottom: 12px;
-}
-
-.detail-abschnitt h3 {
-  margin: 0 0 8px;
-  font-size: 0.9rem;
-  color: var(--muted-color);
-  text-transform: uppercase;
-  letter-spacing: 0.04em;
+.inhalt > h2 {
+  margin: 0 0 6px;
+  font-size: 28px;
+  font-weight: 700;
+  letter-spacing: 0.01em;
 }
 
 .kontakt-zeile {
-  margin: 4px 0;
+  padding: 11px 0;
+  border-top: 0.5px solid var(--separator);
+  overflow-wrap: anywhere;
 }
 
-.kontakt-zeile a {
-  color: var(--primary-color-dark);
-  text-decoration: none;
+.kontakt-zeile:first-of-type,
+.detail-abschnitt > h3 + .kontakt-zeile,
+.detail-abschnitt > h3 + p {
+  border-top: none;
+}
+
+.detail-abschnitt > p {
+  margin: 11px 0;
+}
+
+.detail-abschnitt .kontakt-zeile + .kontakt-zeile {
+  border-top: 0.5px solid var(--separator);
 }
 
 .tag-liste {
   display: flex;
   flex-wrap: wrap;
-  gap: 6px;
+  gap: 8px;
+  padding: 12px 0;
 }
 
 .tag {
-  background: var(--bg-color);
-  border: 1px solid var(--border-color);
+  background: var(--fill);
   border-radius: 999px;
-  padding: 4px 10px;
-  font-size: 0.82rem;
+  padding: 5px 12px;
+  font-size: 15px;
 }
 
+/* Aktionen am Ende: grosse, gefüllte iOS-Buttons. */
 .aktions-reihe {
   display: flex;
-  gap: 10px;
-  margin: 14px 0;
+  gap: 12px;
+  margin: 24px 0 8px;
 }
 
 .aktions-reihe button {
   flex: 1;
-  padding: 11px;
-  border-radius: 10px;
-  border: 1px solid var(--border-color);
-  background: var(--card-bg);
-  font-size: 0.92rem;
-  /* Touch-Target mindestens 44x44px (Phase 8c). */
-  min-height: 44px;
-}
-
-.aktions-reihe button.primaer {
-  background: var(--primary-color);
-  border-color: var(--primary-color);
-  color: white;
+  min-height: 50px;
+  padding: 0 12px;
+  border-radius: 14px;
+  border: none;
+  background: var(--fill);
+  color: var(--tint);
+  font-size: 17px;
   font-weight: 600;
 }
 
+.aktions-reihe button.primaer {
+  background: var(--tint);
+  color: #fff;
+}
+
 .aktions-reihe button.gefahr {
+  background: var(--danger-bg);
   color: var(--danger-color);
-  border-color: var(--danger-color);
 }
 
-/* --- Formular (Editor) --- */
-/* Gruppierung in Karten mit Überschrift, analog zu den Abschnitten
-   ("Allgemeine Informationen", "Adresse", "Standort / Koordinaten", …)
-   der Home-Assistant-eigenen Verwaltungsoberfläche (hofkarte-panel.js). */
+/* --- Formular (Editor, Einstellungen, Konflikt) ------------------------------ */
 
-.formular-abschnitt {
-  background: var(--card-bg);
-  border: 1px solid var(--border-color);
-  border-radius: var(--radius);
-  padding: 14px;
-  margin-bottom: 14px;
-}
-
-.formular-abschnitt h2 {
-  margin: 0 0 12px;
-  font-size: 1rem;
-}
-
-.formular-abschnitt h3 {
-  margin: 14px 0 8px;
-  font-size: 0.85rem;
-  color: var(--muted-color);
-  text-transform: uppercase;
-  letter-spacing: 0.03em;
-}
-
-.formular-abschnitt p.muted {
-  color: var(--muted-color);
-  font-size: 0.85rem;
-  margin: 0 0 10px;
+.formular-abschnitt p.muted:first-of-type {
+  margin-top: 12px;
 }
 
 .feld-gruppe {
-  margin-bottom: 16px;
+  padding: 8px 0;
+  border-top: 0.5px solid var(--separator);
 }
 
-.feld-gruppe:last-child {
-  margin-bottom: 0;
+.feld-gruppe:first-of-type,
+.formular-abschnitt > h2 + .feld-gruppe,
+.formular-abschnitt > h2 + .feld-zeile .feld-gruppe {
+  border-top: none;
 }
 
 .feld-gruppe label {
   display: block;
-  font-size: 0.82rem;
+  font-size: 13px;
   color: var(--muted-color);
-  margin-bottom: 4px;
+  margin-bottom: 2px;
 }
 
+/* Eingaben: randlos in der Gruppe; 17px verhindert den iOS-Zoom beim Fokus. */
 .feld-gruppe input[type="text"],
 .feld-gruppe input[type="email"],
 .feld-gruppe input[type="tel"],
@@ -439,43 +733,59 @@ body {
 .feld-gruppe input[type="url"],
 .feld-gruppe textarea {
   width: 100%;
-  padding: 10px 12px;
-  border-radius: 10px;
-  border: 1px solid var(--border-color);
-  font-size: 0.95rem;
-  background: var(--card-bg);
-  /* Touch-Target mindestens 44x44px (Phase 8c) - gilt nicht für
-     textarea, die ohnehin über min-height hinausragt. */
-  min-height: 44px;
+  min-height: 32px;
+  padding: 2px 0;
+  border: none;
+  border-radius: 0;
+  background: transparent;
+  font-size: 17px;
+  outline: none;
+  -webkit-appearance: none;
+  appearance: none;
+}
+
+.feld-gruppe input:disabled {
+  color: var(--muted-color);
+  -webkit-text-fill-color: var(--muted-color);
 }
 
 .feld-gruppe textarea {
-  min-height: 70px;
-  resize: vertical;
+  min-height: 72px;
+  resize: none;
 }
 
 .feld-zeile {
   display: flex;
-  gap: 10px;
+  gap: 16px;
+  border-top: 0.5px solid var(--separator);
+}
+
+.feld-zeile .feld-gruppe {
+  border-top: none;
+}
+
+.formular-abschnitt > h2 + .feld-zeile {
+  border-top: none;
 }
 
 .feld-zeile .feld-gruppe {
   flex: 1;
+  min-width: 0;
 }
 
 .sterne-reihe {
   display: flex;
-  gap: 4px;
+  gap: 2px;
+  padding: 4px 0;
 }
 
 .stern-btn {
   background: none;
   border: none;
-  font-size: 1.6rem;
-  color: var(--border-color);
+  font-size: 28px;
+  color: var(--fill-stark);
   padding: 0;
   line-height: 1;
-  /* Touch-Target mindestens 44x44px (Phase 8c). */
   min-width: 44px;
   min-height: 44px;
   display: inline-flex;
@@ -484,7 +794,7 @@ body {
 }
 
 .stern-btn.stern-gefuellt {
-  color: var(--primary-color-dark);
+  color: var(--stern);
 }
 
 .oeffnungszeit-zeile,
@@ -492,7 +802,18 @@ body {
   display: flex;
   gap: 8px;
   align-items: center;
-  margin-bottom: 8px;
+  padding: 4px 0;
+  border-top: 0.5px solid var(--separator);
+}
+
+.oeffnungszeit-zeile select,
+.oeffnungszeit-zeile input[type="time"] {
+  min-height: 36px;
+  border: none;
+  border-radius: 8px;
+  background: var(--fill);
+  padding: 0 8px;
+  font-size: 17px;
 }
 
 .liste-zeile input {
@@ -503,9 +824,8 @@ body {
   background: none;
   border: none;
   color: var(--danger-color);
-  font-size: 1.2rem;
+  font-size: 20px;
   padding: 4px 8px;
-  /* Touch-Target mindestens 44x44px (Phase 8c). */
   min-width: 44px;
   min-height: 44px;
   display: inline-flex;
@@ -515,38 +835,35 @@ body {
 
 .hinzufuegen-btn {
   background: none;
-  border: 1px dashed var(--border-color);
-  border-radius: 8px;
-  padding: 8px;
+  border: none;
+  border-top: 0.5px solid var(--separator);
+  border-radius: 0;
+  padding: 0;
   width: 100%;
-  color: var(--muted-color);
-  font-size: 0.85rem;
+  color: var(--tint);
+  font-size: 17px;
   min-height: 44px;
   display: flex;
   align-items: center;
-  justify-content: center;
+  justify-content: flex-start;
 }
 
-/* --- Bilder (Editor): Vorschau-Zeilen + Upload --- */
+/* --- Bilder (Editor) -------------------------------------------------------- */
 
 .bild-zeile {
   display: flex;
   align-items: center;
-  gap: 10px;
-  padding: 8px 0;
-  border-top: 1px solid var(--border-color);
-}
-
-.bild-zeile:first-child {
-  border-top: none;
+  gap: 12px;
+  padding: 10px 0;
+  border-top: 0.5px solid var(--separator);
 }
 
 .bild-zeile img {
   width: 56px;
   height: 56px;
-  border-radius: 8px;
+  border-radius: 10px;
   object-fit: cover;
-  background: var(--bg-color);
+  background: var(--fill);
   flex-shrink: 0;
 }
 
@@ -557,31 +874,31 @@ body {
 
 .bild-zeile-felder input {
   width: 100%;
-  padding: 6px 8px;
+  padding: 6px 10px;
   border-radius: 8px;
-  border: 1px solid var(--border-color);
-  font-size: 0.85rem;
+  border: none;
+  background: var(--fill);
+  font-size: 15px;
 }
 
 .bild-zeile-meta {
   color: var(--muted-color);
-  font-size: 0.75rem;
+  font-size: 12px;
   margin-top: 4px;
 }
 
 .bild-zeile-aktionen {
   display: flex;
   align-items: center;
-  gap: 4px;
+  gap: 2px;
   flex-shrink: 0;
 }
 
 .sekundaer-btn {
   background: none;
   border: none;
-  font-size: 1.1rem;
+  font-size: 20px;
   padding: 4px 6px;
-  /* Touch-Target mindestens 44x44px (Phase 8c). */
   min-width: 44px;
   min-height: 44px;
   display: inline-flex;
@@ -592,18 +909,19 @@ body {
 .upload-row {
   display: flex;
   gap: 8px;
-  margin-top: 10px;
+  border-top: 0.5px solid var(--separator);
 }
 
 .upload-row .hinzufuegen-btn {
   width: auto;
   flex: 1;
+  border-top: none;
 }
 
 .upload-status {
   display: block;
-  margin-top: 6px;
-  font-size: 0.82rem;
+  margin: 4px 0 8px;
+  font-size: 13px;
 }
 
 .upload-status.error {
@@ -614,45 +932,53 @@ body {
   color: var(--success-color);
 }
 
+/* Primäre Aktion: volle Breite, gefüllt, 14pt-Radius. */
 .speichern-btn {
   width: 100%;
-  background: var(--primary-color);
-  color: white;
+  background: var(--tint);
+  color: #fff;
   border: none;
-  border-radius: 10px;
-  padding: 13px;
-  font-size: 1rem;
+  border-radius: 14px;
+  padding: 0 16px;
+  font-size: 17px;
   font-weight: 600;
-  margin-top: 8px;
-  /* Touch-Target mindestens 44x44px (Phase 8c). */
-  min-height: 48px;
+  margin: 16px 0 8px;
+  min-height: 50px;
 }
 
-/* --- Karte --- */
+.formular-abschnitt .speichern-btn {
+  margin: 12px 0 8px;
+}
+
+/* --- Karte -------------------------------------------------------------------- */
 
 #leaflet-karte {
   width: 100%;
-  height: calc(100vh - 150px);
-  border-radius: var(--radius);
+  height: calc(100vh - var(--kopf-h) - var(--tab-h) - 16px);
+  height: calc(100dvh - var(--kopf-h) - var(--tab-h) - 16px);
+  border-radius: var(--radius-gross);
   overflow: hidden;
 }
 
-/* --- Einrichtungsbildschirm --- */
+/* --- Einrichtungsbildschirm ---------------------------------------------------- */
 
 .einrichtung {
   max-width: 420px;
-  margin: 10vh auto 0;
-  padding: 24px;
+  margin: 0 auto;
+  padding: calc(8vh + env(safe-area-inset-top)) 20px 24px;
   text-align: center;
 }
 
 .einrichtung .carrot-logo {
-  width: 72px;
+  width: 84px;
+  border-radius: 19px;
   margin-bottom: 12px;
 }
 
 .einrichtung h1 {
   margin: 0 0 4px;
+  font-size: 34px;
+  letter-spacing: 0.01em;
 }
 
 .einrichtung p.untertitel {
@@ -662,21 +988,24 @@ body {
 
 .einrichtung form {
   text-align: left;
+  background: var(--card-bg);
+  border-radius: var(--radius-gross);
+  padding: 4px 16px;
+}
+
+.einrichtung form .speichern-btn {
+  width: 100%;
+  margin: 12px 0 8px;
 }
 
 .einrichtung .hinweistext {
-  font-size: 0.8rem;
+  font-size: 13px;
   color: var(--muted-color);
   margin-top: 16px;
   line-height: 1.4;
 }
 
-/* Versionskonflikt (Phase 8b) */
-a.sync-status.konflikt {
-  color: #ffcdd2;
-  font-weight: 600;
-  text-decoration: underline;
-}
+/* --- Versionskonflikt (Phase 8b) ------------------------------------------------ */
 
 .konflikt-hinweis a {
   color: inherit;
@@ -686,4 +1015,25 @@ a.sync-status.konflikt {
 .konflikt-feld p {
   margin: 4px 0;
   overflow-wrap: anywhere;
+}
+
+.konflikt-liste {
+  margin-bottom: 8px;
+}
+
+/* Platzhalter, wenn ein Hofladen noch kein Bild hat. */
+.hofladen-karte div.miniatur {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 26px;
+}
+
+.hofladen-karte div.miniatur::after {
+  content: "\1F955";
+  opacity: 0.55;
+}
+
+.inhalt > .status-badge {
+  margin-bottom: 8px;
 }

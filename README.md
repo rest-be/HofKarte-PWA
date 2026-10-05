@@ -1,6 +1,6 @@
 # HofKarte-PWA
 
-**Version: 1.6.0** – siehe Abschnitt [Version](#version) unten für die
+**Version: 1.7.0** – siehe Abschnitt [Version](#version) unten für die
 installierte Version auf einem konkreten Gerät.
 
 Progressive Web App für HofKarte – ein reiner, zustandsloser Client für die
@@ -90,6 +90,7 @@ READMEs.
 
 | Version | Datum | Wesentliche Änderungen |
 |---|---|---|
+| 1.7.0 | 2026-10-05 | iOS-Optik (Phase 9): System-Schrift/-Farben, Dark Mode, Navigationsleiste mit Large Title und Blur, Tab-Icons, Inset-Grouped-Listen, Seitenübergänge, Swipe-back. |
 | 1.6.0 | 2026-10-05 | Versionskonflikt-Erkennung (Phase 8b): `version` wird mitgesendet, bei Konflikt Konfliktansicht mit „Meine Version übernehmen“ / „Server-Version übernehmen“. |
 | 1.5.0 | 2026-10-04 | Versionsanzeige in Einstellungen + README eingeführt (Phase 8e). |
 | 1.4.0 | 2026-10-04 | Testdisziplin formalisiert: Playwright-Smoke-Tests unter `tests/` + CI-Workflow (Phase 8d). |
@@ -195,6 +196,27 @@ zeigen in der Detailansicht einen entsprechenden Hinweis.
 (Kamera, Fotobibliothek) benötigt weiterhin eine aktive Verbindung und
 zeigt ohne Verbindung eine Fehlermeldung – siehe
 `PWA-HA-Vorgehensplan.md`, Phase 8a, für die Begründung.
+
+## iOS-Optik (Phase 9)
+
+Die App ist optisch an native iOS-Apps angelehnt (Human Interface
+Guidelines), ohne Framework und ohne Build-Schritt:
+
+- System-Schrift (SF) und iOS-System-Farben, automatisch hell/dunkel
+  (`prefers-color-scheme`); die Akzentfarbe steht in `--tint`
+  (`src/styles.css`) und lässt sich dort zentral ändern.
+- Navigationsleiste mit Large Title (wird beim Scrollen klein, Blur),
+  Zurück-Button mit Chevron auf Unterseiten, Einstellungen-Zahnrad auf
+  der Tab-Ebene.
+- Tab-Leiste unten mit Linien-Icons und Blur, Safe-Area-konform.
+- Listen und Formulare als „Inset Grouped“-Gruppen mit Chevron,
+  Trennlinien und Abschnittsüberschriften über der Gruppe.
+- Seitenübergänge (Push/Pop) und Swipe-back vom linken Rand
+  (abgeschaltet bei „Bewegung reduzieren“).
+- Eingabefelder mit 17 px Schrift (verhindert das Auto-Zoomen in Safari).
+
+Grenzen einer PWA: keine Haptik, Swipe-back ist nachgebaut (kein
+nativer Navigationsstack). Die Kartenkacheln (Leaflet) bleiben hell.
 
 ## Versionskonflikte (Phase 8b)
 

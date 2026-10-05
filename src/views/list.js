@@ -127,7 +127,7 @@ export function renderListe(container, app) {
         }">${sortRichtung === "asc" ? "↑" : "↓"}</button>
       </div>
 
-      <div id="hofladen-liste">${listeHtml}</div>
+      <div id="hofladen-liste" class="gruppe">${listeHtml}</div>
     `;
 
     container.querySelector("#such-feld").addEventListener("input", (e) => {

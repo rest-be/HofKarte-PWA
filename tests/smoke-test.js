@@ -243,6 +243,25 @@ export async function fuehreSmokeTestsAus(page, baseUrl) {
   });
   await page.waitForTimeout(200);
 
+  // --- Phase 9: iOS-Optik ---------------------------------------------------
+  check("Listenansicht hat Large Title 'Hofläden'", (await page.$eval(".grosser-titel", (el) => el.textContent.trim()).catch(() => "")) === "Hofläden");
+  check("Tab-Icons sind Inline-SVG", (await page.$$(".tableiste .icon svg")).length === 3);
+  check("Navigationsleiste nutzt Blur (backdrop-filter)", await page.$eval(".kopfzeile", (el) => {
+    const cs = getComputedStyle(el);
+    return (cs.backdropFilter || cs.webkitBackdropFilter || "").includes("blur");
+  }));
+  check("Listenansicht ohne Zurück-Button (Tab-Ebene)", !(await page.$("#zurueck-btn")));
+  await page.evaluate(() => {
+    window.location.hash = "#/hofladen/h1";
+    window.dispatchEvent(new Event("hashchange"));
+  });
+  await page.waitForTimeout(250);
+  check("Detailansicht hat Zurück-Button in der Navigationsleiste", !!(await page.$("#zurueck-btn")));
+  check("Zurück-Button Höhe >= 44px", (await page.$eval("#zurueck-btn", (el) => el.getBoundingClientRect().height)) >= 44);
+  await page.click("#zurueck-btn");
+  await page.waitForTimeout(250);
+  check("Zurück-Button führt zur Liste", !!(await page.$(".grosser-titel")));
+
   const kopfBtnHeight = await page.$eval("#einstellungen-btn", (el) => el.getBoundingClientRect().height);
   check("Einstellungen-Button Höhe >= 44px", kopfBtnHeight >= 44);
 

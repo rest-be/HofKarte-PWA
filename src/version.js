@@ -18,4 +18,4 @@
  * Beim Erhöhen bitte auch im README (Abschnitt "Version") und im
  * Vorgehensplan nachziehen.
  */
-export const APP_VERSION = "1.6.0";
+export const APP_VERSION = "1.7.0";
