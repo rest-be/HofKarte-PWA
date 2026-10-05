@@ -76,7 +76,7 @@ export function renderDetail(container, app, hofladenId) {
     .join(", ");
   const kartenLink =
     h.latitude != null && h.longitude != null
-      ? `https://www.openstreetmap.org/?mlat=${h.latitude}&mlon=${h.longitude}#map=17/${h.latitude}/${h.longitude}`
+      ? `https://www.google.com/maps/search/?api=1&query=${h.latitude},${h.longitude}`
       : null;
 
   const konflikt = app.konfliktFuer ? app.konfliktFuer(h.id) : null;

@@ -269,6 +269,14 @@ export async function fuehreSmokeTestsAus(page, baseUrl) {
     window.dispatchEvent(new Event("hashchange"));
   });
   await page.waitForTimeout(250);
+  await page.evaluate(async () => {
+    await window.hofkarteApp._uebernehmeLokal({ id: "geo1", name: "Hof mit Koordinaten", latitude: 46.9481, longitude: 7.4474, bilder: [] });
+    window.location.hash = "#/hofladen/geo1";
+    window.dispatchEvent(new Event("hashchange"));
+  });
+  await page.waitForTimeout(250);
+  const kartenLink = await page.$eval(".detail-abschnitt a[href*='maps']", (el) => el.getAttribute("href")).catch(() => null);
+  check("Detailansicht: Karten-Link öffnet Google Maps", kartenLink === "https://www.google.com/maps/search/?api=1&query=46.9481,7.4474");
   check("Detailansicht hat Zurück-Button in der Navigationsleiste", !!(await page.$("#zurueck-btn")));
   check("Zurück-Button Höhe >= 44px", (await page.$eval("#zurueck-btn", (el) => el.getBoundingClientRect().height)) >= 44);
   await page.click("#zurueck-btn");

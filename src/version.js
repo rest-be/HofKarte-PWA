@@ -18,7 +18,7 @@
  * Beim Erhöhen bitte auch im README (Abschnitt "Version") und im
  * Vorgehensplan nachziehen.
  */
-export const APP_VERSION = "1.8.0";
+export const APP_VERSION = "1.8.1";
 
 /**
  * Release Notes (neueste zuerst), angezeigt auf dem Einrichtungsbildschirm
@@ -26,6 +26,11 @@ export const APP_VERSION = "1.8.0";
  * ergänzen (und die Tabelle im README nachziehen).
  */
 export const RELEASE_NOTES = [
+  {
+    version: "1.8.1",
+    datum: "2026-10-05",
+    punkte: ["Detailansicht: „Auf der Karte öffnen“ öffnet jetzt Google Maps."],
+  },
   {
     version: "1.8.0",
     datum: "2026-10-05",
