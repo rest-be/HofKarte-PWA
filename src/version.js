@@ -18,7 +18,7 @@
  * Beim Erhöhen bitte auch im README (Abschnitt "Version") und im
  * Vorgehensplan nachziehen.
  */
-export const APP_VERSION = "1.9.0";
+export const APP_VERSION = "1.10.0";
 
 /**
  * Release Notes (neueste zuerst), angezeigt auf dem Einrichtungsbildschirm
@@ -26,6 +26,16 @@ export const APP_VERSION = "1.9.0";
  * ergänzen (und die Tabelle im README nachziehen).
  */
 export const RELEASE_NOTES = [
+  {
+    version: "1.10.0",
+    datum: "2026-10-05",
+    punkte: [
+      "Suchfeld behält beim Tippen den Fokus; Eingaben im Editor gehen bei der automatischen Wiederverbindung nicht mehr verloren.",
+      "Sicherheit: Inhalte aus Home Assistant werden durchgehend maskiert, Webseiten-Links nur noch mit http/https, Content-Security-Policy aktiv, https-Adresse für Home Assistant Pflicht.",
+      "Karte und Verbindungsbibliothek liegen lokal in der App (kein CDN) – Kaltstart auch offline.",
+      "Schneller: verkleinerte Vorschaubilder in Liste und Galerie, Fotos werden vor dem Upload verkleinert.",
+    ],
+  },
   {
     version: "1.9.0",
     datum: "2026-10-05",

@@ -22,7 +22,22 @@ const CACHE_STORE_NAME = "lesecache";
 const WARTESCHLANGE_STORE_NAME = "warteschlange";
 const VERBINDUNG_KEY = "verbindung";
 
+/** Geteilte Verbindung: einmal öffnen, danach wiederverwenden (Phase 10,
+ * Review P7 - vorher wurde pro Aufruf eine neue Verbindung geöffnet und nie
+ * geschlossen). Bei Fehlschlag wird der Zwischenspeicher verworfen. */
+let dbPromise = null;
+
 function oeffneDb() {
+  if (!dbPromise) {
+    dbPromise = oeffneDbNeu().catch((err) => {
+      dbPromise = null;
+      throw err;
+    });
+  }
+  return dbPromise;
+}
+
+function oeffneDbNeu() {
   return new Promise((resolve, reject) => {
     const anfrage = indexedDB.open(DB_NAME, DB_VERSION);
 
@@ -39,7 +54,18 @@ function oeffneDb() {
       }
     };
 
-    anfrage.onsuccess = () => resolve(anfrage.result);
+    anfrage.onsuccess = () => {
+      const db = anfrage.result;
+      // Schema-Upgrade durch einen anderen Tab/neue Version nicht blockieren.
+      db.onversionchange = () => {
+        db.close();
+        dbPromise = null;
+      };
+      db.onclose = () => {
+        dbPromise = null;
+      };
+      resolve(db);
+    };
     anfrage.onerror = () => reject(anfrage.error);
   });
 }

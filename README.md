@@ -1,6 +1,6 @@
 # HofKarte-PWA
 
-**Version: 1.9.0** – siehe Abschnitt [Version](#version) unten für die
+**Version: 1.10.0** – siehe Abschnitt [Version](#version) unten für die
 installierte Version auf einem konkreten Gerät.
 
 Progressive Web App für HofKarte – ein reiner, zustandsloser Client für die
@@ -20,7 +20,7 @@ Progressive Web App für HofKarte – ein reiner, zustandsloser Client für die
   Token eines dedizierten `hofkarte`-Admin-Benutzers in Home Assistant
   (siehe Vorgehensplan, Phase 1) – kein gemeinsames Passwort.
 - **Kommunikation** direkt per `home-assistant-js-websocket` (nativ als
-  ES-Modul von jsDelivr geladen, kein Bundler) gegen die intern per
+  ES-Modul aus `vendor/` geladen, kein Bundler, kein CDN) gegen die intern per
   DuckDNS/HTTPS erreichbare HA-Instanz (Phase 2).
 - **Kartenansicht** via Leaflet + OpenStreetMap, farbige Marker analog zum
   HA-Panel.
@@ -52,6 +52,8 @@ src/
   app.js                Einstiegspunkt, Hash-Router, globaler App-State
   ha-client.js           Anbindung an Home Assistant (WebSocket)
   storage.js             IndexedDB-Wrapper (Verbindungsdaten + Lesecache)
+  html.js                 escapeHtml / sichereHttpUrl (Injection-Schutz)
+  bilder.js               Vorschau-URLs und Verkleinerung vor dem Upload
   naehe.js                „Hofläden in der Nähe“ (Geolocation + HA-Action)
   styles.css              Stylesheet
   views/
@@ -60,6 +62,7 @@ src/
     detail.js              Detailansicht
     editor.js              Erstellen/Bearbeiten
     map.js                 Kartenansicht
+vendor/                 Drittbibliotheken lokal (home-assistant-js-websocket, Leaflet; siehe vendor/README.md)
 icons/                  App-Icons (192/512/Apple Touch/Favicon)
 tests/                  Playwright-Smoke-Tests (siehe tests/README.md)
 package.json            nur für die Test-Tooling-Installation, kein Build-Schritt
@@ -90,6 +93,7 @@ READMEs.
 
 | Version | Datum | Wesentliche Änderungen |
 |---|---|---|
+| 1.10.0 | 2026-10-05 | Phase 10: Sicherheit (Escaping, CSP, https-Pflicht), lokale Bibliotheken statt CDN, stabiles Suchfeld, Bild-Verkleinerung. |
 | 1.9.0 | 2026-10-05 | Umkreis für „Hofläden in der Nähe“ in den Einstellungen einstellbar (Standard 500 m). |
 | 1.8.2 | 2026-10-05 | Detailansicht: Öffnungszeiten einklappbar (eingeklappt mit heutigen Zeiten). |
 | 1.8.1 | 2026-10-05 | Detailansicht: „Auf der Karte öffnen“ öffnet Google Maps. |
@@ -200,6 +204,24 @@ zeigen in der Detailansicht einen entsprechenden Hinweis.
 (Kamera, Fotobibliothek) benötigt weiterhin eine aktive Verbindung und
 zeigt ohne Verbindung eine Fehlermeldung – siehe
 `PWA-HA-Vorgehensplan.md`, Phase 8a, für die Begründung.
+
+## Sicherheit & Performance (Phase 10)
+
+Umsetzung des Code-Reviews (Performance + Security):
+
+- **Escaping**: alle Daten aus HA/Importen laufen über `escapeHtml`; Karten-Popups
+  nutzen DOM-Knoten; Webseiten-Links nur mit `http(s)` (`sichereHttpUrl`).
+- **Content-Security-Policy** in `index.html` (keine Inline-Skripte/-Styles, Skripte nur
+  vom eigenen Ursprung). Der Service-Worker-Registrierungscode liegt daher in `app.js`.
+- **Lokale Bibliotheken** unter `vendor/` (kein CDN): offlinefähiger Kaltstart,
+  keine Drittserver-Abhängigkeit. Updates: siehe `vendor/README.md`.
+- **https-Pflicht** für die Home-Assistant-Adresse (http nur für localhost).
+- **Debug-Zugriff** `window.hofkarteApp` nur auf localhost oder mit `?debug=1`.
+- **Performance**: Suchfeld wird nicht mehr neu gezeichnet (Fokus bleibt, Entprellung),
+  Hintergrund-Refresh überschreibt keine Eingabeansichten, Vorschaubilder (256 px) statt
+  Originale, Fotos werden vor dem Upload auf max. 1600 px verkleinert, eine gemeinsame
+  IndexedDB-Verbindung, Service Worker cached nur die App-Shell.
+- Bewusst nicht umgesetzt: Nicht-Admin-Rechte für HA-Verwaltungsbefehle (Entscheidung im HA-Repo).
 
 ## iOS-Optik (Phase 9)
 

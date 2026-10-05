@@ -7,8 +7,7 @@
  *
  * Warum eine Kopie statt direkt gegen das Repo zu testen: `src/ha-
  * client.js` lädt `home-assistant-js-websocket` im Produktivbetrieb
- * bewusst direkt von jsDelivr (kein Bundler, siehe Vorgehensplan,
- * Phase 4). Für die Tests wird dieser eine Import-Pfad in der Kopie
+ * bewusst ohne Bundler aus vendor/ (seit Phase 10 lokal statt CDN). Für die Tests wird dieser eine Import-Pfad in der Kopie
  * auf `tests/ha-ws-stub.js` umgeschrieben, damit die Tests ohne
  * Netzwerkzugriff und ohne echte Home-Assistant-Instanz laufen – alle
  * übrigen Dateien bleiben unverändert.
@@ -59,7 +58,7 @@ function starteStatischenServer(wurzelverzeichnis) {
 async function bereiteTestkopieVor() {
   const tempDir = await mkdtemp(path.join(os.tmpdir(), "hofkarte-pwa-test-"));
 
-  for (const eintrag of ["index.html", "manifest.json", "service-worker.js", "icons", "src"]) {
+  for (const eintrag of ["index.html", "manifest.json", "service-worker.js", "icons", "src", "vendor"]) {
     await cp(path.join(REPO_ROOT, eintrag), path.join(tempDir, eintrag), { recursive: true });
   }
 
@@ -68,12 +67,12 @@ async function bereiteTestkopieVor() {
   const haClientPfad = path.join(tempDir, "src", "ha-client.js");
   const haClientInhalt = await readFile(haClientPfad, "utf-8");
   const gepatcht = haClientInhalt.replace(
-    /from\s+"https:\/\/cdn\.jsdelivr\.net\/npm\/home-assistant-js-websocket[^"]*"/,
+    /from\s+"\.\.\/vendor\/home-assistant-js-websocket\/index\.js"/,
     'from "./ha-ws-stub.js"'
   );
   if (gepatcht === haClientInhalt) {
     throw new Error(
-      "Konnte den jsDelivr-Import in src/ha-client.js nicht finden/ersetzen – " +
+      "Konnte den Import der lokalen home-assistant-js-websocket-Bibliothek in src/ha-client.js nicht finden/ersetzen – " +
         "Testkopie wäre nicht lauffähig. Bitte run-smoke-tests.mjs an eine " +
         "geänderte Import-Zeile anpassen."
     );

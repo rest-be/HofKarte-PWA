@@ -5,7 +5,8 @@
  * HofKarte-HA, keine Personenauswahl).
  */
 
-import { escapeHtml } from "./list.js";
+import { escapeHtml, sichereHttpUrl } from "../html.js";
+import { vorschauUrl } from "../bilder.js";
 
 const WOCHENTAGE = ["", "Montag", "Dienstag", "Mittwoch", "Donnerstag", "Freitag", "Samstag", "Sonntag"];
 
@@ -25,14 +26,14 @@ function oeffnungszeitenHtml(h) {
 
   const regel = Object.keys(nachTag)
     .sort((a, b) => a - b)
-    .map((tag) => `<div class="kontakt-zeile"><strong>${WOCHENTAGE[tag]}:</strong> ${nachTag[tag].join(", ")}</div>`)
+    .map((tag) => `<div class="kontakt-zeile"><strong>${escapeHtml(WOCHENTAGE[tag])}:</strong> ${escapeHtml(nachTag[tag].join(", "))}</div>`)
     .join("");
 
   const sonder = (h.sonderoeffnungszeiten || [])
     .map((s) => {
       const zeitraum = s.datum_von === s.datum_bis ? s.datum_von : `${s.datum_von} – ${s.datum_bis}`;
       const info = s.geschlossen ? "geschlossen" : `${formatZeit(s.beginn)}–${formatZeit(s.ende)}`;
-      return `<div class="kontakt-zeile">${zeitraum}: ${info}</div>`;
+      return `<div class="kontakt-zeile">${escapeHtml(zeitraum)}: ${escapeHtml(info)}</div>`;
     })
     .join("");
 
@@ -85,8 +86,11 @@ export function renderDetail(container, app, hofladenId) {
     kontaktZeilen.push(`<div class="kontakt-zeile"><a href="mailto:${escapeHtml(h.email)}">✉️ ${escapeHtml(h.email)}</a></div>`);
   }
   if (h.website) {
+    const websiteUrl = sichereHttpUrl(h.website);
     kontaktZeilen.push(
-      `<div class="kontakt-zeile"><a href="${escapeHtml(h.website)}" target="_blank" rel="noopener">🔗 ${escapeHtml(h.website)}</a></div>`
+      websiteUrl
+        ? `<div class="kontakt-zeile"><a href="${escapeHtml(websiteUrl)}" target="_blank" rel="noopener noreferrer">🔗 ${escapeHtml(h.website)}</a></div>`
+        : `<div class="kontakt-zeile">🔗 ${escapeHtml(h.website)}</div>`
     );
   }
 
@@ -95,7 +99,7 @@ export function renderDetail(container, app, hofladenId) {
     .join(", ");
   const kartenLink =
     h.latitude != null && h.longitude != null
-      ? `https://www.google.com/maps/search/?api=1&query=${h.latitude},${h.longitude}`
+      ? `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(h.latitude)},${encodeURIComponent(h.longitude)}`
       : null;
 
   const konflikt = app.konfliktFuer ? app.konfliktFuer(h.id) : null;
@@ -112,7 +116,7 @@ export function renderDetail(container, app, hofladenId) {
         : ""
     }
 
-    ${h.hauptbild_url ? `<img class="detail-bild" src="${h.hauptbild_url}" alt="" />` : ""}
+    ${h.hauptbild_url ? `<img class="detail-bild" src="${escapeHtml(h.hauptbild_url)}" alt="" decoding="async" />` : ""}
 
     <h2>${escapeHtml(h.name)}</h2>
     ${
@@ -146,8 +150,8 @@ export function renderDetail(container, app, hofladenId) {
       h.latitude != null && h.longitude != null
         ? `<div class="detail-abschnitt">
              <h3>Standort / Koordinaten</h3>
-             <div class="kontakt-zeile">${h.latitude}, ${h.longitude}</div>
-             ${kartenLink ? `<div class="kontakt-zeile"><a href="${kartenLink}" target="_blank" rel="noopener">📍 Auf der Karte öffnen</a></div>` : ""}
+             <div class="kontakt-zeile">${escapeHtml(h.latitude)}, ${escapeHtml(h.longitude)}</div>
+             ${kartenLink ? `<div class="kontakt-zeile"><a href="${escapeHtml(kartenLink)}" target="_blank" rel="noopener noreferrer">📍 Auf der Karte öffnen</a></div>` : ""}
            </div>`
         : ""
     }
@@ -182,10 +186,10 @@ export function renderDetail(container, app, hofladenId) {
       h.bilder?.length
         ? `<div class="detail-abschnitt">
              <h3>Bilder</h3>
-             <div class="tag-liste">${h.bilder
+             <div class="tag-liste galerie">${h.bilder
                .map(
                  (b) =>
-                   `<img class="miniatur" src="${escapeHtml(b.url)}" alt="${escapeHtml(b.beschreibung || "")}" loading="lazy" style="width:72px;height:72px;object-fit:cover;border-radius:8px" />`
+                   `<img class="galerie-bild" src="${escapeHtml(vorschauUrl(b.url, 256))}" alt="${escapeHtml(b.beschreibung || "")}" loading="lazy" decoding="async" />`
                )
                .join("")}</div>
            </div>`
@@ -207,7 +211,7 @@ export function renderDetail(container, app, hofladenId) {
     oeffnungszeitenOffen = e.target.open;
   });
   container.querySelector("#bearbeiten-btn").addEventListener("click", () => {
-    app.navigate(`#/hofladen/${h.id}/bearbeiten`);
+    app.navigate(`#/hofladen/${encodeURIComponent(h.id)}/bearbeiten`);
   });
 
   container.querySelector("#loeschen-btn").addEventListener("click", async () => {

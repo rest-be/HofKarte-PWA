@@ -23,7 +23,7 @@ import {
   aktualisiereHofladenIdInWarteschlange,
   aktualisiereInWarteschlange,
 } from "./storage.js";
-import { HaClient, EVENT_AUTH_FEHLER, VersionskonfliktFehler } from "./ha-client.js";
+import { HaClient, EVENT_AUTH_FEHLER, VersionskonfliktFehler, pruefeHaAdresse } from "./ha-client.js";
 import { verarbeiteWarteschlange } from "./sync-worker.js";
 import { renderSetup } from "./views/setup.js";
 import { renderListe } from "./views/list.js";
@@ -220,7 +220,7 @@ const app = {
         this.state.zuletztAktualisiert = gecached.zeitpunkt;
         this.state.ausCache = true;
       }
-      route();
+      aktualisiereAnsicht();
       return;
     }
 
@@ -228,12 +228,12 @@ const app = {
       this.state.hoflaeden = zwischenstand.hoflaeden;
       this.state.zuletztAktualisiert = zwischenstand.zuletztAktualisiert;
       this.state.ausCache = true;
-      route();
+      aktualisiereAnsicht();
     });
     this.state.hoflaeden = ergebnis.hoflaeden;
     this.state.zuletztAktualisiert = ergebnis.zuletztAktualisiert;
     this.state.ausCache = ergebnis.ausCache;
-    route();
+    aktualisiereAnsicht();
   },
 
   /**
@@ -305,7 +305,7 @@ const app = {
   },
 
   async versucheErneutZuVerbinden() {
-    await starteApp();
+    await starteApp({ wiederverbindung: true });
   },
 
   async abmelden() {
@@ -341,7 +341,14 @@ const app = {
   },
 };
 
-window.hofkarteApp = app; // für einfaches Debugging in der Konsole
+// Debug-Zugriff nur lokal bzw. explizit per ?debug=1 (Phase 10, Review S4):
+// sonst läge der Client samt Token für jedes Skript auf der Seite offen.
+if (
+  ["localhost", "127.0.0.1", "[::1]"].includes(window.location.hostname) ||
+  new URLSearchParams(window.location.search).get("debug") === "1"
+) {
+  window.hofkarteApp = app;
+}
 
 function parsePfad() {
   const hash = window.location.hash.replace(/^#\/?/, "");
@@ -349,13 +356,40 @@ function parsePfad() {
   return teile;
 }
 
+/** Name der aktuell gezeichneten Ansicht ("setup", "liste", "editor" ...). */
+let aktuelleAnsicht = null;
+
+/** Ansichten mit Nutzereingaben: ein Hintergrund-Refresh darf sie nicht
+ * neu zeichnen, sonst gehen Eingaben verloren (Review P-Befund Editor). */
+const EINGABE_ANSICHTEN = new Set(["setup", "editor", "neu", "konflikt", "einstellungen"]);
+
+/** Neu zeichnen nach Datenänderung (Refresh/Wiederverbindung) - lässt
+ * Eingabeansichten unangetastet und aktualisiert nur die Sync-Anzeige. */
+function aktualisiereAnsicht() {
+  const brauchtSetup = !app.haClient && !app.offlineModus;
+  if (brauchtSetup !== (aktuelleAnsicht === "setup") || !EINGABE_ANSICHTEN.has(aktuelleAnsicht)) {
+    route();
+    return;
+  }
+  aktualisiereSyncLeiste();
+}
+
 function route() {
   if (!app.haClient && !app.offlineModus) {
+    aktuelleAnsicht = "setup";
     renderSetup(appContainer, verbinden);
     return;
   }
 
   const teile = parsePfad();
+  aktuelleAnsicht =
+    teile[0] === "hofladen" && teile[1] && teile[2] === "bearbeiten" ? "editor"
+    : teile[0] === "konflikt" && teile[1] ? "konflikt"
+    : teile[0] === "neu" ? "neu"
+    : teile[0] === "hofladen" && teile[1] ? "detail"
+    : teile[0] === "karte" ? "karte"
+    : teile[0] === "einstellungen" ? "einstellungen"
+    : "liste";
 
   const detailHash = (id) => `#/hofladen/${id}`;
 
@@ -450,13 +484,13 @@ let letzteTiefe = 0;
 let letzterHash = null;
 let aktuelleKopfzeile = null;
 let aktuellerGrosserTitel = null;
+let aktuelleGrenze = 0;
 
 /** Large-Title-Verhalten: Navigationsleiste blendet beim Scrollen ein
  * (Blur + kleiner Titel), sobald der grosse Titel aus dem Blick ist. */
 function aktualisiereKopfzeilenZustand() {
   if (!aktuelleKopfzeile) return;
-  const grenze = aktuellerGrosserTitel ? aktuellerGrosserTitel.offsetHeight - 6 : 0;
-  aktuelleKopfzeile.classList.toggle("gescrollt", window.scrollY > Math.max(grenze, 4));
+  aktuelleKopfzeile.classList.toggle("gescrollt", window.scrollY > Math.max(aktuelleGrenze, 4));
 }
 window.addEventListener("scroll", aktualisiereKopfzeilenZustand, { passive: true });
 
@@ -506,6 +540,25 @@ function aktiviereSwipeZurueck(seite, zielHash) {
   });
 }
 
+/** Aktualisiert nur die Sync-Kapsel in der Kopfzeile (ohne Neuaufbau der Seite). */
+function aktualisiereSyncLeiste() {
+  const kopf = appContainer.querySelector(".kopfzeile");
+  if (!kopf) return;
+  const status = syncStatusHtml();
+  let leiste = kopf.querySelector(".sync-leiste");
+  if (status) {
+    if (!leiste) {
+      leiste = document.createElement("div");
+      leiste.className = "sync-leiste";
+      kopf.appendChild(leiste);
+    }
+    leiste.innerHTML = status;
+  } else {
+    leiste?.remove();
+  }
+  document.documentElement.style.setProperty("--kopf-h", `${kopf.offsetHeight}px`);
+}
+
 /** Gemeinsamer Rahmen (Navigationsleiste + Tableiste) um die eigentliche
  * View, im Stil einer iOS-App. Leiste und Tableiste sind fix positioniert
  * (mit Blur), dazwischen scrollt die Seite.
@@ -549,6 +602,8 @@ function renderMitRahmen(viewRender, aktiverTab, opts = {}) {
   const kopfzeile = appContainer.querySelector(".kopfzeile");
   aktuelleKopfzeile = kopfzeile;
   aktuellerGrosserTitel = appContainer.querySelector(".grosser-titel");
+  // Schwelle einmal messen (kein Layout-Zwang bei jedem Scroll-Event).
+  aktuelleGrenze = aktuellerGrosserTitel ? aktuellerGrosserTitel.offsetHeight - 6 : 0;
   // Höhe der (evtl. durch die Sync-Kapsel höheren) Leiste für das Seiten-Padding.
   document.documentElement.style.setProperty("--kopf-h", `${kopfzeile.offsetHeight}px`);
   if (window.location.hash !== letzterHash) window.scrollTo(0, 0);
@@ -574,7 +629,8 @@ function renderMitRahmen(viewRender, aktiverTab, opts = {}) {
   viewRender();
 }
 
-async function verbinden(haUrl, token) {
+async function verbinden(eingabeUrl, token) {
+  const haUrl = pruefeHaAdresse(eingabeUrl);
   const client = new HaClient(haUrl, token);
   await client.verbinden();
 
@@ -597,13 +653,29 @@ window.addEventListener(EVENT_AUTH_FEHLER, () => {
 
 window.addEventListener("hashchange", route);
 
-async function starteApp() {
+let starteLaeuft = false;
+
+async function starteApp({ wiederverbindung = false } = {}) {
+  // Kein paralleler Start (z. B. Timer + Button gleichzeitig).
+  if (starteLaeuft) return;
+  starteLaeuft = true;
+  try {
+    await starteAppIntern(wiederverbindung);
+  } finally {
+    starteLaeuft = false;
+  }
+}
+
+async function starteAppIntern(wiederverbindung) {
   app.haClient?.trennen();
   app.haClient = null;
-  app.offlineModus = false;
+  // Beim stillen Wiederverbindungsversuch bleibt der Offline-Modus bis zum
+  // Ergebnis bestehen - sonst würde kurz die Einrichtung gezeigt.
+  if (!wiederverbindung) app.offlineModus = false;
 
   const gespeichert = await ladeVerbindung();
   if (!gespeichert) {
+    app.offlineModus = false;
     route();
     return;
   }
@@ -612,6 +684,7 @@ async function starteApp() {
     const client = new HaClient(gespeichert.haUrl, gespeichert.token);
     await client.verbinden();
     app.haClient = client;
+    app.offlineModus = false;
     app.haUrl = gespeichert.haUrl;
     app._stoppeOfflineRetry();
     app.state.einstellungen = await client.einstellungen().catch(() => null);
@@ -621,6 +694,7 @@ async function starteApp() {
     if (err.code === "invalid_auth") {
       // Token wurde widerrufen/ist ungültig - zurück zum Einrichtungsbildschirm.
       app._stoppeOfflineRetry();
+      app.offlineModus = false;
       await loescheVerbindung();
     } else {
       // "connection_lost" (z. B. gerade kein VPN aktiv): eingerichtet
@@ -636,7 +710,16 @@ async function starteApp() {
       app._starteOfflineRetry();
     }
   }
-  route();
+  aktualisiereAnsicht();
 }
 
 starteApp();
+
+// Service Worker (zuvor Inline-Skript in index.html - entfällt wegen CSP).
+if ("serviceWorker" in navigator) {
+  window.addEventListener("load", () => {
+    navigator.serviceWorker
+      .register("service-worker.js")
+      .catch((err) => console.error("Service Worker Registrierung fehlgeschlagen:", err));
+  });
+}

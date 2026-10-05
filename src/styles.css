@@ -313,7 +313,6 @@ a.sync-status.konflikt {
 .seite {
   padding-top: var(--kopf-h);
   min-height: 100vh;
-  will-change: transform;
 }
 
 .grosser-titel {
@@ -345,10 +344,12 @@ a.sync-status.konflikt {
 }
 
 .seite.slide-vor {
+  will-change: transform;
   animation: slide-vor 0.32s cubic-bezier(0.22, 0.8, 0.28, 1);
 }
 
 .seite.slide-zurueck {
+  will-change: transform;
   animation: slide-zurueck 0.32s cubic-bezier(0.22, 0.8, 0.28, 1);
 }
 
@@ -1193,4 +1194,29 @@ details.detail-abschnitt.einklappbar .kontakt-zeile:first-of-type {
 
 p.muted.fehlertext {
   color: var(--danger-color);
+}
+
+/* --- Phase 10: ersetzt frühere Inline-Styles (CSP ohne 'unsafe-inline') --- */
+
+.galerie-bild {
+  width: 72px;
+  height: 72px;
+  object-fit: cover;
+  border-radius: 8px;
+}
+
+details.manuell-bild {
+  margin-top: 10px;
+}
+
+.klickbar {
+  cursor: pointer;
+}
+
+.liste-zeile-abstand {
+  margin-top: 8px;
+}
+
+#bild-hinzufuegen-btn {
+  width: auto;
 }

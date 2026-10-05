@@ -11,7 +11,8 @@
  * Bild-Adresse hinzugefügt werden (siehe zeichneBilder()).
  */
 
-import { escapeHtml } from "./list.js";
+import { escapeHtml } from "../html.js";
+import { bildVerkleinern } from "../bilder.js";
 import { extractImageId } from "../ha-client.js";
 
 const WOCHENTAGE = [
@@ -271,7 +272,8 @@ export function renderEditor(container, app, hofladenId) {
 
     setUploadStatus(`„${file.name}“ wird hochgeladen …`);
     try {
-      const bild = await app.haClient.bildHochladen(file);
+      const zuLaden = await bildVerkleinern(file);
+      const bild = await app.haClient.bildHochladen(zuLaden);
       bilder.push({ url: bild.url, beschreibung: null, hochgeladen: true });
       setUploadStatus(`„${file.name}“ erfolgreich hochgeladen.`, "success");
       zeichneBilder();
@@ -408,11 +410,11 @@ export function renderEditor(container, app, hofladenId) {
         <input type="file" id="foto-kamera-input" accept="image/jpeg,image/png,image/gif" capture="environment" hidden />
         <input type="file" id="foto-bibliothek-input" accept="image/jpeg,image/png,image/gif" hidden />
         <span class="upload-status muted" id="upload-status"></span>
-        <details style="margin-top:10px">
-          <summary class="muted" style="cursor:pointer">Oder externe Bild-Adresse manuell hinzufügen</summary>
-          <div class="liste-zeile" style="margin-top:8px">
+        <details class="manuell-bild">
+          <summary class="muted klickbar">Oder externe Bild-Adresse manuell hinzufügen</summary>
+          <div class="liste-zeile liste-zeile-abstand">
             <input type="url" id="externe-bild-url" placeholder="https://…" />
-            <button type="button" class="hinzufuegen-btn" id="bild-hinzufuegen-btn" style="width:auto">Hinzufügen</button>
+            <button type="button" class="hinzufuegen-btn" id="bild-hinzufuegen-btn">Hinzufügen</button>
           </div>
         </details>
       </section>

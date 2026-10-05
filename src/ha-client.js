@@ -19,17 +19,36 @@
  * selbst.
  */
 
-// Direkt als natives ES-Modul von jsDelivr geladen: das Paket hat keine
-// externen Abhängigkeiten und verwendet in `dist/index.js` ausschliesslich
-// relative Imports mit expliziter ".js"-Endung - funktioniert daher ohne
-// Bundler direkt im Browser (kein esm.sh/unpkg-"Bundle"-Proxy nötig).
+// Phase 10: die Bibliothek liegt lokal unter vendor/ (siehe vendor/README.md)
+// statt auf einem CDN - die App startet damit auch offline kalt und ist
+// nicht von einem Drittserver abhängig.
 import {
   createConnection,
   createLongLivedTokenAuth,
   ERR_INVALID_AUTH,
-} from "https://cdn.jsdelivr.net/npm/home-assistant-js-websocket@9.7.0/dist/index.js";
+} from "../vendor/home-assistant-js-websocket/index.js";
 
 import { ladeCache, speichereCache } from "./storage.js";
+
+/**
+ * Prüft die eingegebene Home-Assistant-Adresse: Das Long-Lived Token wird
+ * im Klartext-Header übertragen, daher ist `https://` Pflicht. Unverschlüsseltes
+ * `http://` wird nur für lokale Entwicklung (localhost/127.0.0.1) erlaubt.
+ * Gibt die bereinigte Adresse zurück oder wirft einen Error mit Hinweistext.
+ */
+export function pruefeHaAdresse(eingabe) {
+  let url;
+  try {
+    url = new URL(String(eingabe || "").trim());
+  } catch {
+    throw new Error("Ungültige Adresse. Beispiel: https://hofkarte.duckdns.org:8123");
+  }
+  const lokal = ["localhost", "127.0.0.1", "[::1]"].includes(url.hostname);
+  if (url.protocol !== "https:" && !(url.protocol === "http:" && lokal)) {
+    throw new Error("Aus Sicherheitsgründen ist nur eine verschlüsselte Adresse (https://) erlaubt.");
+  }
+  return url.origin;
+}
 
 const CACHE_KEY_LISTE = "hoflaeden-liste";
 

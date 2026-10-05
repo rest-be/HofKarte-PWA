@@ -3,7 +3,7 @@
  *
  * Läuft gegen eine lokal ausgelieferte Testkopie der App (siehe
  * tests/run-smoke-tests.mjs), bei der `src/ha-client.js` auf
- * `tests/ha-ws-stub.js` statt den echten jsDelivr-Import zeigt – es
+ * `tests/ha-ws-stub.js` statt den echten (lokalen) Bibliotheks-Import zeigt – es
  * wird also nie eine echte Verbindung zu Home Assistant aufgebaut.
  * Den für die einzelnen Szenarien nötigen App-Zustand (offline,
  * Beispiel-Hofladen) erzwingen die Tests direkt über
@@ -394,6 +394,150 @@ export async function fuehreSmokeTestsAus(page, baseUrl) {
   });
   await page.waitForTimeout(300);
 
+  // --- Phase 10: Performance & Security ------------------------------------
+  // Suchfeld behält beim Tippen den Fokus (früher: komplettes Neuzeichnen).
+  await page.evaluate(() => {
+    const app = window.hofkarteApp;
+    app.state.hoflaeden = [
+      { id: "p1", name: "Alpha Hof", ort: "Bern", bilder: [], hauptbild_url: "https://ha.example/api/image/serve/abc123/original" },
+      { id: "p2", name: "Beta Hof", ort: "Thun", bilder: [] },
+    ];
+    window.location.hash = "#/";
+    window.dispatchEvent(new Event("hashchange"));
+  });
+  await page.waitForTimeout(300);
+  await page.click("#such-feld");
+  await page.keyboard.type("abc", { delay: 30 });
+  const sucheStatus = await page.evaluate(() => ({
+    wert: document.querySelector("#such-feld").value,
+    fokus: document.activeElement?.id,
+  }));
+  check("Suchfeld behält Fokus und Wert beim Tippen", sucheStatus.wert === "abc" && sucheStatus.fokus === "such-feld");
+  await page.fill("#such-feld", "alpha");
+  await page.waitForTimeout(300);
+  check("Suche filtert die Liste (debounced)", (await page.$$(".hofladen-karte")).length === 1);
+  const thumbSrc = await page.$eval(".hofladen-karte img.miniatur", (el) => el.getAttribute("src")).catch(() => "");
+  check("Liste nutzt verkleinerte Vorschau statt Original", thumbSrc.endsWith("/256x256"));
+  await page.fill("#such-feld", "");
+  await page.waitForTimeout(300);
+
+  // Hilfsfunktionen
+  const helfer = await page.evaluate(async () => {
+    const { escapeHtml, sichereHttpUrl } = await import("/src/html.js");
+    const { vorschauUrl, bildVerkleinern } = await import("/src/bilder.js");
+    const { pruefeHaAdresse } = await import("/src/ha-client.js");
+    const canvas = document.createElement("canvas");
+    canvas.width = 3200;
+    canvas.height = 2400;
+    const ctx = canvas.getContext("2d");
+    for (let i = 0; i < 40; i++) {
+      ctx.fillStyle = `hsl(${i * 9}, 70%, 50%)`;
+      ctx.fillRect(i * 80, (i % 7) * 340, 160, 300);
+    }
+    const blob = await new Promise((r) => canvas.toBlob(r, "image/jpeg", 0.98));
+    const gross = new File([blob], "foto.jpg", { type: "image/jpeg" });
+    const klein = await bildVerkleinern(gross);
+    const bmp = await createImageBitmap(klein);
+    let httpFehler = null;
+    try { pruefeHaAdresse("http://ha.example.com:8123"); } catch (e) { httpFehler = e.message; }
+    return {
+      esc: escapeHtml(`<img src=x onerror="a()">'`),
+      jsUrl: sichereHttpUrl("javascript:alert(1)"),
+      httpsUrl: sichereHttpUrl("https://example.com/x"),
+      vorschau: vorschauUrl("https://h/api/image/serve/id1/original", 512),
+      fremdUrl: vorschauUrl("https://bild.example/foto.jpg"),
+      kleiner: klein.size < gross.size,
+      breite: bmp.width,
+      httpFehler,
+      httpsOk: pruefeHaAdresse("https://ha.example.com:8123/"),
+      localhostOk: pruefeHaAdresse("http://localhost:8123"),
+    };
+  });
+  check("escapeHtml maskiert Tags und Anführungszeichen", !/[<>"']/.test(helfer.esc));
+  check("sichereHttpUrl blockt javascript: und erlaubt https:", helfer.jsUrl === null && helfer.httpsUrl === "https://example.com/x");
+  check("vorschauUrl ersetzt nur HA-Original-URLs", helfer.vorschau.endsWith("/id1/512x512") && helfer.fremdUrl === "https://bild.example/foto.jpg");
+  check(`Upload-Verkleinerung: Bild wird kleiner (Breite ${helfer.breite})`, helfer.kleiner && helfer.breite <= 1600);
+  check("HA-Adresse: http:// wird abgelehnt, https:// und localhost erlaubt", !!helfer.httpFehler && helfer.httpsOk === "https://ha.example.com:8123" && helfer.localhostOk === "http://localhost:8123");
+
+  // Feindliche Daten dürfen keinen Code einschleusen.
+  await page.evaluate(() => {
+    window.__xss = 0;
+    const app = window.hofkarteApp;
+    app.state.hoflaeden = [
+      {
+        id: 'x"><img src=x onerror=window.__xss=1>',
+        name: "<img src=x onerror=window.__xss=1>Böse",
+        ort: "<b>x</b>",
+        website: "javascript:window.__xss=1",
+        hauptbild_url: 'https://x.example/a.png" onerror="window.__xss=1',
+        latitude: 46.9, longitude: 7.4,
+        bilder: [{ url: 'https://x.example/b.png" onerror="window.__xss=1', beschreibung: '"><script>window.__xss=1</script>' }],
+        sonderoeffnungszeiten: [{ datum_von: "<i>1</i>", datum_bis: "<i>2</i>", geschlossen: true }],
+        oeffnungszeiten: [],
+      },
+    ];
+    window.location.hash = "#/";
+    window.dispatchEvent(new Event("hashchange"));
+  });
+  await page.waitForTimeout(300);
+  const listeInjektion = await page.evaluate(() => ({
+    xss: window.__xss,
+    fremdeBilder: document.querySelectorAll("#hofladen-liste img[onerror]").length,
+    fremdeTags: document.querySelectorAll("#hofladen-liste b, #hofladen-liste .name img").length,
+  }));
+  check("Liste: feindliche Daten bleiben Text", listeInjektion.xss === 0 && listeInjektion.fremdeBilder === 0 && listeInjektion.fremdeTags === 0);
+  await page.evaluate(() => {
+    const id = window.hofkarteApp.state.hoflaeden[0].id;
+    window.location.hash = "#/hofladen/" + encodeURIComponent(id);
+    window.dispatchEvent(new Event("hashchange"));
+  });
+  await page.waitForTimeout(400);
+  const detailInjektion = await page.evaluate(() => ({
+    xss: window.__xss,
+    onerror: document.querySelectorAll("[onerror]").length,
+    scripts: document.querySelectorAll(".inhalt script").length,
+    jsLink: [...document.querySelectorAll("a")].some((a) => a.href.startsWith("javascript:")),
+  }));
+  check("Detail: feindliche Daten bleiben Text, kein javascript:-Link", detailInjektion.xss === 0 && detailInjektion.onerror === 0 && detailInjektion.scripts === 0 && !detailInjektion.jsLink);
+
+  // Karten-Popup: Name als Text.
+  const popup = await page.evaluate(async () => {
+    window.location.hash = "#/karte";
+    window.dispatchEvent(new Event("hashchange"));
+    await new Promise((r) => setTimeout(r, 800));
+    const L = window.L;
+    if (!L) return { geladen: false };
+    return { geladen: true, xss: window.__xss, vendorCss: !!document.querySelector('link[href="./vendor/leaflet/leaflet.css"]') };
+  });
+  check("Karte: Leaflet kommt lokal aus vendor/", popup.geladen && popup.vendorCss);
+  check("Kein CDN-Verweis in index.html, CSP vorhanden", await page.evaluate(async () => {
+    const html = await (await fetch("/index.html")).text();
+    return !/jsdelivr|unpkg|cdnjs/.test(html) && /Content-Security-Policy/.test(html) && !/<script>/.test(html);
+  }));
+
+  // Eingaben im Editor überleben den stillen Wiederverbindungsversuch (30-s-Timer).
+  await page.evaluate(async () => {
+    const { speichereVerbindung } = await import("/src/storage.js");
+    await speichereVerbindung("https://ha.example.com:8123", "test-token");
+    window.hofkarteApp.haClient = null;
+    window.hofkarteApp.offlineModus = true;
+    window.location.hash = "#/neu";
+    window.dispatchEvent(new Event("hashchange"));
+  });
+  await page.waitForTimeout(300);
+  const editorEingabe = (await page.$("#f-name")) ? "#f-name" : "input[type=text]";
+  await page.fill(editorEingabe, "Tipp-Test");
+  await page.evaluate(async () => {
+    await window.hofkarteApp.versucheErneutZuVerbinden();
+  });
+  await page.waitForTimeout(300);
+  check("Editor-Eingabe überlebt Wiederverbindungsversuch", (await page.$eval(editorEingabe, (el) => el.value)) === "Tipp-Test");
+  await page.evaluate(() => {
+    window.location.hash = "#/einstellungen";
+    window.dispatchEvent(new Event("hashchange"));
+  });
+  await page.waitForTimeout(300);
+
   // --- Phase 8e: Versionsanzeige -----------------------------------------
   const angezeigteVersion = await page.$eval("#app-version", (el) => el.textContent.trim());
   const erwarteteVersion = await page.evaluate(async () => {
@@ -407,7 +551,7 @@ export async function fuehreSmokeTestsAus(page, baseUrl) {
 
   check(
     "Keine Konsolen-/Laufzeitfehler (ohne CDN-Netzwerkfehler aus der Sandbox)",
-    consoleErrors.filter((e) => !/jsdelivr|leaflet|ERR_TUNNEL|net::/i.test(e)).length === 0
+    consoleErrors.filter((e) => !/tile\\.openstreetmap|ERR_TUNNEL|net::/i.test(e)).length === 0
   );
   if (consoleErrors.length) {
     console.log("Beobachtete Konsolenmeldungen (ggf. erwartete CDN-Netzwerkfehler in isolierter Testumgebung):");
