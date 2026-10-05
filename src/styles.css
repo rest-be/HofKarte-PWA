@@ -1037,3 +1037,102 @@ p.ort {
 .inhalt > .status-badge {
   margin-bottom: 8px;
 }
+
+/* "Hofläden in der Nähe": einklappbar, eingeklappt nur eine Zeile hoch. */
+details.naehe-karte {
+  padding: 0 16px;
+  margin-bottom: 12px;
+}
+
+details.naehe-karte > summary {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  min-height: 44px;
+  font-size: 17px;
+  font-weight: 600;
+  list-style: none;
+  cursor: pointer;
+}
+
+details.naehe-karte > summary::-webkit-details-marker {
+  display: none;
+}
+
+details.naehe-karte > summary::after {
+  content: "";
+  width: 8px;
+  height: 8px;
+  border-top: 2px solid var(--fill-stark);
+  border-right: 2px solid var(--fill-stark);
+  transform: rotate(45deg);
+  transition: transform 0.2s;
+  margin-right: 4px;
+}
+
+details.naehe-karte[open] > summary::after {
+  transform: rotate(135deg);
+}
+
+details.naehe-karte > #naehe-ergebnis {
+  padding-bottom: 8px;
+}
+
+/* Einstellungen: Versionszeile */
+.version-zeile {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 11px 0;
+}
+
+/* Einrichtungsbildschirm: Version + Release Notes */
+.version-zeile-setup {
+  margin: 20px 0 8px;
+  font-size: 13px;
+  color: var(--muted-color);
+}
+
+.release-notes {
+  text-align: left;
+  background: var(--card-bg);
+  border-radius: var(--radius-gross);
+  padding: 0 16px;
+  margin-top: 8px;
+}
+
+.release-notes > summary {
+  min-height: 44px;
+  display: flex;
+  align-items: center;
+  color: var(--tint);
+  cursor: pointer;
+  list-style: none;
+}
+
+.release-notes > summary::-webkit-details-marker {
+  display: none;
+}
+
+.release {
+  padding: 4px 0 10px;
+  border-top: 0.5px solid var(--separator);
+}
+
+.release h3 {
+  margin: 10px 0 4px;
+  font-size: 15px;
+}
+
+.release .datum {
+  font-weight: 400;
+  color: var(--muted-color);
+  font-size: 13px;
+  margin-left: 6px;
+}
+
+.release ul {
+  margin: 0;
+  padding-left: 18px;
+  font-size: 15px;
+}

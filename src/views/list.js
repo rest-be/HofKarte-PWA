@@ -67,6 +67,9 @@ function sortiereUndFiltere(hoflaeden, suchbegriff, sortSpalte, sortRichtung) {
   return ergebnis;
 }
 
+/** Eingeklappt als Standard: braucht so möglichst wenig Platz. */
+let naeheOffen = false;
+
 export function renderListe(container, app) {
   const einstellungen = app.state.einstellungen || {};
   let suchbegriff = "";
@@ -196,13 +199,18 @@ export function renderListe(container, app) {
     const platzhalter = container.querySelector("#naehe-platzhalter");
     if (!platzhalter) return;
     platzhalter.innerHTML = `
-      <div class="naehe-karte">
-        <h2>📍 Hofläden in der Nähe</h2>
+      <details class="naehe-karte"${naeheOffen ? " open" : ""}>
+        <summary>📍 Hofläden in der Nähe</summary>
         <div id="naehe-ergebnis">
           <button class="aktualisieren" id="naehe-suchen-btn">Standort abfragen</button>
         </div>
-      </div>
+      </details>
     `;
+    // Zustand (offen/eingeklappt) merken, damit ein Neuzeichnen der Liste
+    // (z. B. beim Tippen im Suchfeld) die Karte nicht wieder einklappt.
+    platzhalter.querySelector("details").addEventListener("toggle", (e) => {
+      naeheOffen = e.target.open;
+    });
 
     // Event-Delegation auf den stabilen Container, statt Listener direkt
     // auf den Button: der Button wird bei jedem Suchlauf neu erzeugt

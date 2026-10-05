@@ -1,6 +1,6 @@
 # HofKarte-PWA
 
-**Version: 1.7.0** – siehe Abschnitt [Version](#version) unten für die
+**Version: 1.8.0** – siehe Abschnitt [Version](#version) unten für die
 installierte Version auf einem konkreten Gerät.
 
 Progressive Web App für HofKarte – ein reiner, zustandsloser Client für die
@@ -90,6 +90,7 @@ READMEs.
 
 | Version | Datum | Wesentliche Änderungen |
 |---|---|---|
+| 1.8.0 | 2026-10-05 | Einstellungen neu geordnet (Verbindung, Token, Abmelden, Version), „In der Nähe“ einklappbar, Version + Release Notes auf dem Einrichtungsbildschirm. |
 | 1.7.0 | 2026-10-05 | iOS-Optik (Phase 9): System-Schrift/-Farben, Dark Mode, Navigationsleiste mit Large Title und Blur, Tab-Icons, Inset-Grouped-Listen, Seitenübergänge, Swipe-back. |
 | 1.6.0 | 2026-10-05 | Versionskonflikt-Erkennung (Phase 8b): `version` wird mitgesendet, bei Konflikt Konfliktansicht mit „Meine Version übernehmen“ / „Server-Version übernehmen“. |
 | 1.5.0 | 2026-10-04 | Versionsanzeige in Einstellungen + README eingeführt (Phase 8e). |

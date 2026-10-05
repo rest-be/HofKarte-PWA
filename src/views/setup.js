@@ -7,6 +7,8 @@
  * jemand HofKarte unter einer anderen Adresse betreibt).
  */
 
+import { APP_VERSION, RELEASE_NOTES } from "../version.js";
+
 const STANDARD_HA_ADRESSE = "https://hofkarte.duckdns.org:8123";
 
 /**
@@ -43,6 +45,18 @@ export function renderSetup(container, onVerbinden) {
         eigenes Token verwendet werden, damit es bei Geräteverlust gezielt
         widerrufen werden kann.
       </p>
+
+      <p class="version-zeile-setup">Version <strong id="setup-version">${APP_VERSION}</strong></p>
+
+      <details class="release-notes" id="release-notes">
+        <summary>Release Notes</summary>
+        ${RELEASE_NOTES.map(
+          (r) => `<div class="release">
+            <h3>${r.version} <span class="datum">${r.datum}</span></h3>
+            <ul>${r.punkte.map((p) => `<li>${p}</li>`).join("")}</ul>
+          </div>`
+        ).join("")}
+      </details>
     </div>
   `;
 

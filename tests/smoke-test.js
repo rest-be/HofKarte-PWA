@@ -51,6 +51,10 @@ export async function fuehreSmokeTestsAus(page, baseUrl) {
   await page.goto(`${baseUrl}/index.html`, { waitUntil: "networkidle" });
   await page.waitForTimeout(300);
   check("Einrichtungsbildschirm beim ersten Start sichtbar", !!(await page.$("#setup-form")));
+  check("Einrichtung: HA-Adresse, Token und Button 'Verbinden' vorhanden", !!(await page.$("#ha-url")) && !!(await page.$("#ha-token")) && (await page.$eval("#setup-submit", (el) => el.textContent.trim())) === "Verbinden");
+  const setupVersion = await page.$eval("#setup-version", (el) => el.textContent.trim()).catch(() => "");
+  check(`Einrichtung zeigt Versionsnummer (${setupVersion})`, /^\d+\.\d+\.\d+$/.test(setupVersion));
+  check("Einrichtung enthält Release Notes", (await page.$$("#release-notes .release")).length >= 5);
 
   // --- Zustand erzwingen: offline, ein bestehender Hofladen -------------
   await page.evaluate(() => {
@@ -250,6 +254,15 @@ export async function fuehreSmokeTestsAus(page, baseUrl) {
     const cs = getComputedStyle(el);
     return (cs.backdropFilter || cs.webkitBackdropFilter || "").includes("blur");
   }));
+  check("'Hofläden in der Nähe' ist standardmässig eingeklappt", (await page.$eval("details.naehe-karte", (el) => el.open)) === false);
+  check("Eingeklappte Nähe-Karte ist höchstens 60px hoch", (await page.$eval("details.naehe-karte", (el) => el.getBoundingClientRect().height)) <= 60);
+  await page.click("details.naehe-karte > summary");
+  await page.waitForTimeout(150);
+  check("Nähe-Karte lässt sich aufklappen", await page.$eval("details.naehe-karte", (el) => el.open));
+  await page.fill("#such-feld", "x");
+  await page.fill("#such-feld", "");
+  check("Aufgeklappte Nähe-Karte bleibt beim Neuzeichnen offen", await page.$eval("details.naehe-karte", (el) => el.open));
+  await page.click("details.naehe-karte > summary");
   check("Listenansicht ohne Zurück-Button (Tab-Ebene)", !(await page.$("#zurueck-btn")));
   await page.evaluate(() => {
     window.location.hash = "#/hofladen/h1";
@@ -321,6 +334,11 @@ export async function fuehreSmokeTestsAus(page, baseUrl) {
   );
   check("Zugehöriges Input-Feld existiert", !!(await page.$("#f-ha-adresse")));
 
+  const einstellungenReihenfolge = await page.$$eval(".formular-abschnitt > h2", (els) => els.map((e) => e.textContent.trim()));
+  check(
+    `Einstellungen-Reihenfolge: Verbindung, Token ändern, Abmelden, Version (${einstellungenReihenfolge.join(", ")})`,
+    JSON.stringify(einstellungenReihenfolge) === JSON.stringify(["Verbindung", "Token ändern", "Abmelden", "Version"])
+  );
   // --- Phase 8e: Versionsanzeige -----------------------------------------
   const angezeigteVersion = await page.$eval("#app-version", (el) => el.textContent.trim());
   const erwarteteVersion = await page.evaluate(async () => {
