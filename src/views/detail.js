@@ -79,7 +79,14 @@ export function renderDetail(container, app, hofladenId) {
       ? `https://www.openstreetmap.org/?mlat=${h.latitude}&mlon=${h.longitude}#map=17/${h.latitude}/${h.longitude}`
       : null;
 
+  const konflikt = app.konfliktFuer ? app.konfliktFuer(h.id) : null;
+
   container.innerHTML = `
+    ${
+      konflikt
+        ? `<p class="hinweis-leiste konflikt-hinweis">⚠ Versionskonflikt: Dieser Hofladen wurde auf einem anderen Gerät geändert. <a href="#/konflikt/${encodeURIComponent(h.id)}">Konflikt lösen</a></p>`
+        : ""
+    }
     ${
       h._synchronisierungAusstehend
         ? `<p class="hinweis-leiste">⌁ Noch nicht synchronisiert - wird automatisch übernommen, sobald wieder eine Verbindung zu Home Assistant besteht.</p>`

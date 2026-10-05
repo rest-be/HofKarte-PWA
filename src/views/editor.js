@@ -509,6 +509,8 @@ export function renderEditor(container, app, hofladenId) {
     const wert = (id) => container.querySelector(id).value.trim();
     const zuSpeichern = {
       id: daten.id || undefined,
+      // Für die Konflikterkennung (Phase 8b): Stand, auf dem bearbeitet wurde
+      version: daten.version,
       name: wert("#f-name"),
       beschreibung: wert("#f-beschreibung") || null,
       bemerkung: wert("#f-bemerkung") || null,
@@ -538,6 +540,10 @@ export function renderEditor(container, app, hofladenId) {
       const gespeichert = await app.speichereHofladen(zuSpeichern);
       app.navigate(`#/hofladen/${gespeichert.id}`);
     } catch (err) {
+      if (err.code === "version_conflict" && zuSpeichern.id) {
+        app.navigate(`#/konflikt/${zuSpeichern.id}`);
+        return;
+      }
       fehlerBox.textContent = err.message;
       fehlerBox.hidden = false;
       submitBtn.disabled = false;

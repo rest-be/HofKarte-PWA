@@ -670,3 +670,20 @@ body {
   margin-top: 16px;
   line-height: 1.4;
 }
+
+/* Versionskonflikt (Phase 8b) */
+a.sync-status.konflikt {
+  color: #ffcdd2;
+  font-weight: 600;
+  text-decoration: underline;
+}
+
+.konflikt-hinweis a {
+  color: inherit;
+  font-weight: 600;
+}
+
+.konflikt-feld p {
+  margin: 4px 0;
+  overflow-wrap: anywhere;
+}

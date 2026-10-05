@@ -1,6 +1,6 @@
 # HofKarte-PWA
 
-**Version: 1.5.0** – siehe Abschnitt [Version](#version) unten für die
+**Version: 1.6.0** – siehe Abschnitt [Version](#version) unten für die
 installierte Version auf einem konkreten Gerät.
 
 Progressive Web App für HofKarte – ein reiner, zustandsloser Client für die
@@ -90,6 +90,7 @@ READMEs.
 
 | Version | Datum | Wesentliche Änderungen |
 |---|---|---|
+| 1.6.0 | 2026-10-05 | Versionskonflikt-Erkennung (Phase 8b): `version` wird mitgesendet, bei Konflikt Konfliktansicht mit „Meine Version übernehmen“ / „Server-Version übernehmen“. |
 | 1.5.0 | 2026-10-04 | Versionsanzeige in Einstellungen + README eingeführt (Phase 8e). |
 | 1.4.0 | 2026-10-04 | Testdisziplin formalisiert: Playwright-Smoke-Tests unter `tests/` + CI-Workflow (Phase 8d). |
 | 1.3.0 | 2026-10-04 | iOS-/Accessibility-Lücken geschlossen: Touch-Targets, `prefers-reduced-motion`, ARIA-Attribute (Phase 8c). |
@@ -193,11 +194,32 @@ zeigen in der Detailansicht einen entsprechenden Hinweis.
 **Bewusst noch nicht Teil dieser Version:** Fotos hinzufügen/entfernen
 (Kamera, Fotobibliothek) benötigt weiterhin eine aktive Verbindung und
 zeigt ohne Verbindung eine Fehlermeldung – siehe
-`PWA-HA-Vorgehensplan.md`, Phase 8a, für die Begründung. Ebenso noch
-offen: eine echte Konflikterkennung, falls zwei Geräte denselben Hofladen
-offline ändern (aktuell gewinnt schlicht die zuletzt erfolgreich
-synchronisierte Version) – das ist Phase 8b und setzt eine kleine
-Erweiterung der Home-Assistant-Integration voraus.
+`PWA-HA-Vorgehensplan.md`, Phase 8a, für die Begründung.
+
+## Versionskonflikte (Phase 8b)
+
+Jeder Hofladen trägt eine `version`, die Home Assistant bei jeder
+Änderung erhöht. Die App sendet beim Speichern die Version mit, auf der
+bearbeitet wurde (auch aus der Offline-Warteschlange). Hat inzwischen ein
+anderes Gerät gespeichert, lehnt Home Assistant die Änderung ab, statt
+sie stillschweigend zu überschreiben.
+
+- Die eigene Fassung geht nicht verloren: sie bleibt als Konflikt
+  gespeichert, die Kopfzeile zeigt **⚠ Konflikt**, in Liste und Detail
+  erscheint ein Hinweis.
+- Die Konfliktansicht (`#/konflikt/<id>`) zeigt die abweichenden Felder
+  nebeneinander. Entscheidung ganz oder gar nicht, kein Feld-Merge:
+  **Meine Version übernehmen** (wird auf dem aktuellen Server-Stand
+  erneut gesendet) oder **Server-Version übernehmen** (eigene Änderungen
+  werden verworfen).
+- Konflikt-Operationen werden nicht automatisch wiederholt und blockieren
+  weitere Änderungen am selben Hofladen, bis entschieden ist.
+
+**Einschränkungen:** Löschen prüft keine Version (ein Löschen gewinnt
+immer). Bilder werden nicht zusammengeführt – bei „Meine Version“ gilt
+die Bilderliste der eigenen Fassung (Last-Writer-Wins). Voraussetzung ist
+eine HA-Integration mit Versionsunterstützung (HofKarte-HA, Phase 8b);
+ältere Stände ignorieren die Version einfach.
 
 ## iOS-/Accessibility-Feinschliff (Phase 8c)
 

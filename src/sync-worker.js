@@ -21,7 +21,9 @@ import {
   ladeWarteschlange,
   entferneAusWarteschlange,
   aktualisiereInWarteschlange,
+  aktualisiereVersionInWarteschlange,
 } from "./storage.js";
+import { VersionskonfliktFehler } from "./ha-client.js";
 
 /** Nach so vielen gescheiterten Versuchen wird eine Operation nicht mehr
  * automatisch wiederholt, sondern als dauerhaft fehlgeschlagen markiert
@@ -46,12 +48,11 @@ async function wendeOperationAn(app, op) {
     const { id: lokaleId, _synchronisierungAusstehend, ...rest } = op.daten;
     const gespeichert = await app.haClient.hofladenSpeichern(rest);
     await app._ersetzeLokaleId(lokaleId, gespeichert.id, gespeichert);
-    return;
+    return gespeichert;
   }
   if (op.art === "aendern") {
     const { _synchronisierungAusstehend, ...rest } = op.daten;
-    await app.haClient.hofladenSpeichern(rest);
-    return;
+    return await app.haClient.hofladenSpeichern(rest);
   }
   if (op.art === "loeschen") {
     await app.haClient.hofladenLoeschen(op.hofladenId);
@@ -80,16 +81,32 @@ export async function verarbeiteWarteschlange(app) {
 
     const operationen = await ladeWarteschlange();
     let verbindungVerloren = false;
+    // Hofläden mit ungelöstem Versionskonflikt: deren Operationen ruhen,
+    // bis der Nutzer den Konflikt in der Konfliktansicht entschieden hat.
+    const blockierteIds = new Set(operationen.filter((o) => o.konflikt).map((o) => o.hofladenId));
 
     for (const op of operationen) {
+      if (op.konflikt || blockierteIds.has(op.hofladenId)) continue;
       if (!app.haClient) {
         verbindungVerloren = true;
         break;
       }
       try {
-        await wendeOperationAn(app, op);
+        const gespeichert = await wendeOperationAn(app, op);
         await entferneAusWarteschlange(op.id);
+        if (gespeichert && typeof gespeichert.version === "number") {
+          await aktualisiereVersionInWarteschlange(gespeichert.id || op.hofladenId, gespeichert.version);
+        }
       } catch (err) {
+        if (err instanceof VersionskonfliktFehler) {
+          await aktualisiereInWarteschlange(op.id, {
+            konflikt: true,
+            serverStand: err.aktuellerHofladen,
+            letzterFehler: err.message,
+          });
+          blockierteIds.add(op.hofladenId);
+          continue;
+        }
         const versuchCount = (op.versuchCount || 0) + 1;
         await aktualisiereInWarteschlange(op.id, {
           versuchCount,

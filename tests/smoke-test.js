@@ -149,6 +149,90 @@ export async function fuehreSmokeTestsAus(page, baseUrl) {
     !syncErgebnisErfolg.hofladenIds.some((id) => id.startsWith("lokal-"))
   );
 
+  // --- Phase 8b: Versionskonflikte ---------------------------------------
+  const konfliktSetup = await page.evaluate(async () => {
+    const app = window.hofkarteApp;
+    const { VersionskonfliktFehler } = await import("/src/ha-client.js");
+    const { verarbeiteWarteschlange } = await import("/src/sync-worker.js");
+    window.__aufrufe = [];
+    window.__serverStand = { id: "42", name: "Server Name", version: 4, bilder: [] };
+    await app._uebernehmeLokal({ id: "42", name: "Alter Name", version: 3, bilder: [] });
+    const liste = async () => ({ hoflaeden: [{ ...window.__serverStand }], zuletztAktualisiert: null, ausCache: false });
+    app.haClient = null;
+    await app.speichereHofladen({ id: "42", name: "Mein Name", version: 3, bilder: [] });
+    app.haClient = {
+      hoflaedenListe: liste,
+      hofladenLoeschen: async () => {},
+      hofladenSpeichern: async (daten) => {
+        window.__aufrufe.push(daten.version);
+        if (daten.version !== window.__serverStand.version) {
+          throw new VersionskonfliktFehler({ ...window.__serverStand });
+        }
+        window.__serverStand = { ...daten, version: daten.version + 1 };
+        return window.__serverStand;
+      },
+    };
+    await verarbeiteWarteschlange(app);
+    const nachErstemLauf = window.__aufrufe.length;
+    await verarbeiteWarteschlange(app);
+    return {
+      aufrufeErsterLauf: nachErstemLauf,
+      aufrufeZweiterLauf: window.__aufrufe.length,
+      konflikte: app.state.konflikte.length,
+      ausstehend: app.state.ausstehendeAnzahl,
+    };
+  });
+  check("Versionskonflikt wird erkannt und als Konflikt markiert", konfliktSetup.konflikte === 1);
+  check("Konflikt zählt nicht als 'ausstehend'", konfliktSetup.ausstehend === 0);
+  check("Konflikt-Operation wird nicht automatisch wiederholt", konfliktSetup.aufrufeZweiterLauf === konfliktSetup.aufrufeErsterLauf);
+
+  await page.evaluate(() => {
+    window.location.hash = "#/konflikt/42";
+    window.dispatchEvent(new Event("hashchange"));
+  });
+  await page.waitForTimeout(200);
+  const konfliktHtml = await page.$eval(".inhalt", (el) => el.innerText);
+  check("Konfliktansicht zeigt beide Versionen", konfliktHtml.includes("Mein Name") && konfliktHtml.includes("Server Name"));
+  check("Kopfzeile verweist auf den Konflikt", (await page.$eval(".kopfzeile", (el) => el.innerText)).includes("Konflikt"));
+  check("Konfliktansicht hat beide Entscheidungs-Buttons", !!(await page.$("#konflikt-meine")) && !!(await page.$("#konflikt-server")));
+
+  await page.click("#konflikt-meine");
+  await page.waitForTimeout(400);
+  const nachMeine = await page.evaluate(() => ({
+    konflikte: window.hofkarteApp.state.konflikte.length,
+    ausstehend: window.hofkarteApp.state.ausstehendeAnzahl,
+    serverName: window.__serverStand.name,
+    serverVersion: window.__serverStand.version,
+    letzteVersion: window.__aufrufe[window.__aufrufe.length - 1],
+  }));
+  check("'Meine Version übernehmen' sendet auf aktueller Server-Version (4)", nachMeine.letzteVersion === 4);
+  check("Meine Version ist auf dem Server, Version erhöht", nachMeine.serverName === "Mein Name" && nachMeine.serverVersion === 5);
+  check("Konflikt danach gelöst, Warteschlange leer", nachMeine.konflikte === 0 && nachMeine.ausstehend === 0);
+
+  // Online-Konflikt (Server hat sich erneut geändert) + "Server-Version übernehmen"
+  const nachServer = await page.evaluate(async () => {
+    const app = window.hofkarteApp;
+    window.__serverStand = { id: "42", name: "Neuer Server Name", version: 9, bilder: [] };
+    let fehlercode = null;
+    try {
+      await app.speichereHofladen({ id: "42", name: "Veraltete Eingabe", version: 5, bilder: [] });
+    } catch (err) {
+      fehlercode = err.code;
+    }
+    const konfliktErkannt = app.state.konflikte.length === 1;
+    await app.loeseKonfliktMitServer("42");
+    return {
+      fehlercode,
+      konfliktErkannt,
+      konflikte: app.state.konflikte.length,
+      name: app.hofladenMitId("42")?.name,
+      version: app.hofladenMitId("42")?.version,
+    };
+  });
+  check("Online-Konflikt wirft Fehler mit code=version_conflict", nachServer.fehlercode === "version_conflict");
+  check("Online-Konflikt legt eigene Fassung als Konflikt ab", nachServer.konfliktErkannt);
+  check("'Server-Version übernehmen' verwirft meine Änderung", nachServer.konflikte === 0 && nachServer.name === "Neuer Server Name" && nachServer.version === 9);
+
   // --- Phase 8c: iOS-/Accessibility-Lücken -------------------------------
   // Zurück auf die Listenansicht: der vorherige Abschnitt endet auf der
   // Detailansicht (#/hofladen/…), die bewusst keinen der drei unteren

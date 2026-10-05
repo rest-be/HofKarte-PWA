@@ -174,6 +174,18 @@ export async function aktualisiereInWarteschlange(id, aenderungen) {
   await set(id, { ...bestehend, ...aenderungen }, WARTESCHLANGE_STORE_NAME);
 }
 
+/** Nach erfolgreichem Sync: alle noch ausstehenden Operationen desselben
+ * Hofladens (ausser Konflikt-Operationen) auf die neue Server-Version
+ * heben, damit Folge-Änderungen keinen Selbst-Konflikt auslösen. */
+export async function aktualisiereVersionInWarteschlange(hofladenId, neueVersion) {
+  const eintraege = await getAlle(WARTESCHLANGE_STORE_NAME);
+  for (const { key, value } of eintraege) {
+    if (value.hofladenId === hofladenId && !value.konflikt && value.art === "aendern" && value.daten) {
+      await set(key, { ...value, daten: { ...value.daten, version: neueVersion } }, WARTESCHLANGE_STORE_NAME);
+    }
+  }
+}
+
 /** Nach erfolgreichem Sync einer "anlegen"-Operation: alle noch
  * ausstehenden Folge-Operationen (z. B. eine offline nachträglich
  * vorgenommene Änderung am selben, neu angelegten Hofladen), die noch

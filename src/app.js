@@ -21,13 +21,15 @@ import {
   fuegeOperationZurWarteschlangeHinzu,
   entferneAusWarteschlange,
   aktualisiereHofladenIdInWarteschlange,
+  aktualisiereInWarteschlange,
 } from "./storage.js";
-import { HaClient, EVENT_AUTH_FEHLER } from "./ha-client.js";
+import { HaClient, EVENT_AUTH_FEHLER, VersionskonfliktFehler } from "./ha-client.js";
 import { verarbeiteWarteschlange } from "./sync-worker.js";
 import { renderSetup } from "./views/setup.js";
 import { renderListe } from "./views/list.js";
 import { renderKarte } from "./views/map.js";
 import { renderDetail } from "./views/detail.js";
+import { renderKonflikt } from "./views/konflikt.js";
 import { renderEditor } from "./views/editor.js";
 import { renderEinstellungen } from "./views/einstellungen.js";
 
@@ -67,6 +69,9 @@ const app = {
     /** Anzahl Operationen in der Warteschlange (Phase 8a) - für die
      * Sync-Status-Anzeige in der Kopfzeile, siehe renderMitRahmen(). */
     ausstehendeAnzahl: 0,
+    /** Operationen mit ungelöstem Versionskonflikt (Phase 8b) - werden
+     * nicht automatisch wiederholt und zählen nicht als "ausstehend". */
+    konflikte: [],
   },
 
   /** Regelmässiger Wiederverbindungsversuch, solange offlineModus aktiv
@@ -90,7 +95,65 @@ const app = {
 
   async _aktualisiereAusstehendeAnzahl() {
     const warteschlange = await ladeWarteschlange();
-    this.state.ausstehendeAnzahl = warteschlange.length;
+    this.state.konflikte = warteschlange.filter((op) => op.konflikt);
+    this.state.ausstehendeAnzahl = warteschlange.length - this.state.konflikte.length;
+  },
+
+  /** Konfliktoperation zu einem Hofladen (Phase 8b) oder null. */
+  konfliktFuer(hofladenId) {
+    return this.state.konflikte.find((op) => op.hofladenId === hofladenId) || null;
+  },
+
+  /** Online erkannter Versionskonflikt: die eigene Fassung wird als
+   * Konflikt-Operation abgelegt (nicht gesendet), damit sie nicht verloren
+   * geht und in der Konfliktansicht entschieden werden kann. */
+  async _registriereKonflikt(daten, fehler) {
+    const bestehend = this.konfliktFuer(daten.id);
+    if (bestehend) {
+      await aktualisiereInWarteschlange(bestehend.id, { daten, serverStand: fehler.aktuellerHofladen });
+    } else {
+      const op = await fuegeOperationZurWarteschlangeHinzu({ art: "aendern", hofladenId: daten.id, daten });
+      await aktualisiereInWarteschlange(op.id, {
+        konflikt: true,
+        serverStand: fehler.aktuellerHofladen,
+        letzterFehler: fehler.message,
+      });
+    }
+    await this._aktualisiereAusstehendeAnzahl();
+  },
+
+  /** Konflikt lösen mit "Meine Version übernehmen": eigene Fassung auf der
+   * aktuellen Server-Version erneut senden. */
+  async loeseKonfliktMitMeiner(hofladenId) {
+    const op = this.konfliktFuer(hofladenId);
+    if (!op) return;
+    const serverVersion = op.serverStand && op.serverStand.version;
+    await aktualisiereInWarteschlange(op.id, {
+      konflikt: false,
+      serverStand: null,
+      versuchCount: 0,
+      letzterFehler: null,
+      daten: { ...op.daten, version: serverVersion },
+    });
+    await this._aktualisiereAusstehendeAnzahl();
+    if (this.haClient) {
+      await verarbeiteWarteschlange(this);
+      await this.aktualisiereListe();
+    }
+  },
+
+  /** Konflikt lösen mit "Server-Version übernehmen": eigene Änderungen
+   * (auch weitere offline gemachte desselben Hofladens) verwerfen. */
+  async loeseKonfliktMitServer(hofladenId) {
+    const op = this.konfliktFuer(hofladenId);
+    if (!op) return;
+    const serverStand = op.serverStand;
+    for (const o of await ladeWarteschlange()) {
+      if (o.hofladenId === hofladenId) await entferneAusWarteschlange(o.id);
+    }
+    if (serverStand) await this._uebernehmeLokal(serverStand);
+    await this._aktualisiereAusstehendeAnzahl();
+    if (this.haClient) await this.aktualisiereListe();
   },
 
   /** Optimistisches lokales Übernehmen einer Änderung (Phase 8a): aktualisiert
@@ -184,9 +247,16 @@ const app = {
    */
   async speichereHofladen(daten) {
     if (this.haClient) {
-      const gespeichert = await this.haClient.hofladenSpeichern(daten);
-      await this.aktualisiereListe();
-      return gespeichert;
+      try {
+        const gespeichert = await this.haClient.hofladenSpeichern(daten);
+        await this.aktualisiereListe();
+        return gespeichert;
+      } catch (err) {
+        if (err instanceof VersionskonfliktFehler && daten.id) {
+          await this._registriereKonflikt(daten, err);
+        }
+        throw err;
+      }
     }
 
     const istNeu = !daten.id;
@@ -291,6 +361,10 @@ function route() {
     renderMitRahmen(() => renderEditor(appContainer.querySelector(".inhalt"), app, teile[1]));
     return;
   }
+  if (teile[0] === "konflikt" && teile[1]) {
+    renderMitRahmen(() => renderKonflikt(appContainer.querySelector(".inhalt"), app, teile[1]));
+    return;
+  }
   if (teile[0] === "neu") {
     renderMitRahmen(() => renderEditor(appContainer.querySelector(".inhalt"), app, null));
     return;
@@ -317,6 +391,10 @@ function route() {
  * PWA-HA-Vorgehensplan.md Abschnitt 10.3, Punkt 4). */
 function syncStatusHtml() {
   const anzahl = app.state.ausstehendeAnzahl || 0;
+  const konflikte = app.state.konflikte || [];
+  if (konflikte.length) {
+    return `<a class="sync-status konflikt" href="#/konflikt/${encodeURIComponent(konflikte[0].hofladenId)}">⚠ ${konflikte.length === 1 ? "1 Konflikt" : `${konflikte.length} Konflikte`}</a>`;
+  }
   if (!app.haClient) {
     return `<span class="sync-status offline">⌁ Offline${anzahl ? ` (${anzahl} ausstehend)` : ""}</span>`;
   }

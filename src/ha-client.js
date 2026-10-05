@@ -33,6 +33,27 @@ import { ladeCache, speichereCache } from "./storage.js";
 
 const CACHE_KEY_LISTE = "hoflaeden-liste";
 
+/**
+ * Wird von `HaClient.hofladenSpeichern()` geworfen, wenn Home Assistant
+ * eine Änderung wegen eines Versionskonflikts abgelehnt hat (Phase 8b):
+ * ein anderes Gerät hat denselben Hofladen zwischenzeitlich bereits
+ * geändert. Trägt den aktuellen Serverstand, damit die PWA eine
+ * Konflikt-Ansicht (lokaler vs. Server-Stand) zeigen kann, statt eine der
+ * beiden Änderungen stillschweigend zu verlieren.
+ *
+ * `code` ist bewusst derselbe Mechanismus wie bei den übrigen
+ * HA-Fehlern ("connection_lost", "invalid_auth"), damit Aufrufer
+ * einheitlich über `err.code` unterscheiden können.
+ */
+export class VersionskonfliktFehler extends Error {
+  constructor(aktuellerHofladen) {
+    super("Der Hofladen wurde zwischenzeitlich von einem anderen Gerät geändert (Versionskonflikt).");
+    this.name = "VersionskonfliktFehler";
+    this.code = "version_conflict";
+    this.aktuellerHofladen = aktuellerHofladen;
+  }
+}
+
 /** Bild-ID aus einer von bildHochladen() erzeugten Serve-URL extrahieren
  * (für bildLoeschen()). Liefert `null` für extern verlinkte Bilder (die
  * haben kein zugehöriges, in HA zu löschendes Bild-Objekt). */
@@ -141,11 +162,23 @@ export class HaClient {
     }
   }
 
+  /**
+   * Hofladen anlegen/ändern. Enthält `hofladen` eine `version` (die
+   * zuletzt von Home Assistant gelieferte), prüft HA auf einen
+   * Versionskonflikt und antwortet in diesem Fall nicht mit einem
+   * WebSocket-Fehler, sondern mit `{ konflikt: true, aktueller_hofladen }`
+   * (siehe `ws_save` in HofKarte-HA, `management.py`). Das wird hier in
+   * einen `VersionskonfliktFehler` übersetzt. Bei Erfolg enthält die
+   * Antwort den gespeicherten Hofladen inkl. der neu vergebenen `version`.
+   */
   async hofladenSpeichern(hofladen) {
     const antwort = await this._connection.sendMessagePromise({
       type: "hofkarte/management/save",
       hofladen,
     });
+    if (antwort.konflikt) {
+      throw new VersionskonfliktFehler(antwort.aktueller_hofladen);
+    }
     return antwort.hofladen;
   }
 
