@@ -270,13 +270,20 @@ export async function fuehreSmokeTestsAus(page, baseUrl) {
   });
   await page.waitForTimeout(250);
   await page.evaluate(async () => {
-    await window.hofkarteApp._uebernehmeLokal({ id: "geo1", name: "Hof mit Koordinaten", latitude: 46.9481, longitude: 7.4474, bilder: [] });
+    await window.hofkarteApp._uebernehmeLokal({ id: "geo1", name: "Hof mit Koordinaten", latitude: 46.9481, longitude: 7.4474, bilder: [], oeffnungszeiten: [1, 2, 3, 4, 5, 6, 7].map((wochentag) => ({ wochentag, beginn: "08:00", ende: "18:00" })) });
     window.location.hash = "#/hofladen/geo1";
     window.dispatchEvent(new Event("hashchange"));
   });
   await page.waitForTimeout(250);
   const kartenLink = await page.$eval(".detail-abschnitt a[href*='maps']", (el) => el.getAttribute("href")).catch(() => null);
   check("Detailansicht: Karten-Link öffnet Google Maps", kartenLink === "https://www.google.com/maps/search/?api=1&query=46.9481,7.4474");
+  check("Öffnungszeiten sind standardmässig eingeklappt", (await page.$eval("#oeffnungszeiten-abschnitt", (el) => el.open)) === false);
+  check("Eingeklappte Öffnungszeiten sind höchstens 60px hoch", (await page.$eval("#oeffnungszeiten-abschnitt", (el) => el.getBoundingClientRect().height)) <= 60);
+  check("Eingeklappte Öffnungszeiten zeigen die heutigen Zeiten", (await page.$eval("#oeffnungszeiten-abschnitt summary", (el) => el.textContent)).includes("Heute 08:00–18:00"));
+  await page.click("#oeffnungszeiten-abschnitt > summary");
+  await page.waitForTimeout(150);
+  check("Öffnungszeiten lassen sich aufklappen und zeigen alle Tage", (await page.$$eval("#oeffnungszeiten-abschnitt .kontakt-zeile", (els) => els.length)) === 7 && (await page.$eval("#oeffnungszeiten-abschnitt", (el) => el.open)));
+  await page.click("#oeffnungszeiten-abschnitt > summary");
   check("Detailansicht hat Zurück-Button in der Navigationsleiste", !!(await page.$("#zurueck-btn")));
   check("Zurück-Button Höhe >= 44px", (await page.$eval("#zurueck-btn", (el) => el.getBoundingClientRect().height)) >= 44);
   await page.click("#zurueck-btn");

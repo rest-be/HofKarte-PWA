@@ -39,6 +39,25 @@ function oeffnungszeitenHtml(h) {
   return regel + sonder;
 }
 
+/** Kurzinfo für die eingeklappte Öffnungszeiten-Zeile: heutige Zeiten. */
+function heuteKurzinfo(h) {
+  const jetzt = new Date();
+  const iso = `${jetzt.getFullYear()}-${String(jetzt.getMonth() + 1).padStart(2, "0")}-${String(jetzt.getDate()).padStart(2, "0")}`;
+  const sonder = (h.sonderoeffnungszeiten || []).find((x) => x.datum_von <= iso && iso <= x.datum_bis);
+  if (sonder) {
+    return sonder.geschlossen ? "Heute geschlossen" : `Heute ${formatZeit(sonder.beginn)}–${formatZeit(sonder.ende)}`;
+  }
+  const wochentag = ((jetzt.getDay() + 6) % 7) + 1; // 1 = Montag
+  const zeiten = (h.oeffnungszeiten || [])
+    .filter((oz) => Number(oz.wochentag) === wochentag)
+    .map((oz) => `${formatZeit(oz.beginn)}–${formatZeit(oz.ende)}`);
+  if (zeiten.length) return `Heute ${zeiten.join(", ")}`;
+  return (h.oeffnungszeiten || []).length ? "Heute geschlossen" : "";
+}
+
+/** Merkt sich, ob der Abschnitt "Öffnungszeiten" aufgeklappt ist (bis zum Neuladen). */
+let oeffnungszeitenOffen = false;
+
 function bewertungSternenHtml(wert) {
   const n = Math.max(0, Math.min(5, Number(wert) || 0));
   let html = "";
@@ -133,10 +152,13 @@ export function renderDetail(container, app, hofladenId) {
         : ""
     }
 
-    <div class="detail-abschnitt">
-      <h3>Öffnungszeiten</h3>
+    <details class="detail-abschnitt einklappbar" id="oeffnungszeiten-abschnitt"${oeffnungszeitenOffen ? " open" : ""}>
+      <summary>
+        <span class="titel">Öffnungszeiten</span>
+        <span class="kurzinfo">${escapeHtml(heuteKurzinfo(h))}</span>
+      </summary>
       ${oeffnungszeitenHtml(h)}
-    </div>
+    </details>
 
     ${
       h.angebote?.length
@@ -181,6 +203,9 @@ export function renderDetail(container, app, hofladenId) {
     </div>
   `;
 
+  container.querySelector("#oeffnungszeiten-abschnitt").addEventListener("toggle", (e) => {
+    oeffnungszeitenOffen = e.target.open;
+  });
   container.querySelector("#bearbeiten-btn").addEventListener("click", () => {
     app.navigate(`#/hofladen/${h.id}/bearbeiten`);
   });

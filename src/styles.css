@@ -1136,3 +1136,57 @@ details.naehe-karte > #naehe-ergebnis {
   padding-left: 18px;
   font-size: 15px;
 }
+
+/* Einklappbarer Detail-Abschnitt (Öffnungszeiten): eine Zeile hoch, wenn zu. */
+details.detail-abschnitt.einklappbar {
+  margin-top: 16px;
+  margin-bottom: 14px;
+  padding: 0 16px;
+}
+
+details.detail-abschnitt.einklappbar > summary {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-height: 44px;
+  list-style: none;
+  cursor: pointer;
+}
+
+details.detail-abschnitt.einklappbar > summary::-webkit-details-marker {
+  display: none;
+}
+
+details.detail-abschnitt.einklappbar > summary .titel {
+  font-weight: 600;
+}
+
+details.detail-abschnitt.einklappbar > summary .kurzinfo {
+  flex: 1;
+  text-align: right;
+  color: var(--muted-color);
+  font-size: 15px;
+}
+
+details.detail-abschnitt.einklappbar > summary::after {
+  content: "";
+  width: 8px;
+  height: 8px;
+  border-top: 2px solid var(--fill-stark);
+  border-right: 2px solid var(--fill-stark);
+  transform: rotate(45deg);
+  transition: transform 0.2s;
+  margin-right: 4px;
+}
+
+details.detail-abschnitt.einklappbar[open] > summary::after {
+  transform: rotate(135deg);
+}
+
+details.detail-abschnitt.einklappbar[open] {
+  padding-bottom: 4px;
+}
+
+details.detail-abschnitt.einklappbar .kontakt-zeile:first-of-type {
+  border-top: 0.5px solid var(--separator);
+}
