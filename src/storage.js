@@ -118,6 +118,18 @@ export async function loescheVerbindung() {
   await remove(VERBINDUNG_KEY);
 }
 
+/** Umkreis (Meter) für "Hofläden in der Nähe" - pro Gerät, `null` = Standard. */
+const NAEHE_RADIUS_KEY = "naehe-radius";
+
+export async function ladeNaeheRadius() {
+  const wert = await get(NAEHE_RADIUS_KEY);
+  return typeof wert === "number" && Number.isFinite(wert) ? wert : null;
+}
+
+export async function speichereNaeheRadius(meter) {
+  await set(NAEHE_RADIUS_KEY, meter);
+}
+
 /**
  * Lesecache für Stale-while-revalidate (siehe src/ha-client.js): liefert
  * `{daten, zeitpunkt}` oder `null`, wenn noch nichts gecacht wurde.

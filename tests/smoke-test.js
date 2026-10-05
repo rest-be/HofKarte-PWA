@@ -345,15 +345,55 @@ export async function fuehreSmokeTestsAus(page, baseUrl) {
   await page.waitForTimeout(300);
   check(
     "HA-Adresse-Label ist mit Input verknüpft (for=f-ha-adresse)",
-    (await page.$eval("section.formular-abschnitt label", (el) => el.getAttribute("for"))) === "f-ha-adresse"
+    (await page.$eval("label[for='f-ha-adresse']", (el) => el.getAttribute("for"))) === "f-ha-adresse"
   );
   check("Zugehöriges Input-Feld existiert", !!(await page.$("#f-ha-adresse")));
 
   const einstellungenReihenfolge = await page.$$eval(".formular-abschnitt > h2", (els) => els.map((e) => e.textContent.trim()));
   check(
-    `Einstellungen-Reihenfolge: Verbindung, Token ändern, Abmelden, Version (${einstellungenReihenfolge.join(", ")})`,
-    JSON.stringify(einstellungenReihenfolge) === JSON.stringify(["Verbindung", "Token ändern", "Abmelden", "Version"])
+    `Einstellungen-Reihenfolge: Nähe, Verbindung, Token ändern, Abmelden, Version (${einstellungenReihenfolge.join(", ")})`,
+    JSON.stringify(einstellungenReihenfolge) === JSON.stringify(["Hofläden in der Nähe", "Verbindung", "Token ändern", "Abmelden", "Version"])
   );
+  check("Nähe-Umkreis: Standard 500 m", (await page.$eval("#f-naehe-radius", (el) => el.value)) === "500");
+  await page.fill("#f-naehe-radius", "750");
+  await page.dispatchEvent("#f-naehe-radius", "change");
+  await page.waitForTimeout(200);
+  check("Nähe-Umkreis wird gespeichert", (await page.evaluate(async () => (await import("/src/storage.js")).ladeNaeheRadius())) === 750);
+  await page.fill("#f-naehe-radius", "5");
+  await page.dispatchEvent("#f-naehe-radius", "change");
+  await page.waitForTimeout(100);
+  check("Nähe-Umkreis: ungültiger Wert wird abgelehnt (bleibt 750)", (await page.evaluate(async () => (await import("/src/storage.js")).ladeNaeheRadius())) === 750);
+  await page.evaluate(() => {
+    window.location.hash = "#/";
+    window.dispatchEvent(new Event("hashchange"));
+    window.location.hash = "#/einstellungen";
+    window.dispatchEvent(new Event("hashchange"));
+  });
+  await page.waitForTimeout(300);
+  check("Gespeicherter Nähe-Umkreis erscheint nach Neuaufruf der Einstellungen", (await page.$eval("#f-naehe-radius", (el) => el.value)) === "750");
+  // Radius an die Suche weitergereicht?
+  const gesendeterRadius = await page.evaluate(async () => {
+    const app = window.hofkarteApp;
+    let radius = null;
+    const alterClient = app.haClient;
+    app.haClient = { hoflaedenInNaehe: async (a) => { radius = a.radiusMeter; return { hoflaeden: [] }; } };
+    Object.defineProperty(navigator, "geolocation", { configurable: true, value: { getCurrentPosition: (ok) => ok({ coords: { latitude: 46.9, longitude: 7.4 } }) } });
+    window.location.hash = "#/";
+    window.dispatchEvent(new Event("hashchange"));
+    await new Promise((r) => setTimeout(r, 200));
+    document.querySelector("details.naehe-karte > summary").click();
+    document.querySelector("#naehe-suchen-btn").click();
+    await new Promise((r) => setTimeout(r, 400));
+    app.haClient = alterClient;
+    return radius;
+  });
+  check(`Suche nutzt den eingestellten Umkreis (${gesendeterRadius})`, gesendeterRadius === 750);
+  await page.evaluate(() => {
+    window.location.hash = "#/einstellungen";
+    window.dispatchEvent(new Event("hashchange"));
+  });
+  await page.waitForTimeout(300);
+
   // --- Phase 8e: Versionsanzeige -----------------------------------------
   const angezeigteVersion = await page.$eval("#app-version", (el) => el.textContent.trim());
   const erwarteteVersion = await page.evaluate(async () => {

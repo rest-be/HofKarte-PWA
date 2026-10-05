@@ -17,7 +17,10 @@
  * weitergereicht.
  */
 
-const STANDARD_RADIUS_METER = 1000;
+/** Standard-Umkreis (Meter); pro Gerät in den Einstellungen änderbar. */
+const STANDARD_RADIUS_METER = 500;
+const MIN_RADIUS_METER = 50;
+const MAX_RADIUS_METER = 50000;
 
 /**
  * Aktuellen Standort einmalig abfragen. Wirft bei fehlender Berechtigung
@@ -72,4 +75,4 @@ export async function hoflaedenInNaeheDesGeraets(
   return { latitude, longitude, treffer: ergebnis.hoflaeden };
 }
 
-export { STANDARD_RADIUS_METER };
+export { STANDARD_RADIUS_METER, MIN_RADIUS_METER, MAX_RADIUS_METER };

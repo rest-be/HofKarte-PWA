@@ -1190,3 +1190,7 @@ details.detail-abschnitt.einklappbar[open] {
 details.detail-abschnitt.einklappbar .kontakt-zeile:first-of-type {
   border-top: 0.5px solid var(--separator);
 }
+
+p.muted.fehlertext {
+  color: var(--danger-color);
+}

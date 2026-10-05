@@ -18,7 +18,7 @@
  * Beim Erhöhen bitte auch im README (Abschnitt "Version") und im
  * Vorgehensplan nachziehen.
  */
-export const APP_VERSION = "1.8.2";
+export const APP_VERSION = "1.9.0";
 
 /**
  * Release Notes (neueste zuerst), angezeigt auf dem Einrichtungsbildschirm
@@ -26,6 +26,14 @@ export const APP_VERSION = "1.8.2";
  * ergänzen (und die Tabelle im README nachziehen).
  */
 export const RELEASE_NOTES = [
+  {
+    version: "1.9.0",
+    datum: "2026-10-05",
+    punkte: [
+      "Einstellungen: Umkreis für „Hofläden in der Nähe“ einstellbar (neue Gruppe ganz oben).",
+      "Standard-Umkreis neu 500 Meter (bisher 1000).",
+    ],
+  },
   {
     version: "1.8.2",
     datum: "2026-10-05",

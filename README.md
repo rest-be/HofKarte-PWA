@@ -1,6 +1,6 @@
 # HofKarte-PWA
 
-**Version: 1.8.2** – siehe Abschnitt [Version](#version) unten für die
+**Version: 1.9.0** – siehe Abschnitt [Version](#version) unten für die
 installierte Version auf einem konkreten Gerät.
 
 Progressive Web App für HofKarte – ein reiner, zustandsloser Client für die
@@ -90,6 +90,7 @@ READMEs.
 
 | Version | Datum | Wesentliche Änderungen |
 |---|---|---|
+| 1.9.0 | 2026-10-05 | Umkreis für „Hofläden in der Nähe“ in den Einstellungen einstellbar (Standard 500 m). |
 | 1.8.2 | 2026-10-05 | Detailansicht: Öffnungszeiten einklappbar (eingeklappt mit heutigen Zeiten). |
 | 1.8.1 | 2026-10-05 | Detailansicht: „Auf der Karte öffnen“ öffnet Google Maps. |
 | 1.8.0 | 2026-10-05 | Einstellungen neu geordnet (Verbindung, Token, Abmelden, Version), „In der Nähe“ einklappbar, Version + Release Notes auf dem Einrichtungsbildschirm. |

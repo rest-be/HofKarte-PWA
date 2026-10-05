@@ -6,6 +6,7 @@
  */
 
 import { hoflaedenInNaeheDesGeraets, STANDARD_RADIUS_METER } from "../naehe.js";
+import { ladeNaeheRadius } from "../storage.js";
 
 const SORT_SPALTEN = [
   { wert: "name", label: "Name" },
@@ -167,14 +168,15 @@ export function renderListe(container, app) {
 
   async function sucheNaehe(ergebnisBox) {
     ergebnisBox.innerHTML = `<p class="ort">Standort wird ermittelt …</p>`;
+    const radiusMeter = (await ladeNaeheRadius().catch(() => null)) ?? STANDARD_RADIUS_METER;
     try {
       app._pruefeVerbindung();
       const { treffer } = await hoflaedenInNaeheDesGeraets(app.haClient, {
-        radiusMeter: STANDARD_RADIUS_METER,
+        radiusMeter,
         nurGeoeffnet: true,
       });
       if (!treffer.length) {
-        ergebnisBox.innerHTML = `<p class="ort">Kein geöffneter Hofladen im Umkreis von ${STANDARD_RADIUS_METER} m.</p>
+        ergebnisBox.innerHTML = `<p class="ort">Kein geöffneter Hofladen im Umkreis von ${radiusMeter} m (Umkreis in den Einstellungen änderbar).</p>
           <button class="aktualisieren" id="naehe-suchen-btn">Erneut prüfen</button>`;
       } else {
         ergebnisBox.innerHTML =

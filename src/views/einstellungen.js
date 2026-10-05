@@ -12,9 +12,20 @@
  */
 
 import { APP_VERSION } from "../version.js";
+import { ladeNaeheRadius, speichereNaeheRadius } from "../storage.js";
+import { STANDARD_RADIUS_METER, MIN_RADIUS_METER, MAX_RADIUS_METER } from "../naehe.js";
 
 export function renderEinstellungen(container, app) {
   container.innerHTML = `
+    <section class="formular-abschnitt">
+      <h2>Hofläden in der Nähe</h2>
+      <div class="feld-gruppe">
+        <label for="f-naehe-radius">Umkreis in Metern (Standard ${STANDARD_RADIUS_METER})</label>
+        <input type="number" id="f-naehe-radius" inputmode="numeric" min="${MIN_RADIUS_METER}" max="${MAX_RADIUS_METER}" step="50" value="${STANDARD_RADIUS_METER}" />
+      </div>
+      <p class="muted" id="naehe-radius-status">Gilt für „Hofläden in der Nähe“ in der Liste, nur auf diesem Gerät.</p>
+    </section>
+
     <section class="formular-abschnitt">
       <h2>Verbindung</h2>
       <div class="feld-gruppe">
@@ -61,6 +72,31 @@ export function renderEinstellungen(container, app) {
       </div>
     </section>
   `;
+
+  const radiusFeld = container.querySelector("#f-naehe-radius");
+  const radiusStatus = container.querySelector("#naehe-radius-status");
+  ladeNaeheRadius()
+    .then((gespeichert) => {
+      if (gespeichert != null) radiusFeld.value = gespeichert;
+    })
+    .catch(() => {});
+  radiusFeld.addEventListener("change", async () => {
+    const wert = Math.round(Number(radiusFeld.value));
+    if (!Number.isFinite(wert) || wert < MIN_RADIUS_METER || wert > MAX_RADIUS_METER) {
+      radiusStatus.textContent = `Bitte einen Wert zwischen ${MIN_RADIUS_METER} und ${MAX_RADIUS_METER} Metern eingeben.`;
+      radiusStatus.classList.add("fehlertext");
+      return;
+    }
+    radiusFeld.value = wert;
+    radiusStatus.classList.remove("fehlertext");
+    try {
+      await speichereNaeheRadius(wert);
+      radiusStatus.textContent = `Gespeichert: ${wert} m.`;
+    } catch {
+      radiusStatus.textContent = "Konnte den Wert nicht speichern.";
+      radiusStatus.classList.add("fehlertext");
+    }
+  });
 
   const form = container.querySelector("#token-form");
   const fehlerBox = container.querySelector("#token-fehler");
