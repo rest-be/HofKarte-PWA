@@ -156,6 +156,17 @@ export async function speichereNaeheRadius(meter) {
   await set(NAEHE_RADIUS_KEY, meter);
 }
 
+/** Kartenfilter "Geschlossene ausblenden" - pro Gerät, Standard: aus. */
+const KARTE_NUR_OFFEN_KEY = "karte-geschlossene-ausblenden";
+
+export async function ladeKarteGeschlosseneAusblenden() {
+  return (await get(KARTE_NUR_OFFEN_KEY)) === true;
+}
+
+export async function speichereKarteGeschlosseneAusblenden(wert) {
+  await set(KARTE_NUR_OFFEN_KEY, wert === true);
+}
+
 /**
  * Lesecache für Stale-while-revalidate (siehe src/ha-client.js): liefert
  * `{daten, zeitpunkt}` oder `null`, wenn noch nichts gecacht wurde.

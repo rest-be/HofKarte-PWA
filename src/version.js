@@ -18,7 +18,7 @@
  * Beim Erhöhen bitte auch im README (Abschnitt "Version") und im
  * Vorgehensplan nachziehen.
  */
-export const APP_VERSION = "1.10.0";
+export const APP_VERSION = "1.11.0";
 
 /**
  * Release Notes (neueste zuerst), angezeigt auf dem Einrichtungsbildschirm
@@ -26,6 +26,14 @@ export const APP_VERSION = "1.10.0";
  * ergänzen (und die Tabelle im README nachziehen).
  */
 export const RELEASE_NOTES = [
+  {
+    version: "1.11.0",
+    datum: "2026-10-06",
+    punkte: [
+      "Foto-Upload (Kamera/Fotobibliothek) läuft über die bestehende Home-Assistant-Verbindung und braucht kein CORS mehr (benötigt aktualisierte HofKarte-HA-Integration; sonst Fallback wie bisher).",
+      "Karte: Schalter „Geschlossene ausblenden“ (wird pro Gerät gemerkt).",
+    ],
+  },
   {
     version: "1.10.0",
     datum: "2026-10-05",

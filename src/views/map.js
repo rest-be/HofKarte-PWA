@@ -9,6 +9,7 @@
  */
 
 import { escapeHtml } from "../html.js";
+import { ladeKarteGeschlosseneAusblenden, speichereKarteGeschlosseneAusblenden } from "../storage.js";
 
 let leafletLadenPromise = null;
 
@@ -62,7 +63,17 @@ function popupInhalt(name) {
 }
 
 export async function renderKarte(container, app) {
-  container.innerHTML = `<div id="leaflet-karte"></div>`;
+  container.innerHTML = `
+    <div class="karte-huelle">
+      <div id="leaflet-karte"></div>
+      <label class="karten-filter">
+        <input type="checkbox" id="filter-geschlossen" />
+        <span>Geschlossene ausblenden</span>
+      </label>
+    </div>`;
+  const ausblenden = await ladeKarteGeschlosseneAusblenden().catch(() => false);
+  const filterBox = container.querySelector("#filter-geschlossen");
+  if (filterBox) filterBox.checked = ausblenden;
 
   let L;
   try {
@@ -100,15 +111,28 @@ export async function renderKarte(container, app) {
     maxZoom: 19,
   }).addTo(karte);
 
-  const marker = hoflaeden.map((h) =>
-    L.marker([h.latitude, h.longitude], { icon: erzeugeMarkerIcon(L, h.geoeffnet) })
-      .addTo(karte)
-      .bindPopup(popupInhalt(h.name))
-      .on("click", () => app.navigate(`#/hofladen/${encodeURIComponent(h.id)}`))
-  );
+  const markerEbene = L.layerGroup().addTo(karte);
 
-  if (marker.length > 1) {
-    const gruppe = L.featureGroup(marker);
-    karte.fitBounds(gruppe.getBounds().pad(0.2));
+  /** Zeichnet die Marker neu; geschlossene (geoeffnet === false) optional ausgeblendet.
+   * Hofläden ohne bekannten Status bleiben sichtbar. */
+  function zeichneMarker({ anpassen }) {
+    markerEbene.clearLayers();
+    const nurOffene = !!filterBox?.checked;
+    const sichtbar = hoflaeden.filter((h) => !(nurOffene && h.geoeffnet === false));
+    const marker = sichtbar.map((h) =>
+      L.marker([h.latitude, h.longitude], { icon: erzeugeMarkerIcon(L, h.geoeffnet) })
+        .bindPopup(popupInhalt(h.name))
+        .on("click", () => app.navigate(`#/hofladen/${encodeURIComponent(h.id)}`))
+        .addTo(markerEbene)
+    );
+    if (anpassen && marker.length > 1) {
+      karte.fitBounds(L.featureGroup(marker).getBounds().pad(0.2));
+    }
   }
+
+  zeichneMarker({ anpassen: true });
+  filterBox?.addEventListener("change", () => {
+    speichereKarteGeschlosseneAusblenden(filterBox.checked).catch(() => {});
+    zeichneMarker({ anpassen: false });
+  });
 }

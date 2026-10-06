@@ -50,6 +50,20 @@ export function pruefeHaAdresse(eingabe) {
   return url.origin;
 }
 
+/** Obergrenze für den WebSocket-Upload (HA begrenzt Nachrichten auf 4 MiB; Base64 ≈ +33 %). */
+const WS_UPLOAD_MAX_BYTES = 2_500_000;
+
+/** Datei als Base64-Text (ohne `data:`-Präfix). */
+async function dateiAlsBase64(file) {
+  const bytes = new Uint8Array(await file.arrayBuffer());
+  let text = "";
+  const block = 0x8000;
+  for (let i = 0; i < bytes.length; i += block) {
+    text += String.fromCharCode(...bytes.subarray(i, i + block));
+  }
+  return btoa(text);
+}
+
 const CACHE_KEY_LISTE = "hoflaeden-liste";
 
 /**
@@ -257,6 +271,37 @@ export class HaClient {
    * des Hofladens, siehe editor.js).
    */
   async bildHochladen(file) {
+    // 1) Bevorzugt über die bestehende WebSocket-Verbindung (HofKarte-HA
+    //    ab dem Befehl `hofkarte/management/upload_image`): braucht kein
+    //    CORS. 2) Fallback: REST `POST /api/image/upload` (braucht
+    //    `cors_allowed_origins`) - für grosse Dateien oder ältere HA-Version.
+    if (file.size <= WS_UPLOAD_MAX_BYTES) {
+      try {
+        return await this._bildPerWebSocketHochladen(file);
+      } catch (err) {
+        const fallbackCodes = ["unknown_command", "too_large"];
+        if (!fallbackCodes.includes(err?.code)) {
+          throw new Error(
+            err?.message ? `Upload fehlgeschlagen: ${err.message}` : "Upload fehlgeschlagen."
+          );
+        }
+      }
+    }
+    return this._bildPerRestHochladen(file);
+  }
+
+  async _bildPerWebSocketHochladen(file) {
+    const daten = await dateiAlsBase64(file);
+    const ergebnis = await this._connection.sendMessagePromise({
+      type: "hofkarte/management/upload_image",
+      filename: file.name || "foto.jpg",
+      content_type: file.type,
+      data: daten,
+    });
+    return { url: `${this._haUrl}/api/image/serve/${ergebnis.id}/original`, hochgeladen: true };
+  }
+
+  async _bildPerRestHochladen(file) {
     const formData = new FormData();
     formData.append("file", file);
 
@@ -271,7 +316,8 @@ export class HaClient {
       throw new Error(
         "Upload fehlgeschlagen - Home Assistant nicht erreichbar (VPN/Heimnetz prüfen) " +
           "oder die HA-Instanz lässt Anfragen von dieser Adresse nicht zu " +
-          "(cors_allowed_origins in configuration.yaml prüfen)."
+          "(cors_allowed_origins in configuration.yaml prüfen; alternativ HofKarte-HA aktualisieren, " +
+          "dann läuft der Upload ohne CORS)."
       );
     }
 

@@ -1,6 +1,6 @@
 # HofKarte-PWA
 
-**Version: 1.10.0** – siehe Abschnitt [Version](#version) unten für die
+**Version: 1.11.0** – siehe Abschnitt [Version](#version) unten für die
 installierte Version auf einem konkreten Gerät.
 
 Progressive Web App für HofKarte – ein reiner, zustandsloser Client für die
@@ -93,6 +93,7 @@ READMEs.
 
 | Version | Datum | Wesentliche Änderungen |
 |---|---|---|
+| 1.11.0 | 2026-10-06 | Foto-Upload über WebSocket (ohne CORS), Karte: Geschlossene ausblenden. |
 | 1.10.0 | 2026-10-05 | Phase 10: Sicherheit (Escaping, CSP, https-Pflicht), lokale Bibliotheken statt CDN, stabiles Suchfeld, Bild-Verkleinerung. |
 | 1.9.0 | 2026-10-05 | Umkreis für „Hofläden in der Nähe“ in den Einstellungen einstellbar (Standard 500 m). |
 | 1.8.2 | 2026-10-05 | Detailansicht: Öffnungszeiten einklappbar (eingeklappt mit heutigen Zeiten). |
@@ -162,10 +163,11 @@ Siehe Projekt-Dokument `PWA-HA-Vorgehensplan.md`:
   Gerät.
 - HA extern/intern per HTTPS erreichbar (z. B. via DuckDNS-Add-on).
 - **`cors_allowed_origins`** in `configuration.yaml`, damit der Browser
-  Anfragen von `https://rest-be.github.io` akzeptiert – sowohl für die
-  WebSocket-Verbindung selbst als auch für den Foto-Upload (`POST
-  /api/image/upload`, siehe unten). Ohne diese Einstellung schlagen
-  Verbindungsaufbau bzw. Upload mit einem CORS-Fehler fehl.
+  Anfragen von `https://rest-be.github.io` akzeptiert. Nur noch nötig für
+  den REST-Fallback des Foto-Uploads (`POST /api/image/upload`, siehe
+  unten): Mit der aktuellen HofKarte-HA-Integration läuft der Upload über
+  die WebSocket-Verbindung (Befehl `hofkarte/management/upload_image`) und
+  braucht **kein** CORS. Die WebSocket-Verbindung selbst unterliegt CORS nie.
 
 ## Fotos hinzufügen
 
@@ -177,7 +179,7 @@ Bild-Adresse einzutragen:
 - **🖼️ Aus Fotos wählen** – öffnet die Fotobibliothek des Geräts.
 
 Beides läuft über Home Assistants eigene `image_upload`-Komponente
-(`POST /api/image/upload`, Ausliefern unter
+(bevorzugt per WebSocket-Befehl `hofkarte/management/upload_image`, Fallback `POST /api/image/upload`; Ausliefern unter
 `/api/image/serve/<id>/original`) – dieselbe, die auch die native
 HA-Verwaltungsoberfläche nutzt. Es gibt dafür keinen eigenen
 HofKarte-PWA-Speicher; die Bilder liegen wie gewohnt in Home Assistant.

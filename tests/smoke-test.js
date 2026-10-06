@@ -515,6 +515,55 @@ export async function fuehreSmokeTestsAus(page, baseUrl) {
     return !/jsdelivr|unpkg|cdnjs/.test(html) && /Content-Security-Policy/.test(html) && !/<script>/.test(html);
   }));
 
+  // Kartenfilter: geschlossene Hofläden ausblendbar.
+  const karte = await page.evaluate(async () => {
+    const app = window.hofkarteApp;
+    app.state.hoflaeden = [
+      { id: "k1", name: "Offen", latitude: 46.9, longitude: 7.4, geoeffnet: true, bilder: [] },
+      { id: "k2", name: "Zu", latitude: 46.91, longitude: 7.41, geoeffnet: false, bilder: [] },
+      { id: "k3", name: "Unbekannt", latitude: 46.92, longitude: 7.42, geoeffnet: null, bilder: [] },
+    ];
+    window.location.hash = "#/";
+    window.dispatchEvent(new Event("hashchange"));
+    await new Promise((r) => setTimeout(r, 200));
+    window.location.hash = "#/karte";
+    window.dispatchEvent(new Event("hashchange"));
+    await new Promise((r) => setTimeout(r, 700));
+    const anzahl = () => document.querySelectorAll(".leaflet-marker-icon").length;
+    const alle = anzahl();
+    const box = document.querySelector("#filter-geschlossen");
+    box.click();
+    await new Promise((r) => setTimeout(r, 200));
+    const gefiltert = anzahl();
+    box.click();
+    await new Promise((r) => setTimeout(r, 200));
+    return { alle, gefiltert, wieder: anzahl() };
+  });
+  check(`Karte: Filter blendet Geschlossene aus (${karte.alle} → ${karte.gefiltert} → ${karte.wieder})`, karte.alle === 3 && karte.gefiltert === 2 && karte.wieder === 3);
+
+  // Foto-Upload bevorzugt WebSocket (kein CORS), REST nur als Fallback.
+  const upload = await page.evaluate(async () => {
+    const { HaClient } = await import("/src/ha-client.js");
+    const client = new HaClient("https://ha.example.com:8123", "t");
+    const nachrichten = [];
+    client._connection = {
+      sendMessagePromise: async (m) => {
+        nachrichten.push(m);
+        return { id: "abcd1234" };
+      },
+    };
+    const datei = new File([new Uint8Array([1, 2, 3, 250])], "a.jpg", { type: "image/jpeg" });
+    const ok = await client.bildHochladen(datei);
+    client._connection = { sendMessagePromise: async () => { throw { code: "unknown_command", message: "x" }; } };
+    let restVersucht = false;
+    client._bildPerRestHochladen = async () => { restVersucht = true; return { url: "rest", hochgeladen: true }; };
+    await client.bildHochladen(datei);
+    return { typ: nachrichten[0].type, daten: nachrichten[0].data, url: ok.url, restVersucht };
+  });
+  check("Upload: WebSocket-Befehl mit Base64, Fallback auf REST bei unknown_command",
+    upload.typ === "hofkarte/management/upload_image" && upload.daten === "AQID+g==" &&
+    upload.url === "https://ha.example.com:8123/api/image/serve/abcd1234/original" && upload.restVersucht);
+
   // Eingaben im Editor überleben den stillen Wiederverbindungsversuch (30-s-Timer).
   await page.evaluate(async () => {
     const { speichereVerbindung } = await import("/src/storage.js");

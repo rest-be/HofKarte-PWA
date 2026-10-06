@@ -953,6 +953,34 @@ p.ort {
 
 /* --- Karte -------------------------------------------------------------------- */
 
+.karte-huelle {
+  position: relative;
+}
+
+.karten-filter {
+  position: absolute;
+  top: 10px;
+  right: 10px;
+  z-index: 1000; /* über Leaflets Kartenebenen */
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-height: 44px;
+  padding: 0 14px;
+  border-radius: 22px;
+  background: var(--leiste-bg);
+  -webkit-backdrop-filter: blur(20px);
+  backdrop-filter: blur(20px);
+  color: var(--text-color);
+  font-size: 15px;
+  box-shadow: 0 1px 6px rgba(0, 0, 0, 0.2);
+}
+
+.karten-filter input {
+  width: 22px;
+  height: 22px;
+}
+
 #leaflet-karte {
   width: 100%;
   height: calc(100vh - var(--kopf-h) - var(--tab-h) - 16px);
