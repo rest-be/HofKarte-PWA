@@ -1248,3 +1248,91 @@ details.manuell-bild {
 #bild-hinzufuegen-btn {
   width: auto;
 }
+
+/* --- Hofladen finden (views/finden.js) -------------------------------------- */
+
+.finden-intro {
+  margin: 4px 0 0;
+}
+
+.finden-einstieg {
+  margin-bottom: 8px;
+}
+
+.finden .feld-gruppe input[type="range"] {
+  width: 100%;
+}
+
+/* Checkbox/Radio nie auf volle Breite ziehen (Flex-Zeilen). */
+.finden input[type="checkbox"],
+.finden input[type="radio"] {
+  width: auto;
+  flex: 0 0 auto;
+  margin: 3px 0 0;
+}
+
+.finden-check,
+.finden-zeile,
+.finden-kandidat {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  padding: 10px 0;
+  border-top: 0.5px solid var(--separator);
+}
+
+.finden-check:first-child,
+.finden-zeile:first-of-type,
+.finden-kandidat:first-of-type {
+  border-top: none;
+}
+
+.finden-text {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+  flex: 1 1 auto;
+  overflow-wrap: anywhere;
+}
+
+.finden-name,
+.finden-label {
+  font-weight: 600;
+}
+
+.finden-label {
+  font-size: 13px;
+  color: var(--muted-color);
+  text-transform: uppercase;
+  font-weight: 400;
+}
+
+.finden-warnung {
+  color: var(--warn-text);
+  background: var(--warn-bg);
+  border-radius: 6px;
+  padding: 2px 6px;
+  font-size: 13px;
+}
+
+.finden .muted,
+.finden-status {
+  font-size: 13px;
+  color: var(--muted-color);
+}
+
+.finden .fehler-text {
+  color: var(--danger-color);
+}
+
+.finden-vermutung {
+  background: var(--warn-bg);
+  border-radius: 8px;
+  padding-left: 6px;
+  padding-right: 6px;
+}
+
+.finden .aktions-reihe {
+  flex-wrap: wrap;
+}

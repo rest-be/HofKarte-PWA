@@ -32,6 +32,7 @@ import { renderDetail } from "./views/detail.js";
 import { renderKonflikt } from "./views/konflikt.js";
 import { renderEditor } from "./views/editor.js";
 import { renderEinstellungen } from "./views/einstellungen.js";
+import { renderFinden } from "./views/finden.js";
 
 const appContainer = document.getElementById("app");
 const CACHE_KEY_LISTE = "hoflaeden-liste";
@@ -61,6 +62,9 @@ const app = {
    * eingerichtet wurde (z. B. VPN gerade nicht aktiv) - dann wird der
    * Lesecache angezeigt statt des Einrichtungsbildschirms. */
   offlineModus: false,
+  /** Entwurf aus „Hofladen finden“ (`{daten, quellen}`), den der Editor
+   * unter `#/neu` einmalig übernimmt (siehe views/finden.js). */
+  entwurf: null,
   state: {
     hoflaeden: [],
     zuletztAktualisiert: null,
@@ -361,7 +365,7 @@ let aktuelleAnsicht = null;
 
 /** Ansichten mit Nutzereingaben: ein Hintergrund-Refresh darf sie nicht
  * neu zeichnen, sonst gehen Eingaben verloren (Review P-Befund Editor). */
-const EINGABE_ANSICHTEN = new Set(["setup", "editor", "neu", "konflikt", "einstellungen"]);
+const EINGABE_ANSICHTEN = new Set(["setup", "editor", "neu", "finden", "konflikt", "einstellungen"]);
 
 /** Neu zeichnen nach Datenänderung (Refresh/Wiederverbindung) - lässt
  * Eingabeansichten unangetastet und aktualisiert nur die Sync-Anzeige. */
@@ -386,6 +390,7 @@ function route() {
     teile[0] === "hofladen" && teile[1] && teile[2] === "bearbeiten" ? "editor"
     : teile[0] === "konflikt" && teile[1] ? "konflikt"
     : teile[0] === "neu" ? "neu"
+    : teile[0] === "finden" ? "finden"
     : teile[0] === "hofladen" && teile[1] ? "detail"
     : teile[0] === "karte" ? "karte"
     : teile[0] === "einstellungen" ? "einstellungen"
@@ -406,6 +411,14 @@ function route() {
       titel: "Konflikt",
       tiefe: 2,
       zurueck: detailHash(teile[1]),
+    });
+    return;
+  }
+  if (teile[0] === "finden") {
+    renderMitRahmen(() => renderFinden(appContainer.querySelector(".inhalt"), app), "neu", {
+      titel: "Hofladen finden",
+      tiefe: 1,
+      zurueck: "#/neu",
     });
     return;
   }

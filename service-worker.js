@@ -21,7 +21,7 @@
  * diese liegen ausschliesslich in IndexedDB (siehe src/storage.js).
  */
 
-const CACHE_VERSION = "hofkarte-pwa-v14";
+const CACHE_VERSION = "hofkarte-pwa-v15";
 
 const APP_SHELL_DATEIEN = [
   "./",
@@ -34,6 +34,7 @@ const APP_SHELL_DATEIEN = [
   "./src/sync-worker.js",
   "./src/ha-client.js",
   "./src/naehe.js",
+  "./src/finden.js",
   "./src/html.js",
   "./src/bilder.js",
   "./src/views/setup.js",
@@ -42,6 +43,7 @@ const APP_SHELL_DATEIEN = [
   "./src/views/konflikt.js",
   "./src/views/editor.js",
   "./src/views/einstellungen.js",
+  "./src/views/finden.js",
   "./src/views/map.js",
   // Drittbibliotheken (lokal, siehe vendor/README.md)
   "./vendor/home-assistant-js-websocket/auth.js",

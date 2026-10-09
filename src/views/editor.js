@@ -14,6 +14,7 @@
 import { escapeHtml } from "../html.js";
 import { bildVerkleinern } from "../bilder.js";
 import { extractImageId } from "../ha-client.js";
+import { bereinigteQuellen, quelleFuerSpeichern, quellenSchnappschuss } from "../finden.js";
 
 const WOCHENTAGE = [
   { wert: 1, label: "Montag" },
@@ -137,6 +138,18 @@ export function renderEditor(container, app, hofladenId) {
         longitude: bestehender.longitude ?? "",
       }
     : leererHofladen();
+
+  // Entwurf aus „Hofladen finden“ (einmalig verbrauchen): füllt das Formular
+  // vor; gespeichert wird erst hier im Editor.
+  const entwurf = !hofladenId ? app.entwurf : null;
+  if (!hofladenId) app.entwurf = null;
+  if (entwurf?.daten) Object.assign(daten, entwurf.daten);
+
+  // Herkunft der Angaben („quellen“): bei bestehenden Hofläden erhalten,
+  // beim Speichern nur für Felder behalten, die nicht von Hand geändert
+  // wurden (siehe finden.js, bereinigteQuellen).
+  const quellen = (bestehender?.quellen || entwurf?.quellen || []).map((q) => ({ ...q }));
+  const quellenStand = quellenSchnappschuss(quellen, daten);
 
   // Lokaler Arbeitszustand für Listenfelder (Öffnungszeiten, Bilder),
   // damit Zeilen ohne vollständiges Neuzeichnen hinzugefügt/entfernt
@@ -302,6 +315,12 @@ export function renderEditor(container, app, hofladenId) {
 
   container.innerHTML = `
     <div id="editor-fehler" class="hinweis-leiste fehler" hidden></div>
+    ${
+      !hofladenId && app.haClient
+        ? `<div class="finden-einstieg"><button type="button" class="hinzufuegen-btn" id="finden-btn">🔎 Hofladen finden</button>
+           <p class="muted">Sucht Hofläden in der Nähe (OpenStreetMap) und übernimmt Angaben samt Herkunft.</p></div>`
+        : ""
+    }
 
     <form id="editor-form">
       <section class="formular-abschnitt">
@@ -502,6 +521,8 @@ export function renderEditor(container, app, hofladenId) {
     }
   });
 
+  container.querySelector("#finden-btn")?.addEventListener("click", () => app.navigate("#/finden"));
+
   container.querySelector("#editor-form").addEventListener("submit", async (event) => {
     event.preventDefault();
     const fehlerBox = container.querySelector("#editor-fehler");
@@ -532,6 +553,7 @@ export function renderEditor(container, app, hofladenId) {
         .filter((b) => b.url)
         .map((b) => ({ url: b.url, beschreibung: b.beschreibung || null, hochgeladen: !!b.hochgeladen })),
     };
+    zuSpeichern.quellen = bereinigteQuellen(quellen, quellenStand, zuSpeichern).map(quelleFuerSpeichern);
 
     const submitBtn = container.querySelector("#speichern-btn");
     submitBtn.disabled = true;

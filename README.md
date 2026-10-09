@@ -1,6 +1,6 @@
 # HofKarte-PWA
 
-**Version: 1.11.0** – siehe Abschnitt [Version](#version) unten für die
+**Version: 1.12.0** – siehe Abschnitt [Version](#version) unten für die
 installierte Version auf einem konkreten Gerät.
 
 Progressive Web App für HofKarte – ein reiner, zustandsloser Client für die
@@ -55,12 +55,14 @@ src/
   html.js                 escapeHtml / sichereHttpUrl (Injection-Schutz)
   bilder.js               Vorschau-URLs und Verkleinerung vor dem Upload
   naehe.js                „Hofläden in der Nähe“ (Geolocation + HA-Action)
+  finden.js               „Hofladen finden“: Tabellen, Entwurf, Herkunft (ohne DOM)
   styles.css              Stylesheet
   views/
     setup.js              Einrichtung (HA-URL + Token)
     list.js                Listenansicht
     detail.js              Detailansicht
     editor.js              Erstellen/Bearbeiten
+    finden.js              „Hofladen finden“ (Suche, Auswahl, Prüfen)
     map.js                 Kartenansicht
 vendor/                 Drittbibliotheken lokal (home-assistant-js-websocket, Leaflet; siehe vendor/README.md)
 icons/                  App-Icons (192/512/Apple Touch/Favicon)
@@ -93,6 +95,7 @@ READMEs.
 
 | Version | Datum | Wesentliche Änderungen |
 |---|---|---|
+| 1.12.0 | 2026-10-09 | „Hofladen finden“ (Discovery aus HofKarte-HA 2026.10.1, optional mit KI), Herkunft der Angaben in der Detailansicht. |
 | 1.11.0 | 2026-10-06 | Foto-Upload über WebSocket (ohne CORS), Karte: Geschlossene ausblenden. |
 | 1.10.0 | 2026-10-05 | Phase 10: Sicherheit (Escaping, CSP, https-Pflicht), lokale Bibliotheken statt CDN, stabiles Suchfeld, Bild-Verkleinerung. |
 | 1.9.0 | 2026-10-05 | Umkreis für „Hofläden in der Nähe“ in den Einstellungen einstellbar (Standard 500 m). |
@@ -183,6 +186,23 @@ Beides läuft über Home Assistants eigene `image_upload`-Komponente
 `/api/image/serve/<id>/original`) – dieselbe, die auch die native
 HA-Verwaltungsoberfläche nutzt. Es gibt dafür keinen eigenen
 HofKarte-PWA-Speicher; die Bilder liegen wie gewohnt in Home Assistant.
+
+## Hofladen finden (Discovery, Phase 7)
+
+Unter **Neu → 🔎 Hofladen finden**: nimmt den Standort des Geräts, sucht
+im Umkreis (Standard 2 km, max. 5 km) über die HofKarte-Integration
+(ab 2026.10.1, Administratorrechte nötig) in OpenStreetMap nach
+Hofläden, liest bei Bedarf deren Website aus (robots.txt wird
+beachtet) und zeigt die Angaben mit ihrer Herkunft. Gewählte Angaben
+landen im normalen Formular; gespeichert wird erst dort. Die Herkunft
+(„quellen“) wird mitgespeichert, solange ein Feld nicht von Hand
+geändert wird, und in der Detailansicht angezeigt.
+
+Die **KI-Auswertung** ist optional: Sie erscheint nur, wenn in Home
+Assistant (HofKarte → Konfigurieren) eine „AI Task“-Entität gewählt ist,
+ist nie vorausgewählt, und nicht im Website-Text belegte Vorschläge
+werden getrennt als „Vermutungen“ angezeigt (nie vorausgewählt).
+Daten © OpenStreetMap-Mitwirkende (ODbL).
 
 ## Offline-Betrieb (Phase 8a)
 

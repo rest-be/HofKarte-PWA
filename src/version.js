@@ -18,7 +18,7 @@
  * Beim Erhöhen bitte auch im README (Abschnitt "Version") und im
  * Vorgehensplan nachziehen.
  */
-export const APP_VERSION = "1.11.0";
+export const APP_VERSION = "1.12.0";
 
 /**
  * Release Notes (neueste zuerst), angezeigt auf dem Einrichtungsbildschirm
@@ -26,6 +26,15 @@ export const APP_VERSION = "1.11.0";
  * ergänzen (und die Tabelle im README nachziehen).
  */
 export const RELEASE_NOTES = [
+  {
+    version: "1.12.0",
+    datum: "2026-10-09",
+    punkte: [
+      "Neu: „Hofladen finden“ unter „Neu“ – sucht Hofläden in der Nähe (OpenStreetMap, Standort des Geräts, max. 5 km), liest deren Website aus und übernimmt die gewählten Angaben samt Herkunft ins Formular (benötigt HofKarte-HA ab 2026.10.1 und Administratorrechte).",
+      "Optional mit KI-Auswertung (nur wenn in Home Assistant eine AI-Task-Entität gewählt ist; nie vorausgewählt, Vermutungen werden getrennt und ungeprüft markiert).",
+      "Detailansicht: „Herkunft der Angaben“.",
+    ],
+  },
   {
     version: "1.11.0",
     datum: "2026-10-06",

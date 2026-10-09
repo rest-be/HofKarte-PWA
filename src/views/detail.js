@@ -7,6 +7,7 @@
 
 import { escapeHtml, sichereHttpUrl } from "../html.js";
 import { vorschauUrl } from "../bilder.js";
+import { FINDEN_QUELLEN_LABEL, FINDEN_ZEILEN } from "./../finden.js";
 
 const WOCHENTAGE = ["", "Montag", "Dienstag", "Mittwoch", "Donnerstag", "Freitag", "Samstag", "Sonntag"];
 
@@ -66,6 +67,35 @@ function bewertungSternenHtml(wert) {
     html += `<span class="stern-btn${i <= n ? " stern-gefuellt" : ""}">★</span>`;
   }
   return `<div class="sterne-reihe" role="img" aria-label="Bewertung: ${n} von 5 Sternen">${html}</div>`;
+}
+
+/** „Herkunft der Angaben“: aus welcher Quelle ein Feld stammt (nur wenn
+ * der Hofladen über „Hofladen finden“ erfasst wurde). Vermutungen der KI
+ * sind als solche gekennzeichnet. */
+function herkunftHtml(h) {
+  const quellen = Array.isArray(h.quellen) ? h.quellen : [];
+  if (!quellen.length) return "";
+  const zeilen = [];
+  const gesehen = new Set();
+  for (const zeile of FINDEN_ZEILEN) {
+    const q = zeile.felder.map((f) => quellen.find((x) => x.feld === f)).find(Boolean);
+    if (!q || gesehen.has(zeile.key)) continue;
+    gesehen.add(zeile.key);
+    const label = FINDEN_QUELLEN_LABEL[q.quelle] || q.quelle;
+    const vermutet = q.status === "inferred" ? " (vermutet)" : "";
+    const url = sichereHttpUrl(q.url);
+    const text = url
+      ? `<a href="${escapeHtml(url)}" target="_blank" rel="noopener noreferrer">${escapeHtml(label)}</a>`
+      : escapeHtml(label);
+    zeilen.push(`<div class="kontakt-zeile"><strong>${escapeHtml(zeile.label)}:</strong> ${text}${escapeHtml(vermutet)}</div>`);
+  }
+  if (!zeilen.length) return "";
+  const osm = quellen.some((q) => q.quelle === "openstreetmap");
+  return `<div class="detail-abschnitt">
+    <h3>Herkunft der Angaben</h3>
+    ${zeilen.join("")}
+    ${osm ? `<p class="muted">© OpenStreetMap-Mitwirkende (ODbL)</p>` : ""}
+  </div>`;
 }
 
 export function renderDetail(container, app, hofladenId) {
@@ -195,6 +225,8 @@ export function renderDetail(container, app, hofladenId) {
            </div>`
         : ""
     }
+
+    ${herkunftHtml(h)}
 
     <div class="detail-abschnitt">
       <h3>Bewertung</h3>

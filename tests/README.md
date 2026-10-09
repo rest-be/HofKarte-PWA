@@ -35,6 +35,10 @@ Verbindungsversuch bewusst immer einen `connection_lost`-Fehler.
 - **Phase 8c** (iOS-/Accessibility-Lücken): Touch-Target-Grössen
   (≥ 44×44px), ARIA-Attribute (Sterne-Bewertung, Öffnungszeiten-Felder,
   Such-/Sortier-Steuerelemente, aktiver Tab), Label-Verknüpfungen.
+- **Phase 7 (Discovery)**: „Hofladen finden“ (Gerätestandort, Suche,
+  Auswahl, Prüfen mit Herkunft, KI-Vermutung nie vorausgewählt, XSS-
+  Maskierung, Übernahme in den Editor, Herkunft nur für unveränderte
+  Felder) mit Fake-HA-Client; Detailansicht „Herkunft der Angaben“.
 
 Ein echter VoiceOver-Durchgang auf einem iPhone bleibt davon unabhängig
 und ist nicht automatisierbar – siehe Vorgehensplan, Phase 8c, Punkt 10.

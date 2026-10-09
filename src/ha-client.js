@@ -152,6 +152,44 @@ export class HaClient {
     return antwort.einstellungen;
   }
 
+  /** Im Options Flow gewählte KI-Entität (`ai_task.…`) oder `null`
+   * (siehe `hofkarte/management/settings`, Feld `ki_entitaet`). */
+  async kiEntitaet() {
+    const antwort = await this._connection.sendMessagePromise({
+      type: "hofkarte/management/settings",
+    });
+    const wert = antwort.ki_entitaet;
+    return typeof wert === "string" && wert.startsWith("ai_task.") ? wert : null;
+  }
+
+  /** „Hofladen finden“, Schritt 1: Kandidaten in der Umgebung suchen
+   * (`hofkarte/management/discover`, nur Vorschläge, speichert nichts). */
+  async hofladenSuchen({ latitude, longitude, radius, erweitert = false, name, website }) {
+    const msg = {
+      type: "hofkarte/management/discover",
+      latitude,
+      longitude,
+      radius,
+      erweitert: !!erweitert,
+    };
+    if (name) msg.name = name;
+    if (website) msg.website = website;
+    const antwort = await this._connection.sendMessagePromise(msg);
+    return antwort.kandidaten || [];
+  }
+
+  /** „Hofladen finden“, Schritt 3: Kandidat/Website anreichern
+   * (`hofkarte/management/enrich`, Subscription). `onEreignis` erhält
+   * `{phase: "osm"|"website"|"ki"|"fertig", …}`. Gibt die Abmelde-Funktion
+   * zurück. */
+  async hofladenAnreichern({ kandidat, website, ki = false }, onEreignis) {
+    const msg = { type: "hofkarte/management/enrich" };
+    if (kandidat) msg.kandidat = kandidat;
+    if (website) msg.website = website;
+    if (ki) msg.ki = true;
+    return this._connection.subscribeMessage(onEreignis, msg);
+  }
+
   /**
    * Alle Hofläden laden – Stale-while-revalidate: liefert sofort den
    * zuletzt gecachten Stand (falls vorhanden) über `onZwischenergebnis`

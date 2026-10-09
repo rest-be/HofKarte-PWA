@@ -587,6 +587,134 @@ export async function fuehreSmokeTestsAus(page, baseUrl) {
   });
   await page.waitForTimeout(300);
 
+  // --- Phase 7 (Discovery): „Hofladen finden“ ---------------------------------
+  // Logik ohne DOM
+  const logik = await page.evaluate(async () => {
+    const m = await import("/src/finden.js");
+    const vorschlag = {
+      daten: { name: "Hof A", adresse: "Weg 1", plz: "6000", ort: "Luzern", latitude: 47.05, longitude: 8.3, angebote: [{ name: "Eier" }] },
+      quellen: [
+        { feld: "name", quelle: "openstreetmap", status: "confirmed", url: "https://osm.example/1", lizenz: "ODbL" },
+        { feld: "ort", quelle: "openstreetmap", status: "confirmed" },
+        { feld: "angebote", quelle: "website", status: "confirmed", url: "javascript:alert(1)" },
+      ],
+      vermutungen: { angebote: ["Käse"], zahlungsarten: ["Twint"] },
+    };
+    const nurBelegt = m.baueEntwurf(vorschlag, { name: true, angebote: true, adresse: true });
+    const mitVermutung = m.baueEntwurf(vorschlag, { name: true, "vermutung:zahlungsarten": true, "vermutung:angebote": true });
+    return {
+      belegtNamen: nurBelegt.daten.angebote.map((t) => t.name),
+      belegtQuellen: nurBelegt.quellen.map((q) => q.feld).sort(),
+      vermutetQuellen: mitVermutung.quellen.map((q) => `${q.feld}:${q.quelle}:${q.status}`).sort(),
+      vermutetZahlung: mitVermutung.daten.zahlungsarten.map((t) => t.name),
+      bereinigt: m.bereinigteQuellen(
+        [{ feld: "name" }, { feld: "ort" }],
+        { name: "Hof A", ort: "Luzern" },
+        { name: "Hof A", ort: "Bern" }
+      ).map((q) => q.feld),
+    };
+  });
+  check("Entwurf: belegte Angebote übernommen, Vermutung nicht vorausgewählt", logik.belegtNamen.join() === "Eier");
+  check("Entwurf: Herkunft nur für übernommene Felder", logik.belegtQuellen.join() === "angebote,name,ort");
+  check("Entwurf: angehakte Vermutungen werden als ki/inferred markiert", logik.vermutetQuellen.includes("zahlungsarten:ki:inferred") && logik.vermutetQuellen.includes("angebote:ki:inferred"));
+  check("Entwurf: vermutete Zahlungsart übernommen", logik.vermutetZahlung.join() === "Twint");
+  check("Von Hand geändertes Feld verliert seine Herkunft", logik.bereinigt.join() === "name");
+
+  // Oberfläche mit Fake-HA-Client
+  await page.evaluate(() => {
+    const app = window.hofkarteApp;
+    window.__ereignisse = null;
+    window.__gespeichert = null;
+    window.__anreichernArgs = null;
+    navigator.geolocation.getCurrentPosition = (ok) => ok({ coords: { latitude: 47.0502, longitude: 8.3093 } });
+    app.haClient = {
+      kiEntitaet: async () => null,
+      hofladenSuchen: async () => [
+        { refs: ["node/1"], name: '<img src=x onerror="window.__xss=1">Hof', latitude: 47.0502, longitude: 8.3093, entfernung_meter: 12, konfidenz: "hoch", signale: {}, typ: [] },
+        { refs: ["node/2"], name: "Zweiter Hof", latitude: 47.06, longitude: 8.31, entfernung_meter: 900, konfidenz: "mittel", signale: {}, typ: [] },
+      ],
+      hofladenAnreichern: async (args, cb) => {
+        window.__anreichernArgs = args;
+        setTimeout(() => {
+          cb({ phase: "osm", status: "ok" });
+          cb({ phase: "website", status: "ok" });
+          cb({
+            phase: "fertig",
+            vorschlag: {
+              daten: { name: "Hof Eins", adresse: "Weg 1", plz: "6000", ort: "Luzern", website: "https://hof.example", angebote: [{ name: "Eier" }], latitude: 47.0502, longitude: 8.3093 },
+              quellen: [
+                { feld: "name", quelle: "openstreetmap", status: "confirmed", url: "https://www.openstreetmap.org/node/1", lizenz: "ODbL" },
+                { feld: "ort", quelle: "openstreetmap", status: "confirmed" },
+                { feld: "angebote", quelle: "website", status: "confirmed", url: "https://hof.example" },
+              ],
+              abweichungen: {},
+              vermutungen: { zahlungsarten: ["Twint"] },
+            },
+          });
+        }, 20);
+        return () => {};
+      },
+    };
+    app.speichereHofladen = async (d) => {
+      window.__gespeichert = d;
+      return { ...d, id: "neu1" };
+    };
+    app.offlineModus = false;
+    window.location.hash = "#/neu";
+    window.dispatchEvent(new Event("hashchange"));
+  });
+  await page.waitForTimeout(300);
+  check("Editor (neu) zeigt Button „Hofladen finden“", !!(await page.$("#finden-btn")));
+  await page.click("#finden-btn");
+  await page.waitForTimeout(400);
+  check("Finden: Gerätestandort wird sofort übernommen", (await page.$eval('[data-feld="latitude"]', (el) => el.value)) === "47.050200");
+  check("Finden: Umkreis-Standard 2 km, Maximum 5 km", (await page.$eval("[data-radius]", (el) => `${el.value}/${el.max}`)) === "2000/5000");
+  check("Finden: KI-Hinweis statt Checkbox, wenn keine Entität gewählt", !!(await page.$("[data-ki-hinweis]")) && !(await page.$("[data-ki]")));
+  await page.click("[data-suchen]");
+  await page.waitForTimeout(300);
+  check("Finden: zwei Treffer, erster (hohe Sicherheit) vorgewählt", (await page.$$("[data-kandidat]")).length === 2 && (await page.$eval('[data-kandidat][value="0"]', (el) => el.checked)));
+  check("Finden: Treffername wird maskiert (kein XSS)", !(await page.evaluate(() => window.__xss)) && !(await page.$(".finden img")));
+  const radioBreite = await page.$eval('[data-kandidat][value="0"]', (el) => el.getBoundingClientRect().width);
+  check(`Finden: Radiobutton nicht auf volle Breite gezogen (${Math.round(radioBreite)}px)`, radioBreite < 40);
+  await page.click("[data-weiter]");
+  await page.waitForTimeout(400);
+  check("Finden: Anreicherung ohne KI-Anforderung gestartet", (await page.evaluate(() => window.__anreichernArgs?.ki !== true && window.__anreichernArgs?.kandidat?.refs?.[0] === 'node/1')));
+  check("Finden: Angaben mit Herkunft angezeigt", (await page.$$("[data-feldwahl]")).length >= 4 && (await page.content()).includes("OpenStreetMap-Mitwirkende"));
+  check("Finden: KI-Vermutung ist nicht vorausgewählt", !(await page.$eval('[data-feldwahl="vermutung:zahlungsarten"]', (el) => el.checked)));
+  await page.click("[data-uebernehmen]");
+  await page.waitForTimeout(400);
+  check("Übernahme öffnet Editor mit vorbelegten Feldern", (await page.$eval("#f-name", (el) => el.value)) === "Hof Eins" && (await page.$eval("#f-angebote", (el) => el.value)) === "Eier");
+  check("Vermutete Zahlungsart wurde nicht übernommen", (await page.$eval("#f-zahlungsarten", (el) => el.value)) === "");
+  await page.fill("#f-ort", "Bern");
+  await page.click("#speichern-btn");
+  await page.waitForTimeout(300);
+  const gespeichert = await page.evaluate(() => window.__gespeichert);
+  check("Speichern sendet Herkunft nur für unveränderte Felder", !!gespeichert && gespeichert.quellen.map((q) => q.feld).sort().join() === "angebote,name");
+  await page.evaluate(() => {
+    const app = window.hofkarteApp;
+    app.haClient = null;
+    app.offlineModus = true;
+    delete app.speichereHofladen;
+    app.state.hoflaeden = [
+      { id: "h2", name: "Mit Herkunft", bilder: [], quellen: [
+        { feld: "name", quelle: "openstreetmap", status: "confirmed", url: "https://www.openstreetmap.org/node/1" },
+        { feld: "angebote", quelle: "ki", status: "inferred" },
+        { feld: "website", quelle: "website", status: "confirmed", url: "javascript:alert(1)" },
+      ] },
+    ];
+    window.location.hash = "#/hofladen/h2";
+    window.dispatchEvent(new Event("hashchange"));
+  });
+  await page.waitForTimeout(300);
+  const herkunft = await page.evaluate(() => document.querySelector(".inhalt")?.textContent || "");
+  check("Detail zeigt „Herkunft der Angaben“ inkl. Vermutung", herkunft.includes("Herkunft der Angaben") && herkunft.includes("vermutet"));
+  check("Detail: unsichere Quellen-URL wird nicht verlinkt", !(await page.$('a[href^="javascript:"]')));
+  await page.evaluate(() => {
+    window.location.hash = "#/einstellungen";
+    window.dispatchEvent(new Event("hashchange"));
+  });
+  await page.waitForTimeout(300);
+
   // --- Phase 8e: Versionsanzeige -----------------------------------------
   const angezeigteVersion = await page.$eval("#app-version", (el) => el.textContent.trim());
   const erwarteteVersion = await page.evaluate(async () => {

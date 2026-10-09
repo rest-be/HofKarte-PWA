@@ -75,4 +75,4 @@ export async function hoflaedenInNaeheDesGeraets(
   return { latitude, longitude, treffer: ergebnis.hoflaeden };
 }
 
-export { STANDARD_RADIUS_METER, MIN_RADIUS_METER, MAX_RADIUS_METER };
+export { aktuellerStandort, STANDARD_RADIUS_METER, MIN_RADIUS_METER, MAX_RADIUS_METER };
