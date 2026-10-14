@@ -230,6 +230,7 @@ export function renderDetail(container, app, hofladenId) {
         <details class="aktionsmenue" id="aktionsmenue">
           <summary aria-label="Weitere Aktionen" title="Weitere Aktionen">${icon("mehr")}</summary>
           <div class="menue-liste">
+            <button type="button" id="ergaenzen-btn">Angaben ergänzen</button>
             <button type="button" class="gefahr" id="loeschen-btn">Löschen …</button>
           </div>
         </details>
@@ -273,6 +274,9 @@ export function renderDetail(container, app, hofladenId) {
     const btn = container.querySelector("#alle-btn");
     btn.textContent = aufklappen ? "Alle einklappen" : "Alle ausklappen";
     btn.setAttribute("aria-pressed", String(aufklappen));
+  });
+  container.querySelector("#ergaenzen-btn").addEventListener("click", () => {
+    app.navigate(`#/hofladen/${encodeURIComponent(h.id)}/ergaenzen`);
   });
   container.querySelector("#bearbeiten-btn").addEventListener("click", () => {
     app.navigate(bearbeitenHash);

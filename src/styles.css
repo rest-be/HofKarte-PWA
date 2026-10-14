@@ -2176,3 +2176,62 @@ details.gruppe > .gruppen-inhalt {
 .aktions-stapel {
   flex-direction: column;
 }
+
+/* --- Webseite auslesen und Angaben ergänzen (ab 2.0.0-dev.5) ------------------- */
+
+.ergaenzen-zeile {
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+  margin-bottom: 8px;
+  padding: 12px 14px;
+  border-radius: var(--radius-gross);
+  background: var(--card-bg);
+}
+
+.ergaenzen-zeile input[type="checkbox"] {
+  flex: none;
+  width: 24px;
+  height: 24px;
+  margin-top: 2px;
+  accent-color: var(--accent);
+}
+
+.ergaenzen-zeile.gleich {
+  opacity: 0.75;
+}
+
+.zeilen-kopf {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.status-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 2px 8px;
+  border-radius: 999px;
+  background: var(--fill);
+  font-size: 12px;
+  font-weight: 600;
+  white-space: nowrap;
+}
+
+.status-chip.status-luecke,
+.status-chip.status-ergaenzen {
+  background: var(--accent-soft);
+  color: var(--tint);
+}
+
+.status-chip.status-abweichung {
+  background: var(--warn-bg);
+  color: var(--warn-text);
+}
+
+.auslesen-laeuft {
+  padding: 24px 0;
+  text-align: center;
+}

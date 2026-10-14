@@ -33,6 +33,7 @@ import { renderKonflikt } from "./views/konflikt.js";
 import { renderEditor } from "./views/editor.js";
 import { renderEinstellungen } from "./views/einstellungen.js";
 import { renderFinden } from "./views/finden.js";
+import { renderAuslesen } from "./views/auslesen.js";
 import { renderErfassenEinstieg, renderVorOrt, renderSchnell, renderGespeichert } from "./views/erfassen.js";
 import { icon } from "./icons.js";
 import { initialisiereDesign } from "./design.js";
@@ -69,6 +70,8 @@ const app = {
   /** Entwurf aus „Hofladen finden“ (`{daten, quellen}`), den der Editor
    * unter `#/neu` einmalig übernimmt (siehe views/finden.js). */
   entwurf: null,
+  /** Ergänzung aus „Angaben ergänzen“ (`{hofladenId, daten, quellen}`), die der Editor einmalig übernimmt. */
+  ergaenzung: null,
   state: {
     hoflaeden: [],
     zuletztAktualisiert: null,
@@ -369,7 +372,7 @@ let aktuelleAnsicht = null;
 
 /** Ansichten mit Nutzereingaben: ein Hintergrund-Refresh darf sie nicht
  * neu zeichnen, sonst gehen Eingaben verloren (Review P-Befund Editor). */
-const EINGABE_ANSICHTEN = new Set(["setup", "editor", "neu", "erfassen", "finden", "konflikt", "einstellungen"]);
+const EINGABE_ANSICHTEN = new Set(["setup", "editor", "ergaenzen", "neu", "erfassen", "finden", "konflikt", "einstellungen"]);
 
 /** Neu zeichnen nach Datenänderung (Refresh/Wiederverbindung) - lässt
  * Eingabeansichten unangetastet und aktualisiert nur die Sync-Anzeige. */
@@ -392,6 +395,7 @@ function route() {
   const teile = parsePfad();
   aktuelleAnsicht =
     teile[0] === "hofladen" && teile[1] && teile[2] === "bearbeiten" ? "editor"
+    : teile[0] === "hofladen" && teile[1] && teile[2] === "ergaenzen" ? "ergaenzen"
     : teile[0] === "konflikt" && teile[1] ? "konflikt"
     : teile[0] === "neu" ? "neu"
     : teile[0] === "erfassen" ? "erfassen"
@@ -406,6 +410,14 @@ function route() {
   if (teile[0] === "hofladen" && teile[1] && teile[2] === "bearbeiten") {
     renderMitRahmen(() => renderEditor(appContainer.querySelector(".inhalt"), app, teile[1]), null, {
       titel: "Bearbeiten",
+      tiefe: 2,
+      zurueck: detailHash(teile[1]),
+    });
+    return;
+  }
+  if (teile[0] === "hofladen" && teile[1] && teile[2] === "ergaenzen") {
+    renderMitRahmen(() => renderAuslesen(appContainer.querySelector(".inhalt"), app, teile[1]), null, {
+      titel: "Angaben ergänzen",
       tiefe: 2,
       zurueck: detailHash(teile[1]),
     });
@@ -429,7 +441,9 @@ function route() {
   }
   if (teile[0] === "erfassen") {
     const inhalt = () => appContainer.querySelector(".inhalt");
-    if (teile[1] === "vorort") {
+    if (teile[1] === "webseite") {
+      renderMitRahmen(() => renderAuslesen(inhalt(), app, null), "erfassen", { titel: "Von der Webseite", tiefe: 1, zurueck: "#/erfassen" });
+    } else if (teile[1] === "vorort") {
       renderMitRahmen(() => renderVorOrt(inhalt(), app), "erfassen", { titel: "Vor Ort", tiefe: 1, zurueck: "#/erfassen" });
     } else if (teile[1] === "schnell") {
       renderMitRahmen(() => renderSchnell(inhalt(), app), "erfassen", { titel: "Schnellerfassung", tiefe: 2, zurueck: "#/erfassen/vorort" });

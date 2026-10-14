@@ -18,7 +18,7 @@
  * Beim Erhöhen bitte auch im README (Abschnitt "Version") und im
  * Vorgehensplan nachziehen.
  */
-export const APP_VERSION = "2.0.0-dev.4";
+export const APP_VERSION = "2.0.0-dev.5";
 
 /**
  * Release Notes (neueste zuerst), angezeigt auf dem Einrichtungsbildschirm
@@ -26,6 +26,14 @@ export const APP_VERSION = "2.0.0-dev.4";
  * ergänzen (und die Tabelle im README nachziehen).
  */
 export const RELEASE_NOTES = [
+  {
+    version: "2.0.0-dev.5",
+    datum: "2026-10-14",
+    punkte: [
+      "Erfassen „Von der Webseite“: Webadresse eintragen, auslesen, Angaben prüfen und ins Formular übernehmen (optional mit KI, nie vorgewählt).",
+      "„Angaben ergänzen“ für bestehende Hofläden (im ⋮-Menü der Detailansicht): Vergleich Aktuell · Gefunden · Status. Lücken sind vorgewählt, Abweichungen nie, Listen werden ergänzt, KI-Vermutungen stehen getrennt. Gespeichert wird erst im Formular.",
+    ],
+  },
   {
     version: "2.0.0-dev.4",
     datum: "2026-10-14",

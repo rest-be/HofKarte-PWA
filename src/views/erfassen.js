@@ -97,7 +97,7 @@ export function renderErfassenEinstieg(container, app) {
       <span class="weg-text"><strong>Vor Ort</strong><span>Du stehst am Hofladen: Standort verwenden, Treffer wählen, in einer Minute erfasst.</span></span>
       <span class="weg-pfeil">${icon("weiter")}</span>
     </a>
-    <a class="weg-karte" href="#/finden" id="weg-webseite">
+    <a class="weg-karte" href="#/erfassen/webseite" id="weg-webseite">
       <span class="weg-icon">${icon("weltkugel")}</span>
       <span class="weg-text"><strong>Von der Webseite</strong><span>Du hast die Adresse der Webseite oder den Namen: Angaben werden ausgelesen.</span></span>
       <span class="weg-pfeil">${icon("weiter")}</span>
@@ -517,6 +517,7 @@ export function renderGespeichert(container, app, hofladenId) {
     }
     <div class="aktions-reihe aktions-stapel">
       <button type="button" class="primaer" id="weiterer-btn">Weiteren Hofladen erfassen</button>
+      ${h.website && app.haClient ? `<button type="button" id="ergaenzen-btn">Von der Webseite ergänzen</button>` : ""}
       <button type="button" id="ansehen-btn">Hofladen ansehen</button>
       <button type="button" id="fertig-btn">Fertig</button>
     </div>
@@ -529,6 +530,7 @@ export function renderGespeichert(container, app, hofladenId) {
     })
   );
   container.querySelector("#weiterer-btn").addEventListener("click", () => app.navigate("#/erfassen/vorort"));
+  container.querySelector("#ergaenzen-btn")?.addEventListener("click", () => app.navigate(`#/hofladen/${encodeURIComponent(h.id)}/ergaenzen`));
   container.querySelector("#ansehen-btn").addEventListener("click", () => app.navigate(`#/hofladen/${encodeURIComponent(h.id)}`));
   container.querySelector("#fertig-btn").addEventListener("click", () => app.navigate("#/"));
 }

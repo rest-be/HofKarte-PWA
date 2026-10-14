@@ -940,6 +940,115 @@ export async function fuehreSmokeTestsAus(page, baseUrl) {
   check("Schnell: Erfassen ohne Verbindung und ohne Standort funktioniert", (await page.evaluate(() => window.__erfPayload?.name)) === "Offline-Hof" && !!(await page.$("#noch-offen")));
   check("Gespeichert: fehlendes Foto wird als «Foto später ergänzen» angezeigt", (await page.$eval("#noch-offen", (el) => el.textContent)).includes("Foto später ergänzen"));
   await page.evaluate(() => { delete window.hofkarteApp.speichereHofladen; });
+
+  // --- 2.0.0-dev.5: Webseite auslesen und Angaben ergänzen -------------------------
+  const erg = await page.evaluate(async () => {
+    const e = await import("/src/ergaenzen.js");
+    const h = {
+      name: "Hof A", mobilnummer: "079 1", adresse: "Dorf 1", website: "https://a.ch", latitude: 46.9, longitude: 7.4,
+      angebote: [{ id: "a1", name: "Eier" }], zahlungsarten: [{ id: "z1", name: "Bargeld" }], oeffnungszeiten: [],
+      quellen: [{ feld: "name", quelle: "angabe", status: "confirmed" }],
+    };
+    const v = {
+      daten: {
+        name: "Hof A GmbH", mobilnummer: "079 1", email: "a@b.ch", adresse: "Dorf 1", plz: "3000", latitude: 46.90001, longitude: 7.4,
+        angebote: ["Eier", "Honig"], zahlungsarten: ["Bargeld"], oeffnungszeiten: [{ wochentag: 1, beginn: "08:00:00", ende: "12:00:00" }],
+      },
+      quellen: [{ feld: "email", quelle: "website", status: "confirmed", url: "https://a.ch" }, { feld: "plz", quelle: "website", status: "confirmed" }, { feld: "angebote", quelle: "website", status: "confirmed" }, { feld: "name", quelle: "website", status: "confirmed" }],
+      abweichungen: {},
+      vermutungen: { zahlungsarten: ["Twint", "Bargeld"] },
+    };
+    const vg = e.vergleiche(h, v);
+    const status = Object.fromEntries(vg.zeilen.map((z) => [z.key, z.status]));
+    const wahl = e.vorauswahl(vg);
+    const e1 = e.baueErgaenzung(h, v, vg, wahl);
+    const e2 = e.baueErgaenzung(h, v, vg, { ...wahl, name: true, "vermutung:zahlungsarten": true });
+    const neuVg = e.vergleiche({}, v);
+    return {
+      status, wahl, vermutungen: vg.vermutungen.map((m) => m.neu.join()),
+      d1: { email: e1.daten.email, plz: e1.daten.plz, adresse: e1.daten.adresse, name: e1.daten.name, angebote: e1.daten.angebote.map((a) => a.name).join(), oz: e1.daten.oeffnungszeiten.length, zahlung: e1.daten.zahlungsarten, quellen: e1.quellen.map((q) => q.feld).sort().join(), geaendert: e1.geaendert.join() },
+      d2: { name: e2.daten.name, zahlung: e2.daten.zahlungsarten.map((z) => z.name).join(), quellen: e2.quellen.map((q) => q.feld + ":" + q.quelle).sort().join() },
+      neuAlleVorgewaehlt: neuVg.zeilen.every((z) => z.vorgewaehlt && z.status === "luecke"),
+    };
+  });
+  check("Ergänzen: Status je Zeile (Lücke, Ergänzung, gleich, Abweichung)", erg.status.name === "abweichung" && erg.status.mobilnummer === "gleich" && erg.status.email === "luecke" && erg.status.adresse === "luecke" && erg.status.angebote === "ergaenzen" && erg.status.zahlungsarten === "gleich" && erg.status.oeffnungszeiten === "luecke" && erg.status.koordinaten === "gleich");
+  check("Ergänzen: Lücken vorgewählt, Abweichungen und KI-Vermutungen nie", erg.wahl.email === true && erg.wahl.adresse === true && erg.wahl.angebote === true && erg.wahl.oeffnungszeiten === true && erg.wahl.name === false && erg.wahl["vermutung:zahlungsarten"] === false);
+  check("Ergänzen: nur neue Vermutungen werden angeboten", erg.vermutungen.join() === "Twint");
+  check("Ergänzen: Vorauswahl überschreibt nichts (Name, Adresse bleiben), füllt nur Lücken", erg.d1.name === undefined && erg.d1.adresse === undefined && erg.d1.email === "a@b.ch" && erg.d1.plz === "3000" && erg.d1.oz === 1);
+  check("Ergänzen: Listen werden ergänzt, nicht ersetzt", erg.d1.angebote === "Eier,Honig" && erg.d1.zahlung === undefined);
+  check("Ergänzen: Herkunft nur für neu gefüllte Felder, alte bleibt", erg.d1.quellen === "email,name,plz" && erg.d1.geaendert.includes("E-Mail"));
+  check("Ergänzen: nach ausdrücklicher Wahl wird ersetzt, Vermutung als KI markiert", erg.d2.name === "Hof A GmbH" && erg.d2.zahlung === "Bargeld,Twint" && erg.d2.quellen.includes("name:website"));
+  check("Ergänzen: bei einem neuen Hofladen ist alles Gefundene eine Lücke und vorgewählt", erg.neuAlleVorgewaehlt);
+
+  await page.evaluate(() => {
+    const app = window.hofkarteApp;
+    app.offlineModus = false;
+    app.state.hoflaeden = [{ id: "erg1", version: 2, name: "Hof A", mobilnummer: "079 1", adresse: "Dorf 1", website: "https://a.ch", latitude: 46.9, longitude: 7.4, angebote: [{ id: "a1", name: "Eier" }], zahlungsarten: [], oeffnungszeiten: [], bilder: [], bewertung: 0, quellen: [] }];
+    window.__anreichern = null;
+    window.__gespeichertErg = null;
+    app.speichereHofladen = async (d) => { window.__gespeichertErg = d; return { ...d, id: d.id || "neu-erg" }; };
+    app.haClient = {
+      kiEntitaet: async () => "ai_task.test",
+      hofladenAnreichern: async (args, cb) => {
+        window.__anreichern = args;
+        setTimeout(() => {
+          cb({ phase: "website", status: "ok" });
+          cb({
+            phase: "fertig",
+            vorschlag: {
+              daten: { name: "<img src=x onerror=window.__xss2=1>", email: "a@b.ch", plz: "3000", adresse: "Dorf 1", angebote: ["Eier", "Honig"], mobilnummer: "079 1", oeffnungszeiten: [{ wochentag: 1, beginn: "08:00", ende: "12:00" }] },
+              quellen: [{ feld: "email", quelle: "website", status: "confirmed", url: "https://a.ch" }, { feld: "plz", quelle: "website", status: "confirmed" }, { feld: "oeffnungszeiten", quelle: "website", status: "confirmed" }],
+              abweichungen: {},
+              vermutungen: { zahlungsarten: ["Twint"] },
+            },
+          });
+        }, 20);
+        return () => {};
+      },
+    };
+  });
+  await gehe("#/hofladen/erg1/ergaenzen");
+  await page.waitForTimeout(200);
+  check("Ergänzen: Webseite des Hofladens ist vorbelegt, KI nie vorgewählt", (await page.$eval("#a-website", (el) => el.value)) === "https://a.ch" && (await page.$eval("#a-ki", (el) => el.checked)) === false);
+  check("Ergänzen: Fenster hat Zurück zum Hofladen", !!(await page.$("#zurueck-btn")));
+  await page.click("#a-start-btn");
+  await page.waitForSelector("#a-uebernehmen-btn", { timeout: 4000 });
+  check("Ergänzen: Auslesen ohne KI angefordert, nur mit der eingetragenen Webseite", (await page.evaluate(() => window.__anreichern)).website === "https://a.ch" && (await page.evaluate(() => window.__anreichern)).ki === false);
+  check("Ergänzen: Name wird maskiert (kein XSS)", !(await page.$(".auslesen img")) && !(await page.evaluate(() => window.__xss2)));
+  const wahlUi = await page.$$eval("[data-feldwahl]", (els) => Object.fromEntries(els.map((e) => [e.dataset.feldwahl, e.checked])));
+  check("Ergänzen: Oberfläche wählt Lücken vor, Abweichung und Vermutung nicht", wahlUi.email === true && wahlUi.angebote === true && wahlUi.name === false && wahlUi["vermutung:zahlungsarten"] === false);
+  check("Ergänzen: Zeile mit Status als Text (nicht nur Farbe)", (await page.$eval("[data-zeile='email'] .status-chip", (el) => el.textContent)).includes("Fehlt noch") && (await page.$eval("[data-zeile='name'] .status-chip", (el) => el.textContent)).includes("Weicht ab"));
+  check("Ergänzen: gleiche Angaben haben keine Auswahl", !(await page.$("[data-zeile='mobilnummer'] input")));
+  check("Ergänzen: Aktuell und Gefunden werden gegenübergestellt", (await page.$eval("[data-zeile='angebote']", (el) => el.textContent)).includes("Aktuell: Eier") && (await page.$eval("[data-zeile='angebote']", (el) => el.textContent)).includes("Neu: Honig"));
+  check("Ergänzen: Auswahl-Kästchen mindestens 24px", (await page.$eval("[data-feldwahl='email']", (el) => el.getBoundingClientRect().width)) >= 24);
+  if (process.env.SCREENSHOT_DIR) { await page.setViewportSize({ width: 390, height: 844 }); await page.screenshot({ path: `${process.env.SCREENSHOT_DIR}/p5.png`, fullPage: true }); await page.setViewportSize({ width: 1280, height: 720 }); }
+  await page.click("#a-uebernehmen-btn");
+  await page.waitForSelector("#editor-form", { timeout: 4000 });
+  await page.waitForTimeout(200);
+  check("Ergänzen: Editor zeigt ergänzte Angaben, Bestehendes unverändert", (await page.$eval("#f-email", (el) => el.value)) === "a@b.ch" && (await page.$eval("#f-plz", (el) => el.value)) === "3000" && (await page.$eval("#f-adresse", (el) => el.value)) === "Dorf 1" && (await page.$eval("#f-name", (el) => el.value)) === "Hof A");
+  check("Ergänzen: Angebote ergänzt, Öffnungszeiten übernommen, «Ungespeichert» sichtbar", (await page.$eval("#f-angebote", (el) => el.value)) === "Eier, Honig" && (await page.$$(".oeffnungszeit-zeile")).length === 1 && (await page.isVisible("#ungespeichert")));
+  check("Ergänzen: noch nichts gespeichert", (await page.evaluate(() => window.__gespeichertErg)) === null);
+  await page.click("#speichern-btn");
+  await page.waitForTimeout(250);
+  const ergPayload = await page.evaluate(() => window.__gespeichertErg);
+  check("Ergänzen: Speichern sendet ergänzte Angaben samt Herkunft, Version bleibt", !!ergPayload && ergPayload.id === "erg1" && ergPayload.version === 2 && ergPayload.email === "a@b.ch" && ergPayload.quellen.some((q) => q.feld === "email" && q.quelle === "website") && ergPayload.name === "Hof A");
+
+  // Neuer Hofladen aus der Webseite
+  await page.evaluate(() => { window.hofkarteApp.state.hoflaeden = []; window.__gespeichertErg = null; });
+  await gehe("#/erfassen/webseite");
+  await page.fill("#a-website", "neu.example.ch");
+  await page.click("#a-start-btn");
+  await page.waitForSelector("#a-uebernehmen-btn", { timeout: 4000 });
+  check("Webseite: Adresse ohne https:// wird ergänzt", (await page.evaluate(() => window.__anreichern)).website === "https://neu.example.ch");
+  check("Webseite: bei neuem Hofladen sind alle Angaben vorgewählt, KI-Vermutung nicht", (await page.$$eval("[data-feldwahl]:not([data-feldwahl^='vermutung'])", (els) => els.every((e) => e.checked))) && (await page.$eval("[data-feldwahl='vermutung:zahlungsarten']", (el) => el.checked)) === false);
+  await page.click("#a-uebernehmen-btn");
+  await page.waitForSelector("#editor-form", { timeout: 4000 });
+  await page.waitForTimeout(200);
+  check("Webseite: Übernahme öffnet das Formular mit den Angaben und der Webseite", (await page.$eval("#f-email", (el) => el.value)) === "a@b.ch" && (await page.$eval("#f-website", (el) => el.value)) === "https://neu.example.ch" && (await page.isVisible("#ungespeichert")));
+  await page.evaluate(() => { window.hofkarteApp.haClient = null; window.hofkarteApp.offlineModus = true; });
+  await gehe("#/erfassen/webseite");
+  check("Webseite: ohne Verbindung ist «Auslesen» gesperrt", (await page.$eval("#a-start-btn", (el) => el.disabled)) === true);
+  await page.evaluate(() => { delete window.hofkarteApp.speichereHofladen; });
   await page.evaluate(() => {
     const app = window.hofkarteApp;
     app.haClient = null;

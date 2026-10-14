@@ -158,10 +158,16 @@ export function renderEditor(container, app, hofladenId) {
   if (!hofladenId) app.entwurf = null;
   if (entwurf?.daten) Object.assign(daten, entwurf.daten);
 
+  // Ergänzung aus „Angaben ergänzen“ (einmalig verbrauchen): ergänzt/ersetzt die
+  // gewählten Angaben des bestehenden Hofladens; gespeichert wird erst hier.
+  const ergaenzung = bestehender && app.ergaenzung && app.ergaenzung.hofladenId === bestehender.id ? app.ergaenzung : null;
+  if (bestehender) app.ergaenzung = null;
+  if (ergaenzung?.daten) Object.assign(daten, ergaenzung.daten);
+
   // Herkunft der Angaben („quellen“): bei bestehenden Hofläden erhalten,
   // beim Speichern nur für Felder behalten, die nicht von Hand geändert
   // wurden (siehe finden.js, bereinigteQuellen).
-  const quellen = (bestehender?.quellen || entwurf?.quellen || []).map((q) => ({ ...q }));
+  const quellen = (ergaenzung?.quellen || bestehender?.quellen || entwurf?.quellen || []).map((q) => ({ ...q }));
   const quellenStand = quellenSchnappschuss(quellen, daten);
 
   // Lokaler Arbeitszustand für Listenfelder (Öffnungszeiten, Angebote,
@@ -626,8 +632,8 @@ export function renderEditor(container, app, hofladenId) {
   zeichneAngebote();
   zeichneZahlungen();
 
-  // Ein Entwurf aus „Hofladen finden“ ist noch nicht gespeichert und gilt daher als geändert.
-  anfangsStand = entwurf ? "" : stand();
+  // Ein Entwurf aus „Hofladen finden“/„Angaben ergänzen“ ist noch nicht gespeichert und gilt daher als geändert.
+  anfangsStand = entwurf || ergaenzung ? "" : stand();
   aktualisiere();
 
   /** Vollständigkeit, Kurzinfo und Ungespeichert-Anzeige neu berechnen. */
