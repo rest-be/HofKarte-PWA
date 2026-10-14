@@ -1,6 +1,6 @@
 # HofKarte-PWA
 
-**Version: 2.0.0-dev.6** – siehe Abschnitt [Version](#version) unten für die
+**Version: 2.0.0-dev.7** – siehe Abschnitt [Version](#version) unten für die
 installierte Version auf einem konkreten Gerät.
 
 Progressive Web App für HofKarte – ein reiner, zustandsloser Client für die
@@ -54,7 +54,11 @@ src/
   storage.js             IndexedDB-Wrapper (Verbindungsdaten + Lesecache)
   html.js                 escapeHtml / sichereHttpUrl (Injection-Schutz)
   bilder.js               Vorschau-URLs und Verkleinerung vor dem Upload
-  naehe.js                „Hofläden in der Nähe“ (Geolocation + HA-Action)
+  naehe.js                „Hofläden in der Nähe“ (Geolocation + HA-Action), Entfernung (Haversine)
+  fokus.js                Fokusführung bei Seiten-/Schrittwechseln
+  design.js, gruppen.js   Markenfarbe/Kontraste; Gruppenmodell (Vollständigkeit)
+  ergaenzen.js, update.js Vergleich „Angaben ergänzen“; Update-Funktion
+  icons.js                Icon-Satz (SVG, ohne Fremdbibliothek)
   finden.js               „Hofladen finden“: Tabellen, Entwurf, Herkunft (ohne DOM)
   styles.css              Stylesheet
   views/
@@ -63,7 +67,10 @@ src/
     detail.js              Detailansicht
     editor.js              Erstellen/Bearbeiten
     finden.js              „Hofladen finden“ (Suche, Auswahl, Prüfen)
-    map.js                 Kartenansicht
+    erfassen.js            Tab „Erfassen“: Einstieg, Vor Ort, Schnellerfassung
+    auslesen.js            „Von der Webseite“ und „Angaben ergänzen“
+    map.js                 Kartenansicht (Vorschau-Sheet, Formmarker)
+    einstellungen.js, konflikt.js  Einstellungen/Update; Versionskonflikte
 vendor/                 Drittbibliotheken lokal (home-assistant-js-websocket, Leaflet; siehe vendor/README.md)
 icons/                  App-Icons (192/512/Apple Touch/Favicon)
 tests/                  Playwright-Smoke-Tests (siehe tests/README.md)
@@ -95,6 +102,7 @@ READMEs.
 
 | Version | Datum | Wesentliche Änderungen |
 |---|---|---|
+| 2.0.0-dev.7 | 2026-10-14 | Zugänglichkeit (Fokusführung, „Zum Inhalt“, sichtbarer Tastaturfokus, Kontraste ≥ 4,5:1 hell und dunkel), „Erweiterte Suche“ fragt den Standort nur auf Tipp, Geräte-Test-Checkliste. |
 | 2.0.0-dev.6 | 2026-10-14 | Liste mit Filter-Chips und Entfernung auf Tipp; Karte mit Vorschau-Sheet, „Mein Standort“, Formmarkern und Filter „Nur geöffnet“. |
 | 2.0.0-dev.5 | 2026-10-14 | „Von der Webseite“ erfassen und „Angaben ergänzen“ für Bestehendes (Lücken vorgewählt, Abweichungen nie). |
 | 2.0.0-dev.4 | 2026-10-14 | Tab „Erfassen“ (Vor Ort, Schnellerfassung, Gespeichert), Update-Funktion („Nach Update suchen“, Hinweis bei neuer Version). |
@@ -310,6 +318,45 @@ eine HA-Integration mit Versionsunterstützung (HofKarte-HA, Phase 8b);
   `aria-current` ausgezeichnet.
 - Schriftgrössen sind durchgehend in `rem` definiert und folgen damit
   automatisch der iOS-Systemschriftgrösse (Dynamic Type).
+
+## Zugänglichkeit und Geräte-Test (ab 2.0.0-dev.7)
+
+Umgesetzt und per Smoke-Test abgesichert:
+
+- **Fokusführung:** Nach einem Seitenwechsel steht der Fokus auf der Überschrift
+  (genau eine `h1` pro Ansicht), bei Schrittwechseln („Hofladen finden“, „Von der
+  Webseite“) auf der Schrittüberschrift bzw. der Statusmeldung. Der Seitentitel
+  folgt der Ansicht.
+- **Tastatur:** „Zum Inhalt“ (erstes Element beim Tabben) und ein überall sichtbarer
+  Fokusrahmen (3 px). Die Karten-Vorschau schliesst mit Escape.
+- **Kontraste:** Text, Gedämpft, Links, Schrift auf Akzent, Erfolg, Fehler und
+  Warnung erreichen in Hell und Dunkel mindestens 4,5:1 (Test rechnet nach).
+  Die Markenfarbe wird bei jeder Wahl gleich geprüft.
+- **Status nie nur durch Farbe:** Badge mit Form + Text, Kartenmarker mit Form
+  (Kreis = geöffnet, Quadrat = geschlossen, Ring = unbekannt).
+- **Bewegung:** `prefers-reduced-motion` schaltet Seitenübergänge, Sheet-Animation
+  und Leaflet-Animationen ab.
+- **Standort nur auf Tipp:** Liste („In der Nähe“), Karte („Mein Standort“),
+  „Vor Ort“, „Hofladen finden“. Er wird nie gespeichert.
+
+**Checkliste für den Test auf dem Gerät** (nicht automatisierbar, bitte von Hand):
+
+1. iPhone, Home-Bildschirm-App: App einmal über den Link neu laden bzw. in den
+   Einstellungen „Nach Update suchen“; Version prüfen (Einstellungen).
+2. Standort: „Vor Ort“ → „Standort abfragen“ (iOS fragt beim ersten Mal; bei
+   Ablehnung erscheint die Anleitung). Danach Liste → „In der Nähe“.
+3. Kamera/Foto in der Schnellerfassung; ohne Netz erscheint „Foto später ergänzen“.
+4. VoiceOver: Tab „Erfassen“ → Einstieg → „Von der Webseite“ durchgehen; Schritt-
+   und Statusansagen prüfen; Karte: Marker werden mit Name und Status vorgelesen.
+5. Dunkelmodus und grosse Schrift (Einstellungen → Anzeige) ansehen.
+6. Mac (Safari/Chrome): Tastatur-Durchgang mit Tab/Enter/Escape.
+
+**Cache-Hinweis:** Die App aktualisiert sich nicht von selbst auf der
+Home-Bildschirm-Verknüpfung, wenn die installierte Version vor 2.0.0-dev.4 ist
+(sie kennt die Update-Funktion noch nicht). Einmalig den Link im Browser öffnen
+und die Verknüpfung neu anlegen; danach genügt „Nach Update suchen“ bzw. der
+Hinweis „Neue Version verfügbar“. Im Notfall „App zurücksetzen“ (die Anmeldung
+bleibt erhalten).
 
 ## Bekannte Einschränkungen (MVP)
 

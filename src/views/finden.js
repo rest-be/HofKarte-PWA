@@ -33,6 +33,7 @@ import {
   zeileWert,
 } from "../finden.js";
 import { icon } from "../icons.js";
+import { fokussiereSchritt } from "../fokus.js";
 
 const ANREICHERN_TIMEOUT_MS = 90_000;
 
@@ -112,9 +113,14 @@ export function renderFinden(container, app) {
 
   function zeichne() {
     if (!aktiv) return;
-    container.innerHTML = `<div data-finden class="finden">${html()}</div>`;
+    const namen = { 1: "Suche", 2: "Treffer wählen", 3: "Angaben prüfen" };
+    container.innerHTML = `<div data-finden class="finden"><h2 class="nur-leser" data-fokus>Schritt ${z.schritt} von 3: ${namen[z.schritt]}</h2>${html()}</div>`;
     binde();
+    // Fokus nur bei einem Schrittwechsel, nicht bei jedem Neuzeichnen.
+    if (letzterSchritt !== undefined && letzterSchritt !== z.schritt) fokussiereSchritt(container);
+    letzterSchritt = z.schritt;
   }
+  let letzterSchritt;
 
   // --- Schritt 1: Suche ---------------------------------------------------
   function schritt1() {
@@ -459,9 +465,9 @@ export function renderFinden(container, app) {
     );
   }
 
-  // Start: KI-Entität erfragen (optional) und Gerätestandort übernehmen.
+  // Start: KI-Entität erfragen (optional). Der Gerätestandort wird nur auf
+  // Tipp auf «Mein Standort» abgefragt, nie von selbst.
   zeichne();
-  ermittleStandort();
   if (app.haClient?.kiEntitaet) {
     app.haClient
       .kiEntitaet()

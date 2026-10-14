@@ -21,11 +21,11 @@
   --fill: rgba(118, 118, 128, 0.12); /* tertiarySystemFill */
   --fill-stark: rgba(118, 118, 128, 0.2);
   --text-color: #000000;
-  --muted-color: rgba(60, 60, 67, 0.6);
+  --muted-color: rgba(60, 60, 67, 0.76);
   --border-color: rgba(60, 60, 67, 0.29);
   --separator: rgba(60, 60, 67, 0.2);
-  --danger-color: #ff3b30;
-  --success-color: #248a3d;
+  --danger-color: #d70015;
+  --success-color: #1e7a34;
   --warn-bg: rgba(255, 149, 0, 0.14);
   --warn-text: #9a5b00;
   --danger-bg: rgba(255, 59, 48, 0.12);
@@ -53,7 +53,7 @@
     --muted-color: rgba(235, 235, 245, 0.6);
     --border-color: rgba(84, 84, 88, 0.65);
     --separator: rgba(84, 84, 88, 0.6);
-    --danger-color: #ff453a;
+    --danger-color: #ff6b61;
     --success-color: #30d158;
     --warn-bg: rgba(255, 159, 10, 0.18);
     --warn-text: #ffb340;
@@ -2367,4 +2367,53 @@ details.gruppe > .gruppen-inhalt {
     transform: translateY(24px);
     opacity: 0;
   }
+}
+
+/* --- Phase 7: Zugänglichkeit ------------------------------------------------- */
+
+.nur-leser {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  margin: -1px;
+  padding: 0;
+  overflow: hidden;
+  clip: rect(0 0 0 0);
+  white-space: nowrap;
+  border: 0;
+}
+
+.skip-link {
+  position: fixed;
+  top: 8px;
+  left: 8px;
+  z-index: 3000;
+  min-height: 44px;
+  padding: 0 16px;
+  border: 0;
+  border-radius: 22px;
+  background: var(--accent);
+  color: var(--accent-ink);
+  font-size: 16px;
+  transform: translateY(-200%);
+}
+
+.skip-link:focus {
+  transform: none;
+}
+
+/* Sichtbarer Tastaturfokus auf allen bedienbaren Elementen. */
+button:focus-visible,
+a:focus-visible,
+summary:focus-visible,
+select:focus-visible,
+input:focus-visible,
+textarea:focus-visible,
+[role="button"]:focus-visible {
+  outline: 3px solid var(--tint);
+  outline-offset: 2px;
+}
+
+[tabindex="-1"]:focus {
+  outline: none;
 }

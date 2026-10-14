@@ -18,7 +18,7 @@
  * Beim Erhöhen bitte auch im README (Abschnitt "Version") und im
  * Vorgehensplan nachziehen.
  */
-export const APP_VERSION = "2.0.0-dev.6";
+export const APP_VERSION = "2.0.0-dev.7";
 
 /**
  * Release Notes (neueste zuerst), angezeigt auf dem Einrichtungsbildschirm
@@ -26,6 +26,15 @@ export const APP_VERSION = "2.0.0-dev.6";
  * ergänzen (und die Tabelle im README nachziehen).
  */
 export const RELEASE_NOTES = [
+  {
+    version: "2.0.0-dev.7",
+    datum: "2026-10-14",
+    punkte: [
+      "Zugänglichkeit: Fokus folgt Seiten- und Schrittwechseln, „Zum Inhalt“, sichtbarer Tastaturfokus, genau eine Hauptüberschrift pro Ansicht.",
+      "Kontraste in Hell und Dunkel auf mindestens 4,5:1 angehoben (Gedämpft, Erfolg, Fehler).",
+      "„Erweiterte Suche“ fragt den Standort nur noch auf Tipp („Mein Standort“).",
+    ],
+  },
   {
     version: "2.0.0-dev.6",
     datum: "2026-10-14",

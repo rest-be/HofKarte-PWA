@@ -75,4 +75,14 @@ export async function hoflaedenInNaeheDesGeraets(
   return { latitude, longitude, treffer: ergebnis.hoflaeden };
 }
 
+/** Entfernung in Metern zwischen zwei Koordinaten (Haversine). */
+export function entfernungMeter(lat1, lon1, lat2, lon2) {
+  const R = 6371000;
+  const rad = (g) => (g * Math.PI) / 180;
+  const dLat = rad(lat2 - lat1);
+  const dLon = rad(lon2 - lon1);
+  const a = Math.sin(dLat / 2) ** 2 + Math.cos(rad(lat1)) * Math.cos(rad(lat2)) * Math.sin(dLon / 2) ** 2;
+  return 2 * R * Math.asin(Math.sqrt(a));
+}
+
 export { aktuellerStandort, STANDARD_RADIUS_METER, MIN_RADIUS_METER, MAX_RADIUS_METER };

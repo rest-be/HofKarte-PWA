@@ -13,6 +13,7 @@
  * Hofladens selbst. Vor dem Speichern wird auf Doppelte geprüft.
  */
 
+import { entfernungMeter } from "../naehe.js";
 import { escapeHtml, sichereHttpUrl } from "../html.js";
 import { icon } from "../icons.js";
 import { bildVerkleinern } from "../bilder.js";
@@ -39,16 +40,6 @@ export function setzeErfassenZurueck() {
   zustand.treffer = null;
   zustand.suchFehler = "";
   zustand.standortFehler = "";
-}
-
-/** Entfernung in Metern zwischen zwei Koordinaten (Haversine). */
-export function entfernungMeter(lat1, lon1, lat2, lon2) {
-  const R = 6371000;
-  const rad = (g) => (g * Math.PI) / 180;
-  const dLat = rad(lat2 - lat1);
-  const dLon = rad(lon2 - lon1);
-  const a = Math.sin(dLat / 2) ** 2 + Math.cos(rad(lat1)) * Math.cos(rad(lat2)) * Math.sin(dLon / 2) ** 2;
-  return 2 * R * Math.asin(Math.sqrt(a));
 }
 
 /** Bereits erfasste Hofläden im Umkreis, nächste zuerst: `[{hofladen, meter}]`. */

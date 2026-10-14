@@ -11,6 +11,7 @@
 
 import { escapeHtml, sichereHttpUrl } from "../html.js";
 import { icon } from "../icons.js";
+import { fokussiereSchritt } from "../fokus.js";
 import { FINDEN_FEHLERMELDUNGEN, FINDEN_KI_STATUS, FINDEN_QUELLEN_LABEL, FINDEN_WEBSITE_STATUS, findeBestehenden, istHttpUrl } from "../finden.js";
 import { STATUS, baueErgaenzung, vergleiche, vorauswahl } from "../ergaenzen.js";
 
@@ -102,7 +103,7 @@ export function renderAuslesen(container, app, hofladenId = null) {
     teile.push(zeile(e.website ? FINDEN_WEBSITE_STATUS[e.website.status] || e.website.status : "Webseite wird gelesen …"));
     if (z.ki) teile.push(zeile(e.ki ? FINDEN_KI_STATUS[e.ki.status] || e.ki.status : "KI wertet aus …"));
     return `
-      <div class="auslesen-laeuft" role="status" aria-live="polite">
+      <div class="auslesen-laeuft" role="status" aria-live="polite" data-fokus tabindex="-1">
         <p><strong>Auslesen …</strong></p>
         ${teile.join("")}
       </div>
@@ -180,10 +181,18 @@ export function renderAuslesen(container, app, hofladenId = null) {
       </div>`;
   }
 
+  let letzterSchritt;
   function zeichne() {
     if (!aktiv) return;
-    container.innerHTML = `<div class="auslesen" data-schritt="${z.schritt}">${z.schritt === "start" ? start() : z.schritt === "laeuft" ? laeuft() : pruefen()}</div>`;
+    const schrittName = z.schritt === "start" ? "Webadresse eingeben" : z.schritt === "laeuft" ? "" : "Angaben prüfen";
+    const kopf = schrittName ? `<h2 class="nur-leser" data-fokus>${schrittName}</h2>` : "";
+    container.innerHTML = `<div class="auslesen" data-schritt="${z.schritt}">${kopf}${z.schritt === "start" ? start() : z.schritt === "laeuft" ? laeuft() : pruefen()}</div>`;
     binde();
+    // Fokus nur bei einem Schrittwechsel (nicht bei jedem Statusereignis).
+    if (letzterSchritt !== undefined && letzterSchritt !== z.schritt) {
+      fokussiereSchritt(container);
+    }
+    letzterSchritt = z.schritt;
   }
 
   async function auslesen() {

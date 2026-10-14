@@ -5,7 +5,7 @@
  * Standalone-Navigation der PWA angepasst).
  */
 
-import { hoflaedenInNaeheDesGeraets, aktuellerStandort, STANDARD_RADIUS_METER } from "../naehe.js";
+import { hoflaedenInNaeheDesGeraets, aktuellerStandort, entfernungMeter as distanzMeter, STANDARD_RADIUS_METER } from "../naehe.js";
 import { offeneGruppen } from "../gruppen.js";
 import { ladeNaeheRadius } from "../storage.js";
 import { escapeHtml } from "../html.js";
@@ -23,16 +23,6 @@ const SORT_SPALTEN = [
   { wert: "geoeffnet", label: "Status" },
   { wert: "bewertung", label: "Bewertung" },
 ];
-
-/** Haversine-Distanz in Metern. */
-export function distanzMeter(lat1, lon1, lat2, lon2) {
-  const R = 6371000;
-  const rad = (g) => (g * Math.PI) / 180;
-  const a =
-    Math.sin(rad(lat2 - lat1) / 2) ** 2 +
-    Math.cos(rad(lat1)) * Math.cos(rad(lat2)) * Math.sin(rad(lon2 - lon1) / 2) ** 2;
-  return 2 * R * Math.asin(Math.sqrt(a));
-}
 
 export function formatDistanz(meter) {
   if (meter == null || !Number.isFinite(meter)) return "";

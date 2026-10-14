@@ -11,6 +11,7 @@
  * - einstellungen → src/views/einstellungen.js (Token ändern, Abmelden)
  */
 
+import { fokussiere } from "./fokus.js";
 import {
   ladeVerbindung,
   speichereVerbindung,
@@ -614,13 +615,15 @@ function renderMitRahmen(viewRender, aktiverTab, opts = {}) {
   const richtung = tiefe > letzteTiefe ? "slide-vor" : tiefe < letzteTiefe ? "slide-zurueck" : "";
   letzteTiefe = tiefe;
 
+  const hashGeaendert = letzterHash !== null && window.location.hash !== letzterHash;
   appContainer.innerHTML = `
+    <button type="button" class="skip-link" id="skip-link">Zum Inhalt</button>
     <header class="kopfzeile${gross ? "" : " ohne-gross"}">
       <div class="nav-zeile">
         <div class="nav-links">
           ${zurueck ? `<button type="button" class="nav-btn zurueck" id="zurueck-btn" aria-label="Zurück">${ICON_ZURUECK}Zurück</button>` : ""}
         </div>
-        <h1 class="nav-titel">${titel}</h1>
+        ${gross ? `<div class="nav-titel" aria-hidden="true">${titel}</div>` : `<h1 class="nav-titel">${titel}</h1>`}
         <div class="nav-rechts">
           ${
             tiefe === 0 || opts.einstellungenBtn
@@ -636,7 +639,7 @@ function renderMitRahmen(viewRender, aktiverTab, opts = {}) {
     </header>
     <div class="seite ${richtung}">
       ${gross ? `<h1 class="grosser-titel">${titel}</h1>` : ""}
-      <main class="inhalt"></main>
+      <main class="inhalt" id="inhalt" tabindex="-1"></main>
     </div>
     <nav class="tableiste" aria-label="Hauptnavigation">
       <button data-tab="liste"><span class="icon">${TAB_ICONS.liste}</span>Liste</button>
@@ -655,6 +658,12 @@ function renderMitRahmen(viewRender, aktiverTab, opts = {}) {
   if (window.location.hash !== letzterHash) window.scrollTo(0, 0);
   letzterHash = window.location.hash;
   aktualisiereKopfzeilenZustand();
+
+  document.title = `${titel} – HofKarte`;
+  appContainer.querySelector("#skip-link").addEventListener("click", () => fokussiere(appContainer.querySelector(".inhalt")));
+  // Seitenwechsel: Fokus auf die Überschrift (vor dem Rendern der View, damit
+  // deren eigener Autofokus Vorrang behält).
+  if (hashGeaendert) fokussiere(appContainer.querySelector("h1"));
 
   appContainer.querySelector("#einstellungen-btn")?.addEventListener("click", () => {
     app.navigate("#/einstellungen");

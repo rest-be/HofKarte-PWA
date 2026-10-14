@@ -862,7 +862,10 @@ export async function fuehreSmokeTestsAus(page, baseUrl) {
   check("Editor (neu) zeigt Button „Hofladen finden“", !!(await page.$("#finden-btn")));
   await page.click("#finden-btn");
   await page.waitForTimeout(400);
-  check("Finden: Gerätestandort wird sofort übernommen", (await page.$eval('[data-feld="latitude"]', (el) => el.value)) === "47.050200");
+  check("Finden: Standort wird nicht von selbst abgefragt", (await page.$eval('[data-feld="latitude"]', (el) => el.value)) === "");
+  await page.click("[data-standort]");
+  await page.waitForTimeout(400);
+  check("Finden: Gerätestandort wird nach Tipp übernommen", (await page.$eval('[data-feld="latitude"]', (el) => el.value)) === "47.050200");
   check("Finden: Umkreis-Standard 2 km, Maximum 5 km", (await page.$eval("[data-radius]", (el) => `${el.value}/${el.max}`)) === "2000/5000");
   check("Finden: KI-Hinweis statt Checkbox, wenn keine Entität gewählt", !!(await page.$("[data-ki-hinweis]")) && !(await page.$("[data-ki]")));
   await page.click("[data-suchen]");
@@ -1119,6 +1122,8 @@ export async function fuehreSmokeTestsAus(page, baseUrl) {
   await page.fill("#a-website", "neu.example.ch");
   await page.click("#a-start-btn");
   await page.waitForSelector("#a-uebernehmen-btn", { timeout: 4000 });
+  const fokusSchritt = await page.evaluate(() => ({ tag: document.activeElement?.tagName, text: document.activeElement?.textContent?.trim() }));
+  check(`Zugänglichkeit: nach Schrittwechsel Fokus auf «Angaben prüfen» (${fokusSchritt.text})`, fokusSchritt.tag === "H2" && fokusSchritt.text === "Angaben prüfen");
   check("Webseite: Adresse ohne https:// wird ergänzt", (await page.evaluate(() => window.__anreichern)).website === "https://neu.example.ch");
   check("Webseite: bei neuem Hofladen sind alle Angaben vorgewählt, KI-Vermutung nicht", (await page.$$eval("[data-feldwahl]:not([data-feldwahl^='vermutung'])", (els) => els.every((e) => e.checked))) && (await page.$eval("[data-feldwahl='vermutung:zahlungsarten']", (el) => el.checked)) === false);
   await page.click("#a-uebernehmen-btn");
@@ -1187,6 +1192,69 @@ export async function fuehreSmokeTestsAus(page, baseUrl) {
   await page.evaluate(async () => (await import("/src/update.js")).zeigeUpdateHinweis());
   check("Update: Hinweis «Neue Version verfügbar» erscheint genau einmal, Knopf ≥ 44px", (await page.$$("#update-hinweis")).length === 1 && (await page.$eval("#update-jetzt-btn", (el) => el.getBoundingClientRect().height)) >= 44);
   await page.evaluate(() => document.getElementById("update-hinweis")?.remove());
+
+
+  // Phase 7: Zugänglichkeit.
+  await page.evaluate(() => { const a = window.hofkarteApp; a.state.hoflaeden = [{ id: "z1", name: "Zugang", bilder: [] }]; });
+  await gehe("#/");
+  // Wie im Browser: nur ein hashchange (gehe() löst zusätzlich selbst eines aus).
+  await page.evaluate(() => { window.location.hash = "#/erfassen"; });
+  await page.waitForTimeout(300);
+  const fokusRoute = await page.evaluate(() => ({ tag: document.activeElement?.tagName, text: document.activeElement?.textContent?.trim(), h1: document.querySelectorAll("h1").length }));
+  check(`Zugänglichkeit: nach Seitenwechsel steht der Fokus auf der Überschrift (${fokusRoute.tag} «${fokusRoute.text}»)`, fokusRoute.tag === "H1" && fokusRoute.text === "Erfassen");
+  await gehe("#/");
+  check("Zugänglichkeit: genau eine H1 (auch mit grossem Titel)", (await page.$$eval("h1", (els) => els.length)) === 1);
+  check("Zugänglichkeit: Seitentitel folgt der Ansicht", (await page.title()).endsWith("HofKarte"));
+  await page.focus("#skip-link");
+  check("Zugänglichkeit: «Zum Inhalt» wird bei Fokus sichtbar und springt in den Inhalt", (await page.$eval("#skip-link", (el) => el.getBoundingClientRect().top)) >= 0);
+  await page.keyboard.press("Enter");
+  check("Zugänglichkeit: «Zum Inhalt» setzt den Fokus auf den Inhalt", (await page.evaluate(() => document.activeElement?.id)) === "inhalt");
+  await page.keyboard.press("Tab");
+  const fokusRahmen = await page.evaluate(() => { const el = document.activeElement; return el ? getComputedStyle(el).outlineStyle + " " + getComputedStyle(el).outlineWidth : ""; });
+  check(`Zugänglichkeit: Tastaturfokus ist sichtbar (${fokusRahmen})`, /solid 3px/.test(fokusRahmen));
+
+  // Kontraste (WCAG AA 4.5:1) in Hell und Dunkel.
+  const kontrast = async (schema) => {
+    await page.emulateMedia({ colorScheme: schema });
+    await page.waitForTimeout(100);
+    return page.evaluate(() => {
+      const cs = getComputedStyle(document.documentElement);
+      const c = document.createElement("canvas").getContext("2d");
+      const rgba = (wert) => { c.clearRect(0, 0, 1, 1); c.fillStyle = "#000"; c.fillStyle = wert; c.fillRect(0, 0, 1, 1); const d = c.getImageData(0, 0, 1, 1).data; return [d[0], d[1], d[2]]; };
+      const roh = (name) => cs.getPropertyValue(name).trim();
+      // Halbtransparente Farben über dem Hintergrund zusammensetzen.
+      const ueber = (vordergrund, hintergrund) => {
+        const m = vordergrund.match(/rgba?\(([^)]+)\)/);
+        if (!m) return rgba(vordergrund);
+        const t = m[1].split(",").map((x) => parseFloat(x));
+        const a = t[3] ?? 1;
+        const bg = rgba(hintergrund);
+        return [0, 1, 2].map((i) => Math.round(t[i] * a + bg[i] * (1 - a)));
+      };
+      const lum = ([r, g, b]) => { const f = (v) => { v /= 255; return v <= 0.03928 ? v / 12.92 : ((v + 0.055) / 1.055) ** 2.4; }; return 0.2126 * f(r) + 0.7152 * f(g) + 0.0722 * f(b); };
+      const verh = (a, b) => { const [x, y] = [lum(a), lum(b)].sort((p, q) => q - p); return (x + 0.05) / (y + 0.05); };
+      const karte = roh("--card-bg");
+      const bg = roh("--bg-color");
+      const paare = {
+        "Text/Karte": [ueber(roh("--text-color"), karte), rgba(karte)],
+        "Gedämpft/Karte": [ueber(roh("--muted-color"), karte), rgba(karte)],
+        "Gedämpft/Hintergrund": [ueber(roh("--muted-color"), bg), rgba(bg)],
+        "Tint/Karte": [rgba(roh("--tint")), rgba(karte)],
+        "Schrift auf Akzent": [rgba(roh("--accent-ink")), rgba(roh("--accent"))],
+        "Erfolg/Karte": [rgba(roh("--success-color")), rgba(karte)],
+        "Fehler/Karte": [rgba(roh("--danger-color")), rgba(karte)],
+        "Erfolg/Badge": [rgba(roh("--success-color")), ueber("rgba(52, 199, 89, 0.16)", karte)],
+        "Fehler/Badge": [rgba(roh("--danger-color")), ueber(roh("--danger-bg"), karte)],
+        "Warnung/Karte": [rgba(roh("--warn-text")), ueber(roh("--warn-bg"), karte)],
+      };
+      return Object.entries(paare).map(([n, [a, b]]) => [n, verh(a, b)]).filter(([, v]) => v < 4.5).map(([n, v]) => `${n} ${v.toFixed(2)}`);
+    });
+  };
+  const schlechtHell = await kontrast("light");
+  const schlechtDunkel = await kontrast("dark");
+  await page.emulateMedia({ colorScheme: "light" });
+  check(`Kontrast hell ≥ 4,5:1 (${schlechtHell.join("; ")})`, schlechtHell.length === 0);
+  check(`Kontrast dunkel ≥ 4,5:1 (${schlechtDunkel.join("; ")})`, schlechtDunkel.length === 0);
 
   check(
     "Keine Konsolen-/Laufzeitfehler (ohne CDN-Netzwerkfehler aus der Sandbox)",
