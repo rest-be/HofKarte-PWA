@@ -26,7 +26,7 @@ const APP_VARIANT = self.location.pathname.includes("/dev/")
   : "stable";
 
 const CACHE_PREFIX = `hofkarte-${APP_VARIANT}-`;
-const CACHE_VERSION = `${CACHE_PREFIX}pwa-v16`;
+const CACHE_VERSION = `${CACHE_PREFIX}pwa-v17`;
 
 const APP_SHELL_DATEIEN = [
   "./",
