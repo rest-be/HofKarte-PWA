@@ -728,11 +728,93 @@ async function starteAppIntern(wiederverbindung) {
 
 starteApp();
 
-// Service Worker (zuvor Inline-Skript in index.html - entfällt wegen CSP).
+
+/**
+ * Service Worker mit manueller Update-Freigabe.
+ * Stable und Dev erhalten getrennte Registrierungen durch ihre Pfade
+ * und getrennte Caches durch den jeweiligen Service Worker.
+ */
 if ("serviceWorker" in navigator) {
-  window.addEventListener("load", () => {
-    navigator.serviceWorker
-      .register("service-worker.js")
-      .catch((err) => console.error("Service Worker Registrierung fehlgeschlagen:", err));
+  window.addEventListener("load", async () => {
+    try {
+      const registration = await navigator.serviceWorker.register(
+        "service-worker.js"
+      );
+
+      let updatePromptShown = false;
+
+      function showUpdatePrompt() {
+        if (updatePromptShown || !registration.waiting) {
+          return;
+        }
+
+        updatePromptShown = true;
+
+        const accepted = window.confirm(
+          "Eine neue HofKarte-Version ist verfügbar. " +
+          "Möchtest du jetzt aktualisieren? Die App wird neu geladen."
+        );
+
+        if (accepted && registration.waiting) {
+          registration.waiting.postMessage({
+            type: "SKIP_WAITING"
+          });
+        } else {
+          updatePromptShown = false;
+        }
+      }
+
+      // Eine bereits wartende Version erkennen.
+      showUpdatePrompt();
+
+      // Neue Version suchen.
+      registration.addEventListener("updatefound", () => {
+        const installingWorker = registration.installing;
+
+        if (!installingWorker) {
+          return;
+        }
+
+        installingWorker.addEventListener("statechange", () => {
+          if (
+            installingWorker.state === "installed" &&
+            navigator.serviceWorker.controller
+          ) {
+            showUpdatePrompt();
+          }
+        });
+      });
+
+      // Nach bestätigtem Wechsel auf die neue Version neu laden.
+      let refreshing = false;
+
+      navigator.serviceWorker.addEventListener(
+        "controllerchange",
+        () => {
+          if (refreshing) {
+            return;
+          }
+
+          refreshing = true;
+          window.location.reload();
+        }
+      );
+
+      // Bei Rückkehr zur App erneut nach Updates suchen.
+      document.addEventListener("visibilitychange", () => {
+        if (document.visibilityState === "visible") {
+          registration.update().catch((err) => {
+            console.warn("Update-Prüfung fehlgeschlagen:", err);
+          });
+        }
+      });
+    } catch (err) {
+      console.error(
+        "Service Worker Registrierung fehlgeschlagen:",
+        err
+      );
+    }
   });
+}
+
 }
