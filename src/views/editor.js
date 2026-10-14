@@ -15,6 +15,7 @@ import { escapeHtml } from "../html.js";
 import { bildVerkleinern } from "../bilder.js";
 import { extractImageId } from "../ha-client.js";
 import { bereinigteQuellen, quelleFuerSpeichern, quellenSchnappschuss } from "../finden.js";
+import { icon, setzeSchaltflaeche } from "../icons.js";
 
 const WOCHENTAGE = [
   { wert: 1, label: "Montag" },
@@ -94,7 +95,7 @@ async function standortUebernehmen(container) {
   }
 
   btn.disabled = true;
-  btn.textContent = "📍 Ermittle Standort …";
+  setzeSchaltflaeche(btn, "standort", "Ermittle Standort …");
 
   try {
     let pos;
@@ -102,7 +103,7 @@ async function standortUebernehmen(container) {
       pos = await holeStandort({ enableHighAccuracy: true, timeout: 15_000, maximumAge: 0 });
     } catch (err) {
       if (err?.code === 1) throw err; // Berechtigung verweigert: kein zweiter Versuch sinnvoll
-      btn.textContent = "📍 Erneuter Versuch …";
+      setzeSchaltflaeche(btn, "standort", "Erneuter Versuch …");
       pos = await holeStandort({ enableHighAccuracy: false, timeout: 20_000, maximumAge: 60_000 });
     }
     container.querySelector("#f-latitude").value = pos.coords.latitude.toFixed(6);
@@ -111,7 +112,7 @@ async function standortUebernehmen(container) {
     alert(standortFehlermeldung(err));
   } finally {
     btn.disabled = false;
-    btn.textContent = "📍 Aktuellen Standort übernehmen";
+    setzeSchaltflaeche(btn, "standort", "Aktuellen Standort übernehmen");
   }
 }
 
@@ -172,7 +173,7 @@ export function renderEditor(container, app, hofladenId) {
         </select>
         <input type="time" class="oz-beginn" value="${o.beginn || ""}" aria-label="Beginn" />
         <input type="time" class="oz-ende" value="${o.ende || ""}" aria-label="Ende" />
-        <button type="button" class="entfernen-btn" data-remove="${i}" title="Öffnungszeit entfernen" aria-label="Öffnungszeit entfernen">✕</button>
+        <button type="button" class="entfernen-btn" data-remove="${i}" title="Öffnungszeit entfernen" aria-label="Öffnungszeit entfernen">${icon("schliessen", { klein: true })}</button>
       </div>`
         )
         .join("") || `<p class="ort">Keine regelmässigen Öffnungszeiten.</p>`;
@@ -244,8 +245,8 @@ export function renderEditor(container, app, hofladenId) {
           <div class="bild-zeile-meta">${i === 0 ? "Hauptbild · " : ""}${b.hochgeladen ? "hochgeladen" : "externe Adresse"}</div>
         </div>
         <div class="bild-zeile-aktionen">
-          ${i !== 0 ? `<button type="button" class="sekundaer-btn" data-hauptbild="${i}" title="Als Hauptbild festlegen" aria-label="Als Hauptbild festlegen">⭐</button>` : ""}
-          <button type="button" class="entfernen-btn" data-remove="${i}" title="Bild entfernen" aria-label="Bild entfernen">✕</button>
+          ${i !== 0 ? `<button type="button" class="sekundaer-btn" data-hauptbild="${i}" title="Als Hauptbild festlegen" aria-label="Als Hauptbild festlegen">${icon("funkeln", { klein: true })}</button>` : ""}
+          <button type="button" class="entfernen-btn" data-remove="${i}" title="Bild entfernen" aria-label="Bild entfernen">${icon("schliessen", { klein: true })}</button>
         </div>
       </div>`
           )
@@ -317,7 +318,7 @@ export function renderEditor(container, app, hofladenId) {
     <div id="editor-fehler" class="hinweis-leiste fehler" hidden></div>
     ${
       !hofladenId && app.haClient
-        ? `<div class="finden-einstieg"><button type="button" class="hinzufuegen-btn" id="finden-btn">🔎 Hofladen finden</button>
+        ? `<div class="finden-einstieg"><button type="button" class="hinzufuegen-btn" id="finden-btn">${icon("suche", { klein: true })} Hofladen finden</button>
            <p class="muted">Sucht Hofläden in der Nähe (OpenStreetMap) und übernimmt Angaben samt Herkunft.</p></div>`
         : ""
     }
@@ -375,7 +376,7 @@ export function renderEditor(container, app, hofladenId) {
             <input type="text" id="f-longitude" inputmode="decimal" value="${escapeHtml(String(daten.longitude ?? ""))}" />
           </div>
         </div>
-        <button type="button" class="hinzufuegen-btn" id="standort-uebernehmen-btn">📍 Aktuellen Standort übernehmen</button>
+        <button type="button" class="hinzufuegen-btn" id="standort-uebernehmen-btn">${icon("standort", { klein: true })} Aktuellen Standort übernehmen</button>
       </section>
 
       <section class="formular-abschnitt">
@@ -397,7 +398,7 @@ export function renderEditor(container, app, hofladenId) {
       <section class="formular-abschnitt">
         <h2>Automatisch ausfüllen</h2>
         <p class="muted">Übernimmt Name, Beschreibung, Adresse, Mobilnummer und E-Mail von der oben eingetragenen Website, sofern dort auffindbar.</p>
-        <button type="button" class="hinzufuegen-btn" id="webseite-info-btn">🔎 Infos von Website ermitteln</button>
+        <button type="button" class="hinzufuegen-btn" id="webseite-info-btn">${icon("suche", { klein: true })} Infos von Website ermitteln</button>
       </section>
 
       <section class="formular-abschnitt">
@@ -423,8 +424,8 @@ export function renderEditor(container, app, hofladenId) {
         <p class="muted">Das erste Bild in der Liste ist das Hauptbild.</p>
         <div id="bilder-liste"></div>
         <div class="upload-row">
-          <button type="button" class="hinzufuegen-btn" id="foto-aufnehmen-btn">📷 Foto aufnehmen</button>
-          <button type="button" class="hinzufuegen-btn" id="foto-bibliothek-btn">🖼️ Aus Fotos wählen</button>
+          <button type="button" class="hinzufuegen-btn" id="foto-aufnehmen-btn">${icon("kamera", { klein: true })} Foto aufnehmen</button>
+          <button type="button" class="hinzufuegen-btn" id="foto-bibliothek-btn">${icon("bild", { klein: true })} Aus Fotos wählen</button>
         </div>
         <input type="file" id="foto-kamera-input" accept="image/jpeg,image/png,image/gif" capture="environment" hidden />
         <input type="file" id="foto-bibliothek-input" accept="image/jpeg,image/png,image/gif" hidden />
@@ -517,7 +518,7 @@ export function renderEditor(container, app, hofladenId) {
       alert(`Konnte keine Infos ermitteln: ${err.message}`);
     } finally {
       btn.disabled = false;
-      btn.textContent = "🔎 Infos von Website ermitteln";
+      setzeSchaltflaeche(btn, "suche", "Infos von Website ermitteln");
     }
   });
 

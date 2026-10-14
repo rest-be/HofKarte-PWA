@@ -15,14 +15,7 @@
  * sonst durchgehend deutschen Bezeichnungen in diesem Projekt.
  */
 
-const IST_DEV = window.location.pathname.startsWith(
-  "/HofKarte-PWA/dev/"
-);
-
-const DB_NAME = IST_DEV
-  ? "hofkarte-pwa-dev"
-  : "hofkarte-pwa";
-
+const DB_NAME = "hofkarte-pwa";
 const DB_VERSION = 2;
 const STORE_NAME = "einstellungen";
 const CACHE_STORE_NAME = "lesecache";
@@ -161,6 +154,19 @@ export async function ladeNaeheRadius() {
 
 export async function speichereNaeheRadius(meter) {
   await set(NAEHE_RADIUS_KEY, meter);
+}
+
+/** Markenfarbe ("#rrggbb") - pro Gerät, `null` = Standard (Grün), siehe src/design.js. */
+const MARKENFARBE_KEY = "markenfarbe";
+
+export async function ladeMarkenfarbe() {
+  const wert = await get(MARKENFARBE_KEY);
+  return typeof wert === "string" && /^#[0-9a-f]{6}$/i.test(wert) ? wert.toLowerCase() : null;
+}
+
+export async function speichereMarkenfarbe(hex) {
+  if (hex == null) await remove(MARKENFARBE_KEY);
+  else await set(MARKENFARBE_KEY, hex);
 }
 
 /** Kartenfilter "Geschlossene ausblenden" - pro Gerät, Standard: aus. */

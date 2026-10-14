@@ -18,7 +18,7 @@
  * Beim Erhöhen bitte auch im README (Abschnitt "Version") und im
  * Vorgehensplan nachziehen.
  */
-export const APP_VERSION = "1.12.1";
+export const APP_VERSION = "2.0.0-dev.1";
 
 /**
  * Release Notes (neueste zuerst), angezeigt auf dem Einrichtungsbildschirm
@@ -26,6 +26,15 @@ export const APP_VERSION = "1.12.1";
  * ergänzen (und die Tabelle im README nachziehen).
  */
 export const RELEASE_NOTES = [
+  {
+    version: "2.0.0-dev.1",
+    datum: "2026-10-14",
+    punkte: [
+      "Entwicklungsstand der Überarbeitung 2.0.0: neues Grundgerüst der Oberfläche.",
+      "App standardmässig in Grün; in den Einstellungen unter „Darstellung“ lässt sich die Markenfarbe pro Gerät wählen (Voreinstellungen oder eigene Farbe, Schrift bleibt gut lesbar).",
+      "Eigene Symbole statt Emojis; der Öffnungsstatus zeigt zusätzlich zur Farbe eine Form.",
+    ],
+  },
   {
     version: "1.12.0",
     datum: "2026-10-09",

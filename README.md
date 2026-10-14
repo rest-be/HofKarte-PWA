@@ -1,6 +1,6 @@
 # HofKarte-PWA
 
-**Version: 1.12.0** – siehe Abschnitt [Version](#version) unten für die
+**Version: 2.0.0-dev.1** – siehe Abschnitt [Version](#version) unten für die
 installierte Version auf einem konkreten Gerät.
 
 Progressive Web App für HofKarte – ein reiner, zustandsloser Client für die
@@ -95,6 +95,7 @@ READMEs.
 
 | Version | Datum | Wesentliche Änderungen |
 |---|---|---|
+| 2.0.0-dev.1 | 2026-10-14 | Entwicklungsstand der Überarbeitung 2.0.0: grüne Markenfarbe (in den Einstellungen wählbar), Symbole statt Emojis, Status mit Form. |
 | 1.12.0 | 2026-10-09 | „Hofladen finden“ (Discovery aus HofKarte-HA 2026.10.1, optional mit KI), Herkunft der Angaben in der Detailansicht. |
 | 1.11.0 | 2026-10-06 | Foto-Upload über WebSocket (ohne CORS), Karte: Geschlossene ausblenden. |
 | 1.10.0 | 2026-10-05 | Phase 10: Sicherheit (Escaping, CSP, https-Pflicht), lokale Bibliotheken statt CDN, stabiles Suchfeld, Bild-Verkleinerung. |

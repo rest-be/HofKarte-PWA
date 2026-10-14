@@ -7,6 +7,7 @@
  */
 
 import { escapeHtml } from "./list.js";
+import { icon } from "../icons.js";
 
 const FELDER = [
   ["name", "Name"],
@@ -66,7 +67,7 @@ export function renderKonflikt(container, app, hofladenId) {
 
   container.innerHTML = `
     <h2>Versionskonflikt: ${escapeHtml(meine.name || server?.name || "")}</h2>
-    <p class="hinweis-leiste">⚠ Dieser Hofladen wurde auf einem anderen Gerät geändert, seit du ihn geöffnet hast. Bitte wähle, welche Version gelten soll.</p>
+    <p class="hinweis-leiste">${icon("warnung", { klein: true })} Dieser Hofladen wurde auf einem anderen Gerät geändert, seit du ihn geöffnet hast. Bitte wähle, welche Version gelten soll.</p>
     ${
       unterschiede.length
         ? `<div class="konflikt-liste">${unterschiede

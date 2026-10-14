@@ -9,6 +9,7 @@ import { hoflaedenInNaeheDesGeraets, STANDARD_RADIUS_METER } from "../naehe.js";
 import { ladeNaeheRadius } from "../storage.js";
 import { escapeHtml } from "../html.js";
 import { vorschauUrl } from "../bilder.js";
+import { icon } from "../icons.js";
 
 // Re-Export: editor/detail/konflikt importierten escapeHtml früher von hier.
 export { escapeHtml };
@@ -108,7 +109,7 @@ export function renderListe(container, app) {
               : `<div class="miniatur" aria-hidden="true"></div>`
           }
           <div class="info">
-            <p class="name">${escapeHtml(h.name)}${h._synchronisierungAusstehend ? ` <span title="Noch nicht synchronisiert">⌁</span>` : ""}${app.konfliktFuer && app.konfliktFuer(h.id) ? ` <span title="Versionskonflikt">⚠</span>` : ""}</p>
+            <p class="name">${escapeHtml(h.name)}${h._synchronisierungAusstehend ? ` <span title="Noch nicht synchronisiert" aria-label="Noch nicht synchronisiert">${icon("offline", { klein: true })}</span>` : ""}${app.konfliktFuer && app.konfliktFuer(h.id) ? ` <span title="Versionskonflikt" aria-label="Versionskonflikt">${icon("warnung", { klein: true })}</span>` : ""}</p>
             <p class="ort">${escapeHtml(h.ort || "")}</p>
             ${statusBadge(h.geoeffnet)} ${bewertungSterne(h.bewertung)}
           </div>
@@ -244,7 +245,7 @@ export function renderListe(container, app) {
     if (!platzhalter) return;
     platzhalter.innerHTML = `
       <details class="naehe-karte"${naeheOffen ? " open" : ""}>
-        <summary>📍 Hofläden in der Nähe</summary>
+        <summary>${icon("standort", { klein: true })} Hofläden in der Nähe</summary>
         <div id="naehe-ergebnis">
           <button class="aktualisieren" id="naehe-suchen-btn">Standort abfragen</button>
         </div>

@@ -8,6 +8,7 @@
 import { escapeHtml, sichereHttpUrl } from "../html.js";
 import { vorschauUrl } from "../bilder.js";
 import { FINDEN_QUELLEN_LABEL, FINDEN_ZEILEN } from "./../finden.js";
+import { icon } from "../icons.js";
 
 const WOCHENTAGE = ["", "Montag", "Dienstag", "Mittwoch", "Donnerstag", "Freitag", "Samstag", "Sonntag"];
 
@@ -109,18 +110,18 @@ export function renderDetail(container, app, hofladenId) {
   const kontaktZeilen = [];
   if (h.mobilnummer) {
     kontaktZeilen.push(
-      `<div class="kontakt-zeile"><a href="tel:${escapeHtml(h.mobilnummer.replace(/[^\d+]/g, ""))}">📞 ${escapeHtml(h.mobilnummer)}</a></div>`
+      `<div class="kontakt-zeile"><a href="tel:${escapeHtml(h.mobilnummer.replace(/[^\d+]/g, ""))}">${icon("telefon", { klein: true })} ${escapeHtml(h.mobilnummer)}</a></div>`
     );
   }
   if (h.email) {
-    kontaktZeilen.push(`<div class="kontakt-zeile"><a href="mailto:${escapeHtml(h.email)}">✉️ ${escapeHtml(h.email)}</a></div>`);
+    kontaktZeilen.push(`<div class="kontakt-zeile"><a href="mailto:${escapeHtml(h.email)}">${icon("mail", { klein: true })} ${escapeHtml(h.email)}</a></div>`);
   }
   if (h.website) {
     const websiteUrl = sichereHttpUrl(h.website);
     kontaktZeilen.push(
       websiteUrl
-        ? `<div class="kontakt-zeile"><a href="${escapeHtml(websiteUrl)}" target="_blank" rel="noopener noreferrer">🔗 ${escapeHtml(h.website)}</a></div>`
-        : `<div class="kontakt-zeile">🔗 ${escapeHtml(h.website)}</div>`
+        ? `<div class="kontakt-zeile"><a href="${escapeHtml(websiteUrl)}" target="_blank" rel="noopener noreferrer">${icon("weltkugel", { klein: true })} ${escapeHtml(h.website)}</a></div>`
+        : `<div class="kontakt-zeile">${icon("weltkugel", { klein: true })} ${escapeHtml(h.website)}</div>`
     );
   }
 
@@ -137,12 +138,12 @@ export function renderDetail(container, app, hofladenId) {
   container.innerHTML = `
     ${
       konflikt
-        ? `<p class="hinweis-leiste konflikt-hinweis">⚠ Versionskonflikt: Dieser Hofladen wurde auf einem anderen Gerät geändert. <a href="#/konflikt/${encodeURIComponent(h.id)}">Konflikt lösen</a></p>`
+        ? `<p class="hinweis-leiste konflikt-hinweis">${icon("warnung", { klein: true })} Versionskonflikt: Dieser Hofladen wurde auf einem anderen Gerät geändert. <a href="#/konflikt/${encodeURIComponent(h.id)}">Konflikt lösen</a></p>`
         : ""
     }
     ${
       h._synchronisierungAusstehend
-        ? `<p class="hinweis-leiste">⌁ Noch nicht synchronisiert - wird automatisch übernommen, sobald wieder eine Verbindung zu Home Assistant besteht.</p>`
+        ? `<p class="hinweis-leiste">${icon("offline", { klein: true })} Noch nicht synchronisiert - wird automatisch übernommen, sobald wieder eine Verbindung zu Home Assistant besteht.</p>`
         : ""
     }
 
@@ -181,7 +182,7 @@ export function renderDetail(container, app, hofladenId) {
         ? `<div class="detail-abschnitt">
              <h3>Standort / Koordinaten</h3>
              <div class="kontakt-zeile">${escapeHtml(h.latitude)}, ${escapeHtml(h.longitude)}</div>
-             ${kartenLink ? `<div class="kontakt-zeile"><a href="${escapeHtml(kartenLink)}" target="_blank" rel="noopener noreferrer">📍 Auf der Karte öffnen</a></div>` : ""}
+             ${kartenLink ? `<div class="kontakt-zeile"><a href="${escapeHtml(kartenLink)}" target="_blank" rel="noopener noreferrer">${icon("standort", { klein: true })} Auf der Karte öffnen</a></div>` : ""}
            </div>`
         : ""
     }

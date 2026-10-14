@@ -13,10 +13,35 @@
 
 import { APP_VERSION } from "../version.js";
 import { ladeNaeheRadius, speichereNaeheRadius } from "../storage.js";
+import { FARBEN, STANDARD_FARBE, aktuelleMarkenfarbe, setzeMarkenfarbe, normalisiereHex } from "../design.js";
+import { icon } from "../icons.js";
 import { STANDARD_RADIUS_METER, MIN_RADIUS_METER, MAX_RADIUS_METER } from "../naehe.js";
 
 export function renderEinstellungen(container, app) {
+  const farbKnoepfe = FARBEN.map(
+    (f) => `<button type="button" class="farb-wahl" data-farbe="${f.farbe}" aria-pressed="false">
+        <span class="farb-punkt" data-farb-punkt="${f.farbe}">${icon("haken")}</span>${f.name}
+      </button>`
+  ).join("");
+
   container.innerHTML = `
+    <section class="formular-abschnitt" id="darstellung">
+      <h2>Darstellung</h2>
+      <div class="farb-raster" role="group" aria-label="Markenfarbe">${farbKnoepfe}</div>
+      <div class="farb-eigene">
+        <input type="color" id="f-eigene-farbe" value="${STANDARD_FARBE}" aria-label="Eigene Farbe wählen" />
+        <div>
+          <strong>Eigene Farbe</strong>
+          <p class="muted" id="farbe-status">Frei wählbar, nur auf diesem Gerät. Die Schriftfarbe darauf passt sich für gute Lesbarkeit an.</p>
+        </div>
+      </div>
+      <div class="farb-vorschau">
+        <span class="vorschau-knopf">Vorschau</span>
+        <span class="status-badge offen">Offen bis 18:30</span>
+        <button type="button" id="farbe-zuruecksetzen">Zurücksetzen</button>
+      </div>
+    </section>
+
     <section class="formular-abschnitt">
       <h2>Hofläden in der Nähe</h2>
       <div class="feld-gruppe">
@@ -72,6 +97,44 @@ export function renderEinstellungen(container, app) {
       </div>
     </section>
   `;
+
+  const farbStatus = container.querySelector("#farbe-status");
+  const eigeneFarbe = container.querySelector("#f-eigene-farbe");
+  const farbKnopfListe = [...container.querySelectorAll(".farb-wahl")];
+  const zeigeAuswahl = () => {
+    const aktuell = aktuelleMarkenfarbe() || STANDARD_FARBE;
+    let bekannt = false;
+    farbKnopfListe.forEach((k) => {
+      const an = k.dataset.farbe === aktuell;
+      bekannt = bekannt || an;
+      k.setAttribute("aria-pressed", String(an));
+      k.querySelector(".farb-punkt").style.setProperty("background", k.dataset.farbe);
+    });
+    eigeneFarbe.value = aktuell;
+    farbStatus.textContent = bekannt
+      ? "Frei wählbar, nur auf diesem Gerät. Die Schriftfarbe darauf passt sich für gute Lesbarkeit an."
+      : `Eigene Farbe ${aktuell} ist aktiv.`;
+  };
+  zeigeAuswahl();
+  // Falls die gespeicherte Farbe erst nach dem Start aus IndexedDB eintrifft.
+  setTimeout(zeigeAuswahl, 300);
+  farbKnopfListe.forEach((k) =>
+    k.addEventListener("click", async () => {
+      await setzeMarkenfarbe(k.dataset.farbe);
+      zeigeAuswahl();
+    })
+  );
+  eigeneFarbe.addEventListener("input", () => {
+    setzeMarkenfarbe(normalisiereHex(eigeneFarbe.value), { speichern: false });
+  });
+  eigeneFarbe.addEventListener("change", async () => {
+    await setzeMarkenfarbe(normalisiereHex(eigeneFarbe.value));
+    zeigeAuswahl();
+  });
+  container.querySelector("#farbe-zuruecksetzen").addEventListener("click", async () => {
+    await setzeMarkenfarbe(null);
+    zeigeAuswahl();
+  });
 
   const radiusFeld = container.querySelector("#f-naehe-radius");
   const radiusStatus = container.querySelector("#naehe-radius-status");

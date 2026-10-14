@@ -32,6 +32,7 @@ import {
   radiusText,
   zeileWert,
 } from "../finden.js";
+import { icon } from "../icons.js";
 
 const ANREICHERN_TIMEOUT_MS = 90_000;
 
@@ -121,7 +122,7 @@ export function renderFinden(container, app) {
       ? `<label class="finden-check"><input type="checkbox" data-ki ${z.ki ? "checked" : ""}>
            <span>Website-Text mit KI auswerten (Angebote, Zahlungsarten, Öffnungszeiten)<br>
            <span class="muted">Der Text der Website wird an <b>${escapeHtml(z.kiEntitaet)}</b> gesendet – je nach Anbieter verlässt er dein Netzwerk. Die KI schlägt nur vor; Belegtes und Vermutetes wird getrennt angezeigt.</span></span></label>`
-      : `<p class="muted" data-ki-hinweis>🤖 KI-Auswertung nicht eingerichtet. Zum Aktivieren in Home Assistant unter Einstellungen → Geräte &amp; Dienste → HofKarte → Konfigurieren eine „AI Task“-Entität wählen (setzt eine KI-Integration wie Ollama oder OpenAI voraus).</p>`;
+      : `<p class="muted" data-ki-hinweis>${icon("funkeln", { klein: true })} KI-Auswertung nicht eingerichtet. Zum Aktivieren in Home Assistant unter Einstellungen → Geräte &amp; Dienste → HofKarte → Konfigurieren eine „AI Task“-Entität wählen (setzt eine KI-Integration wie Ollama oder OpenAI voraus).</p>`;
     return `
       <p class="muted finden-intro">Sucht in OpenStreetMap nach Hofläden in der Nähe und liest, falls vorhanden, deren Website aus. Es wird nichts gespeichert.</p>
       <section class="formular-abschnitt">
@@ -134,7 +135,7 @@ export function renderFinden(container, app) {
           <input type="text" inputmode="decimal" data-feld="latitude" value="${escapeHtml(String(z.latitude))}" /></div>
         <div class="feld-gruppe"><label>Längengrad</label>
           <input type="text" inputmode="decimal" data-feld="longitude" value="${escapeHtml(String(z.longitude))}" /></div>
-        <button type="button" class="hinzufuegen-btn" data-standort>📍 Mein Standort</button>
+        <button type="button" class="hinzufuegen-btn" data-standort>${icon("standort", { klein: true })} Mein Standort</button>
         <p class="muted${z.standortFehler ? " fehler-text" : ""}" data-standort-text>${escapeHtml(z.standortText)}</p>
         <div class="feld-gruppe"><label>Umkreis: <span data-radius-anzeige>${escapeHtml(radiusText(z.radius))}</span></label>
           <input type="range" min="${FINDEN_MIN_RADIUS_METER}" max="${FINDEN_MAX_RADIUS_METER}" step="50" value="${z.radius}" data-radius /></div>
@@ -162,7 +163,7 @@ export function renderFinden(container, app) {
             <span class="muted">${escapeHtml(KONFIDENZ_TEXT[k.konfidenz] || "")}</span>
             ${adresse ? `<span class="muted">${escapeHtml(adresse)}</span>` : ""}
             <span class="muted">${escapeHtml(kandidatGruende(k))}</span>
-            ${bestehend ? `<span class="finden-warnung">⚠ Möglicherweise schon erfasst: ${escapeHtml(bestehend.name)}</span>` : ""}
+            ${bestehend ? `<span class="finden-warnung">${icon("warnung", { klein: true })} Möglicherweise schon erfasst: ${escapeHtml(bestehend.name)}</span>` : ""}
           </span></label>`;
       })
       .join("");
@@ -222,7 +223,7 @@ export function renderFinden(container, app) {
           : "";
         const abwFeld = zeile.felder.find((x) => abweichungen[x]);
         const abw = abwFeld
-          ? `<span class="finden-warnung">⚠ weicht von ${escapeHtml(FINDEN_QUELLEN_LABEL[abweichungen[abwFeld]] || "der anderen Quelle")} ab</span>`
+          ? `<span class="finden-warnung">${icon("warnung", { klein: true })} weicht von ${escapeHtml(FINDEN_QUELLEN_LABEL[abweichungen[abwFeld]] || "der anderen Quelle")} ab</span>`
           : "";
         zeilen += `<label class="finden-zeile"><input type="checkbox" data-feldwahl="${escapeHtml(zeile.key)}" ${z.felder[zeile.key] ? "checked" : ""} />
           <span class="finden-text"><span class="finden-label">${escapeHtml(zeile.label)}</span>
@@ -236,7 +237,7 @@ export function renderFinden(container, app) {
         vermutet += `<label class="finden-zeile finden-vermutung"><input type="checkbox" data-feldwahl="vermutung:${escapeHtml(v.key)}" ${z.felder[`vermutung:${v.key}`] ? "checked" : ""} />
           <span class="finden-text"><span class="finden-label">${escapeHtml(v.label)} (vermutet)</span>
           <span>${escapeHtml(werte.map((x) => x.name ?? x).join(", "))}</span>
-          <span class="finden-warnung">⚠ Von der KI genannt, steht aber nicht im Text der Website. Bitte selbst prüfen.</span></span></label>`;
+          <span class="finden-warnung">${icon("warnung", { klein: true })} Von der KI genannt, steht aber nicht im Text der Website. Bitte selbst prüfen.</span></span></label>`;
       }
       if (!zeilen && !vermutet) zeilen = `<p class="muted">Es wurden keine verwertbaren Angaben gefunden.</p>`;
       var block = `

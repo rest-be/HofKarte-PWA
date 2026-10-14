@@ -33,6 +33,8 @@ import { renderKonflikt } from "./views/konflikt.js";
 import { renderEditor } from "./views/editor.js";
 import { renderEinstellungen } from "./views/einstellungen.js";
 import { renderFinden } from "./views/finden.js";
+import { icon } from "./icons.js";
+import { initialisiereDesign } from "./design.js";
 
 const appContainer = document.getElementById("app");
 const CACHE_KEY_LISTE = "hoflaeden-liste";
@@ -469,10 +471,10 @@ function syncStatusHtml() {
   const anzahl = app.state.ausstehendeAnzahl || 0;
   const konflikte = app.state.konflikte || [];
   if (konflikte.length) {
-    return `<a class="sync-status konflikt" href="#/konflikt/${encodeURIComponent(konflikte[0].hofladenId)}">⚠ ${konflikte.length === 1 ? "1 Konflikt" : `${konflikte.length} Konflikte`}</a>`;
+    return `<a class="sync-status konflikt" href="#/konflikt/${encodeURIComponent(konflikte[0].hofladenId)}">${icon("warnung", { klein: true })} ${konflikte.length === 1 ? "1 Konflikt" : `${konflikte.length} Konflikte`}</a>`;
   }
   if (!app.haClient) {
-    return `<span class="sync-status offline">⌁ Offline${anzahl ? ` (${anzahl} ausstehend)` : ""}</span>`;
+    return `<span class="sync-status offline">${icon("offline", { klein: true })} Offline${anzahl ? ` (${anzahl} ausstehend)` : ""}</span>`;
   }
   if (anzahl > 0) {
     return `<span class="sync-status wird-synchronisiert">↻ Wird synchronisiert …</span>`;
@@ -726,121 +728,14 @@ async function starteAppIntern(wiederverbindung) {
   aktualisiereAnsicht();
 }
 
+initialisiereDesign();
 starteApp();
 
-
-
-/**
- * Service Worker mit manueller Update-Freigabe.
- * Stable und Dev erhalten getrennte Caches und Datenbanken.
- */
+// Service Worker (zuvor Inline-Skript in index.html - entfällt wegen CSP).
 if ("serviceWorker" in navigator) {
-  window.addEventListener("load", async () => {
-    try {
-      const registration = await navigator.serviceWorker.register(
-        "service-worker.js"
-      );
-
-      let updatePromptShown = false;
-      let refreshing = false;
-
-      async function showUpdatePrompt() {
-        if (updatePromptShown || !registration.waiting) {
-          return;
-        }
-
-        updatePromptShown = true;
-
-        try {
-          const warteschlange = await ladeWarteschlange();
-
-          if (warteschlange.length > 0) {
-            window.alert(
-              `Ein Update ist verfügbar, aber es gibt noch ` +
-                `${warteschlange.length} ungesendete Änderung(en).\n\n` +
-                "Bitte synchronisiere diese zuerst. " +
-                "Die App bleibt vorerst auf der aktuellen Version."
-            );
-
-            updatePromptShown = false;
-            return;
-          }
-
-          const accepted = window.confirm(
-            "Eine neue HofKarte-Version ist verfügbar. " +
-              "Es gibt keine ausstehenden Offline-Änderungen. " +
-              "Möchtest du jetzt aktualisieren?"
-          );
-
-          if (accepted && registration.waiting) {
-            registration.waiting.postMessage({
-              type: "SKIP_WAITING",
-            });
-          } else {
-            updatePromptShown = false;
-          }
-        } catch (err) {
-          console.error(
-            "Offline-Warteschlange konnte nicht geprüft werden:",
-            err
-          );
-
-          window.alert(
-            "Die ausstehenden Offline-Änderungen konnten nicht geprüft werden. " +
-              "Aus Sicherheitsgründen wird das Update nicht gestartet."
-          );
-
-          updatePromptShown = false;
-        }
-      }
-
-      // Eine bereits wartende Version erkennen.
-      await showUpdatePrompt();
-
-      // Neue Version suchen.
-      registration.addEventListener("updatefound", () => {
-        const installingWorker = registration.installing;
-
-        if (!installingWorker) {
-          return;
-        }
-
-        installingWorker.addEventListener("statechange", () => {
-          if (
-            installingWorker.state === "installed" &&
-            navigator.serviceWorker.controller
-          ) {
-            void showUpdatePrompt();
-          }
-        });
-      });
-
-      // Erst nach Aktivierung der neuen Version neu laden.
-      navigator.serviceWorker.addEventListener(
-        "controllerchange",
-        () => {
-          if (refreshing) {
-            return;
-          }
-
-          refreshing = true;
-          window.location.reload();
-        }
-      );
-
-      // Bei Rückkehr zur App erneut nach Updates suchen.
-      document.addEventListener("visibilitychange", () => {
-        if (document.visibilityState === "visible") {
-          registration.update().catch((err) => {
-            console.warn("Update-Prüfung fehlgeschlagen:", err);
-          });
-        }
-      });
-    } catch (err) {
-      console.error(
-        "Service Worker Registrierung fehlgeschlagen:",
-        err
-      );
-    }
+  window.addEventListener("load", () => {
+    navigator.serviceWorker
+      .register("service-worker.js")
+      .catch((err) => console.error("Service Worker Registrierung fehlgeschlagen:", err));
   });
 }

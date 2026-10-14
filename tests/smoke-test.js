@@ -53,7 +53,7 @@ export async function fuehreSmokeTestsAus(page, baseUrl) {
   check("Einrichtungsbildschirm beim ersten Start sichtbar", !!(await page.$("#setup-form")));
   check("Einrichtung: HA-Adresse, Token und Button 'Verbinden' vorhanden", !!(await page.$("#ha-url")) && !!(await page.$("#ha-token")) && (await page.$eval("#setup-submit", (el) => el.textContent.trim())) === "Verbinden");
   const setupVersion = await page.$eval("#setup-version", (el) => el.textContent.trim()).catch(() => "");
-  check(`Einrichtung zeigt Versionsnummer (${setupVersion})`, /^\d+\.\d+\.\d+$/.test(setupVersion));
+  check(`Einrichtung zeigt Versionsnummer (${setupVersion})`, /^\d+\.\d+\.\d+(-dev\.\d+|-rc\.\d+)?$/.test(setupVersion));
   check("Einrichtung enthält Release Notes", (await page.$$("#release-notes .release")).length >= 5);
 
   // --- Zustand erzwingen: offline, ein bestehender Hofladen -------------
@@ -351,8 +351,8 @@ export async function fuehreSmokeTestsAus(page, baseUrl) {
 
   const einstellungenReihenfolge = await page.$$eval(".formular-abschnitt > h2", (els) => els.map((e) => e.textContent.trim()));
   check(
-    `Einstellungen-Reihenfolge: Nähe, Verbindung, Token ändern, Abmelden, Version (${einstellungenReihenfolge.join(", ")})`,
-    JSON.stringify(einstellungenReihenfolge) === JSON.stringify(["Hofläden in der Nähe", "Verbindung", "Token ändern", "Abmelden", "Version"])
+    `Einstellungen-Reihenfolge: Darstellung, Nähe, Verbindung, Token ändern, Abmelden, Version (${einstellungenReihenfolge.join(", ")})`,
+    JSON.stringify(einstellungenReihenfolge) === JSON.stringify(["Darstellung", "Hofläden in der Nähe", "Verbindung", "Token ändern", "Abmelden", "Version"])
   );
   check("Nähe-Umkreis: Standard 500 m", (await page.$eval("#f-naehe-radius", (el) => el.value)) === "500");
   await page.fill("#f-naehe-radius", "750");
@@ -363,6 +363,37 @@ export async function fuehreSmokeTestsAus(page, baseUrl) {
   await page.dispatchEvent("#f-naehe-radius", "change");
   await page.waitForTimeout(100);
   check("Nähe-Umkreis: ungültiger Wert wird abgelehnt (bleibt 750)", (await page.evaluate(async () => (await import("/src/storage.js")).ladeNaeheRadius())) === 750);
+  // --- 2.0.0-dev.1: Markenfarbe -------------------------------------------
+  const akzent = () => page.evaluate(() => getComputedStyle(document.documentElement).getPropertyValue("--accent").trim());
+  check("Markenfarbe: Standard ist Grün (#2e7d4f)", (await akzent()) === "#2e7d4f");
+  check("Markenfarbe: 5 Voreinstellungen + Standard markiert", (await page.$$(".farb-wahl")).length === 5 && (await page.$eval(".farb-wahl[data-farbe='#2e7d4f']", (el) => el.getAttribute("aria-pressed"))) === "true");
+  check("Markenfarbe: Farbwahl ist mindestens 44px hoch", (await page.$eval(".farb-wahl", (el) => el.getBoundingClientRect().height)) >= 44);
+  await page.click(".farb-wahl[data-farbe='#1f65c0']");
+  await page.waitForTimeout(200);
+  check("Markenfarbe: Blau wird angewendet", (await akzent()) === "#1f65c0");
+  check("Markenfarbe: Blau wird gespeichert", (await page.evaluate(async () => (await import("/src/storage.js")).ladeMarkenfarbe())) === "#1f65c0");
+  await page.click(".farb-wahl[data-farbe='#e8750f']");
+  await page.waitForTimeout(200);
+  check("Markenfarbe: Karotte erhält dunkle Schrift (Kontrast)", (await page.evaluate(() => getComputedStyle(document.documentElement).getPropertyValue("--accent-ink").trim())) !== "#ffffff");
+  const kontrastFehler = await page.evaluate(async () => {
+    const d = await import("/src/design.js");
+    const schlecht = [];
+    for (let i = 0; i < 400; i++) {
+      const hex = "#" + Math.floor(Math.random() * 0xffffff).toString(16).padStart(6, "0");
+      for (const dunkel of [false, true]) {
+        const f = d.akzentFarben(hex, dunkel);
+        const flaeche = dunkel ? "#181f1b" : "#ffffff";
+        if (d.kontrast(f.fuell, f.ink) < 4.5 || d.kontrast(f.tint, flaeche) < 4.5 || d.kontrast(f.fuell, flaeche) < 3) schlecht.push(hex + (dunkel ? " dunkel" : " hell"));
+      }
+    }
+    return schlecht.slice(0, 5);
+  });
+  check(`Markenfarbe: Kontrast bei 800 Zufallsfarben eingehalten (${kontrastFehler.join(", ")})`, kontrastFehler.length === 0);
+  await page.click("#farbe-zuruecksetzen");
+  await page.waitForTimeout(200);
+  check("Markenfarbe: Zurücksetzen stellt Grün wieder her", (await akzent()) === "#2e7d4f" && (await page.evaluate(async () => (await import("/src/storage.js")).ladeMarkenfarbe())) === null);
+  check("Symbole: ICON_NAMEN vollständig und ohne Emojis in Einstellungen", (await page.evaluate(async () => (await import("/src/icons.js")).ICON_NAMEN.length)) >= 20 && !/[\u{1F300}-\u{1FAFF}]/u.test(await page.$eval(".inhalt", (el) => el.textContent)));
+
   await page.evaluate(() => {
     window.location.hash = "#/";
     window.dispatchEvent(new Event("hashchange"));
