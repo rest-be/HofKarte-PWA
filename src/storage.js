@@ -15,7 +15,14 @@
  * sonst durchgehend deutschen Bezeichnungen in diesem Projekt.
  */
 
-const DB_NAME = "hofkarte-pwa";
+const IST_DEV = window.location.pathname.startsWith(
+  "/HofKarte-PWA/dev/"
+);
+
+const DB_NAME = IST_DEV
+  ? "hofkarte-pwa-dev"
+  : "hofkarte-pwa";
+
 const DB_VERSION = 2;
 const STORE_NAME = "einstellungen";
 const CACHE_STORE_NAME = "lesecache";
