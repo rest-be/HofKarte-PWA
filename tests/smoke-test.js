@@ -349,7 +349,7 @@ export async function fuehreSmokeTestsAus(page, baseUrl) {
   });
   check("map.js exportiert renderKarte korrekt (inkl. prefers-reduced-motion-Zweig)", mapModuleOk);
 
-  await page.click("[data-tab='neu']");
+  await page.evaluate(() => { window.location.hash = "#/neu"; window.dispatchEvent(new Event("hashchange")); });
   await page.waitForTimeout(400);
 
   const sterneGroup = await page.$("#bewertung-sterne");
@@ -837,6 +837,109 @@ export async function fuehreSmokeTestsAus(page, baseUrl) {
     && rt.angebote.map((a) => a.name).join() === "Eier,Honig" && rt.zahlungsarten.map((z) => z.name).join() === "Bargeld"
     && rt.bilder.length === 1 && rt.bilder[0].beschreibung === "Bild";
   check("Roundtrip: gleiches Payload wie vor dem Umbau", rtOk);
+
+  // --- 2.0.0-dev.4: Erfassen (Einstieg, Vor Ort, Schnell, Gespeichert) ------------
+  const gehe = async (hash) => {
+    await page.evaluate((h) => {
+      window.location.hash = h;
+      window.dispatchEvent(new Event("hashchange"));
+    }, hash);
+    await page.waitForTimeout(250);
+  };
+  await page.evaluate(() => {
+    window.__geoAufrufe = 0;
+    window.__geoModus = "ok";
+    Object.defineProperty(navigator, "geolocation", {
+      configurable: true,
+      value: {
+        getCurrentPosition: (ok, fehler) => {
+          window.__geoAufrufe++;
+          if (window.__geoModus === "verweigert") fehler({ code: 1 });
+          else ok({ coords: { latitude: 46.9482, longitude: 7.4475, accuracy: 20 } });
+        },
+      },
+    });
+    const app = window.hofkarteApp;
+    app.offlineModus = false;
+    app.state.hoflaeden = [
+      { id: "n1", name: "Hof Nah", latitude: 46.9481, longitude: 7.4474, geoeffnet: true, bilder: [] },
+      { id: "n2", name: "Hof Fern", latitude: 47.5, longitude: 8.5, geoeffnet: false, bilder: [] },
+    ];
+    window.__erfPayload = null;
+    app.speichereHofladen = async (d) => {
+      window.__erfPayload = d;
+      const neu = { ...d, id: "erf1" };
+      app.state.hoflaeden.push(neu);
+      return neu;
+    };
+    app.haClient = {
+      hofladenSuchen: async () => [
+        { name: "Hof Nah", latitude: 46.9481, longitude: 7.4474, konfidenz: "hoch", entfernung_meter: 12, signale: {} },
+        { name: "Beerenhof Aebi", latitude: 46.9495, longitude: 7.4490, adresse: "Dorfweg 3", plz: "3000", ort: "Bern", konfidenz: "mittel", entfernung_meter: 60, signale: {} },
+      ],
+    };
+  });
+  await gehe("#/erfassen");
+  check("Erfassen: Einstieg zeigt drei Wege", (await page.$$(".weg-karte")).length === 3 && !!(await page.$("#weg-vorort")) && !!(await page.$("#weg-webseite")) && !!(await page.$("#weg-hand")));
+  check("Erfassen: Tab heisst «Erfassen» und ist aktiv", (await page.$eval("[data-tab='erfassen']", (el) => el.textContent.trim() === "Erfassen" && el.getAttribute("aria-current") === "page")));
+  if (process.env.SCREENSHOT_DIR) { await page.setViewportSize({ width: 390, height: 844 }); await page.screenshot({ path: `${process.env.SCREENSHOT_DIR}/e1.png`, fullPage: true }); await page.setViewportSize({ width: 1280, height: 720 }); }
+  check("Erfassen: «Erweiterte Suche» bleibt erreichbar", (await page.$eval("#erweiterte-suche-link", (el) => el.getAttribute("href"))) === "#/finden");
+  await page.click("#weg-vorort");
+  await page.waitForTimeout(250);
+  check("Vor Ort: Standort wird nicht ohne Tipp abgefragt", (await page.evaluate(() => window.__geoAufrufe)) === 0);
+  check("Vor Ort: Umkreis-Chips 100/250/500 (250 gewählt)", (await page.$$eval("[data-radius]", (els) => els.map((e) => e.dataset.radius + ":" + e.getAttribute("aria-pressed")).join())) === "100:false,250:true,500:false");
+  await page.click("#standort-btn");
+  await page.waitForSelector("#osm-treffer", { timeout: 5000 });
+  check("Vor Ort: Standort erst nach Tipp abgefragt", (await page.evaluate(() => window.__geoAufrufe)) >= 1);
+  check("Vor Ort: «Schon erfasst» zeigt nur den nahen Hof", (await page.$$eval("#schon-erfasst [data-erfasst]", (els) => els.map((e) => e.dataset.erfasst).join())) === "n1");
+  check("Vor Ort: schon erfasste Treffer erscheinen nicht noch einmal als neu", (await page.$$eval("#osm-treffer .treffer-zeile strong", (els) => els.map((e) => e.textContent).join())) === "Beerenhof Aebi");
+  check("Vor Ort: Standort wird nicht gespeichert", !(await page.evaluate(() => JSON.stringify(localStorage) + document.cookie)).includes("46.9482") && !(await page.evaluate(async () => JSON.stringify(await (await import("/src/storage.js")).ladeVerbindung())).catch(() => "")).includes("46.9482"));
+  await page.click("[data-radius='100']");
+  await page.waitForTimeout(200);
+  if (process.env.SCREENSHOT_DIR) { await page.setViewportSize({ width: 390, height: 844 }); await page.screenshot({ path: `${process.env.SCREENSHOT_DIR}/e2.png`, fullPage: true }); await page.setViewportSize({ width: 1280, height: 720 }); }
+  check("Vor Ort: Umkreis-Wechsel wird übernommen", (await page.$eval("[data-radius='100']", (el) => el.getAttribute("aria-pressed"))) === "true");
+  check("Vor Ort: Knöpfe mindestens 44px", (await page.$eval(".treffer-btn", (el) => el.getBoundingClientRect().height)) >= 44 && (await page.$eval("#keiner-btn", (el) => el.getBoundingClientRect().height)) >= 44);
+  await page.click("[data-kandidat='0']");
+  await page.waitForTimeout(250);
+  if (process.env.SCREENSHOT_DIR) { await page.setViewportSize({ width: 390, height: 844 }); await page.screenshot({ path: `${process.env.SCREENSHOT_DIR}/e3.png`, fullPage: true }); await page.setViewportSize({ width: 1280, height: 720 }); }
+  check("Schnell: Angaben des Treffers sind eingetragen", (await page.$eval("#s-name", (el) => el.value)) === "Beerenhof Aebi" && (await page.$eval("#s-standort-text", (el) => el.textContent)).includes("46.94950"));
+  await page.fill("#s-name", "");
+  await page.click("#s-speichern-btn");
+  await page.waitForTimeout(150);
+  check("Schnell: Name ist Pflicht (Fehler, Fokus)", (await page.evaluate(() => document.activeElement?.id)) === "s-name" && (await page.$eval("#s-name-fehler", (el) => !el.hidden)) && (await page.evaluate(() => window.__erfPayload)) === null);
+  await page.fill("#s-name", "Hof Nah");
+  let doppelFrage = 0;
+  page.once("dialog", (d) => { doppelFrage++; d.dismiss(); });
+  await page.click("#s-speichern-btn");
+  await page.waitForTimeout(200);
+  check("Schnell: Duplikatwarnung vor dem Speichern, bei «Abbrechen» wird nichts gespeichert", doppelFrage === 1 && (await page.evaluate(() => window.__erfPayload)) === null);
+  await page.fill("#s-name", "Beerenhof Aebi");
+  await page.click("#s-speichern-btn");
+  await page.waitForTimeout(300);
+  const erf = await page.evaluate(() => window.__erfPayload);
+  check("Schnell: Speichern sendet Name, Koordinaten und Herkunft aus OpenStreetMap", !!erf && erf.name === "Beerenhof Aebi" && erf.latitude === 46.9495 && erf.plz === "3000" && erf.quellen.some((q) => q.feld === "name" && q.quelle === "openstreetmap"));
+  if (process.env.SCREENSHOT_DIR) { await page.setViewportSize({ width: 390, height: 844 }); await page.screenshot({ path: `${process.env.SCREENSHOT_DIR}/e4.png`, fullPage: true }); await page.setViewportSize({ width: 1280, height: 720 }); }
+  check("Gespeichert: Seite mit «Noch offen»", !!(await page.$("#noch-offen")) && (await page.$eval("#gespeichert-name", (el) => el.textContent)) === "Beerenhof Aebi");
+  await page.click("[data-gruppe='kontakt']");
+  await page.waitForTimeout(250);
+  check("Gespeichert: «Ergänzen» öffnet den Editor mit der gewünschten Gruppe", !!(await page.$("#editor-form")) && (await page.$eval("#gruppe-kontakt", (el) => el.open)));
+  // Ohne Standortfreigabe: Fehlermeldung, Erfassen bleibt möglich.
+  await page.evaluate(() => { window.__geoModus = "verweigert"; });
+  await gehe("#/erfassen/vorort");
+  await page.evaluate(() => { window.hofkarteApp.state.hoflaeden = []; });
+  await page.click("#standort-btn");
+  await page.waitForTimeout(500);
+  check("Vor Ort: verweigerter Standort zeigt Hinweis und lässt «Ohne Standort erfassen» zu", (await page.$eval("#standort-status", (el) => el.textContent.length > 10)) && !!(await page.$("#keiner-btn")));
+  await page.evaluate(() => { window.hofkarteApp.haClient = null; window.hofkarteApp.offlineModus = true; });
+  await page.click("#keiner-btn");
+  await page.waitForTimeout(250);
+  check("Schnell: ohne Verbindung ist der Foto-Upload gesperrt mit Hinweis «Foto später ergänzen»", (await page.$eval("#s-foto-kamera-btn", (el) => el.disabled)) && (await page.$eval("#s-foto-status", (el) => el.textContent)).includes("Foto später ergänzen"));
+  await page.fill("#s-name", "Offline-Hof");
+  await page.click("#s-speichern-btn");
+  await page.waitForTimeout(300);
+  check("Schnell: Erfassen ohne Verbindung und ohne Standort funktioniert", (await page.evaluate(() => window.__erfPayload?.name)) === "Offline-Hof" && !!(await page.$("#noch-offen")));
+  check("Gespeichert: fehlendes Foto wird als «Foto später ergänzen» angezeigt", (await page.$eval("#noch-offen", (el) => el.textContent)).includes("Foto später ergänzen"));
+  await page.evaluate(() => { delete window.hofkarteApp.speichereHofladen; });
   await page.evaluate(() => {
     const app = window.hofkarteApp;
     app.haClient = null;
@@ -872,6 +975,29 @@ export async function fuehreSmokeTestsAus(page, baseUrl) {
     `Einstellungen zeigen die installierte Version an (${angezeigteVersion})`,
     !!angezeigteVersion && angezeigteVersion === erwarteteVersion
   );
+
+  // --- 2.0.0-dev.4: Update-Funktion ----------------------------------------------
+  await page.waitForTimeout(500);
+  check("Update: Einstellungen zeigen die neueste Version und «aktuell»", (await page.$eval("#neueste-version", (el) => el.textContent.trim())) === angezeigteVersion && (await page.$eval("#update-status", (el) => el.textContent)).includes("neueste Version"));
+  check("Update: Knopf «Nach Update suchen» und «App zurücksetzen» vorhanden", !!(await page.$("#update-suchen-btn")) && !!(await page.$("#app-zuruecksetzen-btn")));
+  const upd = await page.evaluate(async () => {
+    const u = await import("/src/update.js");
+    return {
+      a: u.vergleicheVersionen("2.0.0-dev.3", "2.0.0-dev.4"),
+      b: u.vergleicheVersionen("2.0.0-dev.9", "2.0.0-rc.1"),
+      c: u.vergleicheVersionen("2.0.0-rc.2", "2.0.0"),
+      d: u.vergleicheVersionen("1.12.0", "2.0.0-dev.1"),
+      e: u.vergleicheVersionen("2.0.0", "2.0.0"),
+      f: u.vergleicheVersionen("2.0.1", "2.0.0"),
+      g: u.versionAusText('export const APP_VERSION = "2.0.0-dev.4";'),
+    };
+  });
+  check("Update: Versionsvergleich (dev < rc < Endversion)", upd.a === -1 && upd.b === -1 && upd.c === -1 && upd.d === -1 && upd.e === 0 && upd.f === 1);
+  check("Update: Version wird aus version.js gelesen", upd.g === "2.0.0-dev.4");
+  await page.evaluate(async () => (await import("/src/update.js")).zeigeUpdateHinweis());
+  await page.evaluate(async () => (await import("/src/update.js")).zeigeUpdateHinweis());
+  check("Update: Hinweis «Neue Version verfügbar» erscheint genau einmal, Knopf ≥ 44px", (await page.$$("#update-hinweis")).length === 1 && (await page.$eval("#update-jetzt-btn", (el) => el.getBoundingClientRect().height)) >= 44);
+  await page.evaluate(() => document.getElementById("update-hinweis")?.remove());
 
   check(
     "Keine Konsolen-/Laufzeitfehler (ohne CDN-Netzwerkfehler aus der Sandbox)",

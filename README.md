@@ -1,6 +1,6 @@
 # HofKarte-PWA
 
-**Version: 2.0.0-dev.3** – siehe Abschnitt [Version](#version) unten für die
+**Version: 2.0.0-dev.4** – siehe Abschnitt [Version](#version) unten für die
 installierte Version auf einem konkreten Gerät.
 
 Progressive Web App für HofKarte – ein reiner, zustandsloser Client für die
@@ -95,6 +95,7 @@ READMEs.
 
 | Version | Datum | Wesentliche Änderungen |
 |---|---|---|
+| 2.0.0-dev.4 | 2026-10-14 | Tab „Erfassen“ (Vor Ort, Schnellerfassung, Gespeichert), Update-Funktion („Nach Update suchen“, Hinweis bei neuer Version). |
 | 2.0.0-dev.3 | 2026-10-14 | Bearbeiten neu: sieben Gruppen, Chips, Schalter, Wochentage-Editor, Fussleiste mit Ungespeichert-Anzeige. |
 | 2.0.0-dev.2 | 2026-10-14 | Detailansicht neu: sieben Gruppen wie im HA-Panel, Schnellaktionen, Hinweis „Noch unvollständig“, ⋮-Menü. |
 | 2.0.0-dev.1 | 2026-10-14 | Entwicklungsstand der Überarbeitung 2.0.0: grüne Markenfarbe (in den Einstellungen wählbar), Symbole statt Emojis, Status mit Form. |

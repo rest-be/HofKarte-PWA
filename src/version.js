@@ -18,7 +18,7 @@
  * Beim Erhöhen bitte auch im README (Abschnitt "Version") und im
  * Vorgehensplan nachziehen.
  */
-export const APP_VERSION = "2.0.0-dev.3";
+export const APP_VERSION = "2.0.0-dev.4";
 
 /**
  * Release Notes (neueste zuerst), angezeigt auf dem Einrichtungsbildschirm
@@ -26,6 +26,16 @@ export const APP_VERSION = "2.0.0-dev.3";
  * ergänzen (und die Tabelle im README nachziehen).
  */
 export const RELEASE_NOTES = [
+  {
+    version: "2.0.0-dev.4",
+    datum: "2026-10-14",
+    punkte: [
+      "Neuer Tab „Erfassen“ mit Einstieg und drei Wegen: Vor Ort, Von der Webseite, Von Hand („Erweiterte Suche“ bleibt erreichbar).",
+      "Vor Ort: Standort nur auf Tipp (wird nie gespeichert), Umkreis 100/250/500 m, „Schon erfasst“ zuoberst, neue Treffer aus OpenStreetMap, „Keiner davon“.",
+      "Schnellerfassung mit Name, Webseite, Standort und Foto; Warnung vor Doppelten; danach „Noch offen“ mit Sprung in die passende Gruppe. Ohne Verbindung: „Foto später ergänzen“.",
+      "Update-Funktion: die App sucht selbst nach neuen Versionen und zeigt „Neue Version verfügbar“; in den Einstellungen „Nach Update suchen“ und „App zurücksetzen“ (Anmeldung bleibt erhalten).",
+    ],
+  },
   {
     version: "2.0.0-dev.3",
     datum: "2026-10-14",

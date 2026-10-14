@@ -35,6 +35,7 @@ const PFADE = {
   korb: `<path d="M3 9h18l-2 11H5L3 9zM8 9l3-5M16 9l-3-5"/>`,
   hof: `<path d="M3 11 12 4l9 7v9H3z"/><path d="M9 20v-6h6v6"/>`,
   verknuepfung: `<path d="M10 14a4 4 0 0 0 5.7 0l3-3a4 4 0 0 0-5.7-5.7l-1 1M14 10a4 4 0 0 0-5.7 0l-3 3a4 4 0 0 0 5.7 5.7l1-1"/>`,
+  stift: `<path d="M4 20h4L19 9l-4-4L4 16v4zM13 7l4 4"/>`,
   mehr: `<path d="M12 5h.01M12 12h.01M12 19h.01"/>`,
   funkeln:`<path d="M12 3v4M12 17v4M3 12h4M17 12h4M6 6l2 2M16 16l2 2M18 6l-2 2M8 16l-2 2"/>`,
 };

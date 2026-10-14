@@ -21,7 +21,7 @@
  * diese liegen ausschliesslich in IndexedDB (siehe src/storage.js).
  */
 
-const CACHE_VERSION = "hofkarte-pwa-v18";
+const CACHE_VERSION = "hofkarte-pwa-v19";
 
 const APP_SHELL_DATEIEN = [
   "./",
@@ -32,6 +32,7 @@ const APP_SHELL_DATEIEN = [
   "./src/version.js",
   "./src/icons.js",
   "./src/design.js",
+  "./src/update.js",
   "./src/gruppen.js",
   "./src/storage.js",
   "./src/sync-worker.js",
@@ -47,6 +48,7 @@ const APP_SHELL_DATEIEN = [
   "./src/views/editor.js",
   "./src/views/einstellungen.js",
   "./src/views/finden.js",
+  "./src/views/erfassen.js",
   "./src/views/map.js",
   // Drittbibliotheken (lokal, siehe vendor/README.md)
   "./vendor/home-assistant-js-websocket/auth.js",
@@ -79,7 +81,8 @@ self.addEventListener("install", (event) => {
   event.waitUntil(
     caches
       .open(CACHE_VERSION)
-      .then((cache) => cache.addAll(APP_SHELL_DATEIEN))
+      // `reload`: Dateien am HTTP-Cache des Browsers vorbei holen, damit nie ein alter Stand in den neuen Cache gelangt.
+      .then((cache) => cache.addAll(APP_SHELL_DATEIEN.map((pfad) => new Request(pfad, { cache: "reload" }))))
       .then(() => self.skipWaiting())
   );
 });
@@ -112,6 +115,11 @@ self.addEventListener("fetch", (event) => {
   // Bilder aus image_upload) nie aus dem App-Shell-Cache bedienen –
   // das sind live Daten, keine App-Shell-Dateien.
   if (url.origin !== self.location.origin) {
+    return;
+  }
+
+  // Versionsabfrage der App (src/update.js): immer ans Netz, nie aus dem Cache.
+  if (url.searchParams.has("nocache")) {
     return;
   }
 

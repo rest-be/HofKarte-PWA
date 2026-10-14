@@ -33,8 +33,10 @@ import { renderKonflikt } from "./views/konflikt.js";
 import { renderEditor } from "./views/editor.js";
 import { renderEinstellungen } from "./views/einstellungen.js";
 import { renderFinden } from "./views/finden.js";
+import { renderErfassenEinstieg, renderVorOrt, renderSchnell, renderGespeichert } from "./views/erfassen.js";
 import { icon } from "./icons.js";
 import { initialisiereDesign } from "./design.js";
+import { initialisiereUpdates, zeigeUpdateHinweis } from "./update.js";
 
 const appContainer = document.getElementById("app");
 const CACHE_KEY_LISTE = "hoflaeden-liste";
@@ -367,7 +369,7 @@ let aktuelleAnsicht = null;
 
 /** Ansichten mit Nutzereingaben: ein Hintergrund-Refresh darf sie nicht
  * neu zeichnen, sonst gehen Eingaben verloren (Review P-Befund Editor). */
-const EINGABE_ANSICHTEN = new Set(["setup", "editor", "neu", "finden", "konflikt", "einstellungen"]);
+const EINGABE_ANSICHTEN = new Set(["setup", "editor", "neu", "erfassen", "finden", "konflikt", "einstellungen"]);
 
 /** Neu zeichnen nach Datenänderung (Refresh/Wiederverbindung) - lässt
  * Eingabeansichten unangetastet und aktualisiert nur die Sync-Anzeige. */
@@ -392,6 +394,7 @@ function route() {
     teile[0] === "hofladen" && teile[1] && teile[2] === "bearbeiten" ? "editor"
     : teile[0] === "konflikt" && teile[1] ? "konflikt"
     : teile[0] === "neu" ? "neu"
+    : teile[0] === "erfassen" ? "erfassen"
     : teile[0] === "finden" ? "finden"
     : teile[0] === "hofladen" && teile[1] ? "detail"
     : teile[0] === "karte" ? "karte"
@@ -417,17 +420,31 @@ function route() {
     return;
   }
   if (teile[0] === "finden") {
-    renderMitRahmen(() => renderFinden(appContainer.querySelector(".inhalt"), app), "neu", {
+    renderMitRahmen(() => renderFinden(appContainer.querySelector(".inhalt"), app), "erfassen", {
       titel: "Hofladen finden",
       tiefe: 1,
-      zurueck: "#/neu",
+      zurueck: "#/erfassen",
     });
     return;
   }
+  if (teile[0] === "erfassen") {
+    const inhalt = () => appContainer.querySelector(".inhalt");
+    if (teile[1] === "vorort") {
+      renderMitRahmen(() => renderVorOrt(inhalt(), app), "erfassen", { titel: "Vor Ort", tiefe: 1, zurueck: "#/erfassen" });
+    } else if (teile[1] === "schnell") {
+      renderMitRahmen(() => renderSchnell(inhalt(), app), "erfassen", { titel: "Schnellerfassung", tiefe: 2, zurueck: "#/erfassen/vorort" });
+    } else if (teile[1] === "gespeichert" && teile[2]) {
+      renderMitRahmen(() => renderGespeichert(inhalt(), app, decodeURIComponent(teile[2])), "erfassen", { titel: "Gespeichert", tiefe: 1, zurueck: "#/" });
+    } else {
+      renderMitRahmen(() => renderErfassenEinstieg(inhalt(), app), "erfassen", { titel: "Erfassen", tiefe: 0 });
+    }
+    return;
+  }
   if (teile[0] === "neu") {
-    renderMitRahmen(() => renderEditor(appContainer.querySelector(".inhalt"), app, null), "neu", {
+    renderMitRahmen(() => renderEditor(appContainer.querySelector(".inhalt"), app, null), "erfassen", {
       titel: "Neuer Hofladen",
-      tiefe: 0,
+      tiefe: 1,
+      zurueck: "#/erfassen",
     });
     return;
   }
@@ -610,7 +627,7 @@ function renderMitRahmen(viewRender, aktiverTab, opts = {}) {
     <nav class="tableiste" aria-label="Hauptnavigation">
       <button data-tab="liste"><span class="icon">${TAB_ICONS.liste}</span>Liste</button>
       <button data-tab="karte"><span class="icon">${TAB_ICONS.karte}</span>Karte</button>
-      <button data-tab="neu"><span class="icon">${TAB_ICONS.neu}</span>Neu</button>
+      <button data-tab="erfassen"><span class="icon">${TAB_ICONS.neu}</span>Erfassen</button>
     </nav>
   `;
 
@@ -631,7 +648,7 @@ function renderMitRahmen(viewRender, aktiverTab, opts = {}) {
   appContainer.querySelector("#zurueck-btn")?.addEventListener("click", () => app.navigate(zurueck));
   if (zurueck) aktiviereSwipeZurueck(appContainer.querySelector(".seite"), zurueck);
 
-  const tabZiele = { liste: "#/", karte: "#/karte", neu: "#/neu" };
+  const tabZiele = { liste: "#/", karte: "#/karte", erfassen: "#/erfassen" };
   appContainer.querySelectorAll(".tableiste button").forEach((btn) => {
     const tab = btn.dataset.tab;
     if (tab === aktiverTab) {
@@ -731,11 +748,5 @@ async function starteAppIntern(wiederverbindung) {
 initialisiereDesign();
 starteApp();
 
-// Service Worker (zuvor Inline-Skript in index.html - entfällt wegen CSP).
-if ("serviceWorker" in navigator) {
-  window.addEventListener("load", () => {
-    navigator.serviceWorker
-      .register("service-worker.js")
-      .catch((err) => console.error("Service Worker Registrierung fehlgeschlagen:", err));
-  });
-}
+// Service Worker und Update-Suche (src/update.js; zuvor Inline-Skript in index.html - entfällt wegen CSP).
+initialisiereUpdates(zeigeUpdateHinweis);

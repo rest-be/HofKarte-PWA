@@ -1954,3 +1954,225 @@ details.gruppe > .gruppen-inhalt {
 .fussleiste .ungespeichert[hidden] {
   display: none;
 }
+
+/* --- Update-Hinweis (ab 2.0.0-dev.4) ------------------------------------------ */
+
+.update-hinweis {
+  position: fixed;
+  left: 12px;
+  right: 12px;
+  top: calc(env(safe-area-inset-top) + 8px);
+  z-index: 100;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 8px 8px 14px;
+  border-radius: 14px;
+  background: var(--accent);
+  color: var(--accent-ink);
+  box-shadow: 0 6px 24px rgba(0, 0, 0, 0.3);
+  font-weight: 600;
+}
+
+.update-hinweis span {
+  flex: 1;
+}
+
+.update-hinweis button {
+  min-height: 44px;
+  padding: 0 12px;
+  border: 0;
+  border-radius: 10px;
+  background: rgba(255, 255, 255, 0.2);
+  color: inherit;
+  font-size: 15px;
+  font-weight: 600;
+}
+
+/* --- Erfassen (ab 2.0.0-dev.4) -------------------------------------------------- */
+
+.erfassen-titel {
+  margin: 4px 0 2px;
+  font-size: 28px;
+}
+
+.weg-karte {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  min-height: 72px;
+  margin: 12px 0;
+  padding: 14px;
+  border-radius: var(--radius-gross);
+  background: var(--card-bg);
+  color: var(--text-color);
+  text-decoration: none;
+}
+
+.weg-karte.weg-haupt {
+  background: var(--accent);
+  color: var(--accent-ink);
+}
+
+.weg-icon {
+  display: grid;
+  place-items: center;
+  flex: none;
+  width: 44px;
+  height: 44px;
+  border-radius: 12px;
+  background: var(--accent-soft);
+  color: var(--tint);
+}
+
+.weg-haupt .weg-icon {
+  background: rgba(255, 255, 255, 0.2);
+  color: inherit;
+}
+
+.weg-text {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  gap: 2px;
+  font-size: 15px;
+}
+
+.weg-text strong {
+  font-size: 18px;
+}
+
+.weg-pfeil {
+  opacity: 0.6;
+}
+
+.erfassen-fuss {
+  text-align: center;
+}
+
+.erfassen-fuss a {
+  display: inline-block;
+  padding: 12px;
+  color: var(--tint);
+  font-weight: 600;
+}
+
+.gross-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  width: 100%;
+  min-height: 56px;
+  margin: 12px 0;
+  padding: 0 16px;
+  border: 0;
+  border-radius: 14px;
+  background: var(--accent);
+  color: var(--accent-ink);
+  font-size: 18px;
+  font-weight: 600;
+}
+
+.gross-btn.zweit {
+  background: var(--fill);
+  color: var(--tint);
+}
+
+.gross-btn:disabled {
+  opacity: 0.6;
+}
+
+.chip[aria-pressed="true"] {
+  background: var(--accent);
+  color: var(--accent-ink);
+  font-weight: 600;
+}
+
+.vorort-abschnitt {
+  margin: 16px 0;
+}
+
+.vorort-abschnitt > h3 {
+  margin: 0 0 6px;
+  font-size: 13px;
+  font-weight: 400;
+  text-transform: uppercase;
+  color: var(--muted-color);
+}
+
+.treffer-zeile {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  min-height: 56px;
+  margin-bottom: 8px;
+  padding: 10px 14px;
+  border-radius: var(--radius-gross);
+  background: var(--card-bg);
+  color: var(--text-color);
+  text-decoration: none;
+}
+
+.treffer-text {
+  display: flex;
+  flex: 1;
+  min-width: 0;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.treffer-text .muted {
+  font-size: 14px;
+  margin: 0;
+}
+
+.treffer-btn {
+  flex: none;
+  min-height: 44px;
+  padding: 0 16px;
+  border: 0;
+  border-radius: 12px;
+  background: var(--accent);
+  color: var(--accent-ink);
+  font-size: 16px;
+  font-weight: 600;
+}
+
+.schnell-abschnitt {
+  margin-top: 16px;
+}
+
+.schnell-wert {
+  margin: 4px 0 6px;
+  font-variant-numeric: tabular-nums;
+}
+
+.gespeichert-kopf {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  margin: 8px 0 12px;
+}
+
+.gespeichert-kopf h2 {
+  margin: 0;
+}
+
+.gespeichert-kopf .muted {
+  margin: 0;
+}
+
+.gespeichert-haken {
+  display: grid;
+  place-items: center;
+  width: 52px;
+  height: 52px;
+  border-radius: 50%;
+  background: var(--accent);
+  color: var(--accent-ink);
+}
+
+.aktions-stapel {
+  flex-direction: column;
+}

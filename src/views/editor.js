@@ -24,6 +24,11 @@ import { herkunftHtml } from "./detail.js";
 /** Merkt sich pro Gruppe, ob sie aufgeklappt ist (bis zum Neuladen). */
 const gruppenZustand = new Map();
 
+/** Öffnet eine Gruppe beim nächsten Aufruf des Editors (z. B. aus „Noch offen“). */
+export function oeffneEditorGruppe(id) {
+  gruppenZustand.set(id, true);
+}
+
 const WOCHENTAGE = [
   { wert: 1, label: "Montag" },
   { wert: 2, label: "Dienstag" },
@@ -65,13 +70,13 @@ function tagsZuText(liste) {
   return (liste || []).map((e) => e.name).join(", ");
 }
 
-function holeStandort(optionen) {
+export function holeStandort(optionen) {
   return new Promise((resolve, reject) => {
     navigator.geolocation.getCurrentPosition(resolve, reject, optionen);
   });
 }
 
-function standortFehlermeldung(err) {
+export function standortFehlermeldung(err) {
   switch (err?.code) {
     case 1: // PERMISSION_DENIED
       return (

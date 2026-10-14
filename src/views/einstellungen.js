@@ -15,6 +15,7 @@ import { APP_VERSION } from "../version.js";
 import { ladeNaeheRadius, speichereNaeheRadius } from "../storage.js";
 import { FARBEN, STANDARD_FARBE, aktuelleMarkenfarbe, setzeMarkenfarbe, normalisiereHex } from "../design.js";
 import { icon } from "../icons.js";
+import { aktualisiereJetzt, appZuruecksetzen, pruefeAufUpdate } from "../update.js";
 import { STANDARD_RADIUS_METER, MIN_RADIUS_METER, MAX_RADIUS_METER } from "../naehe.js";
 
 export function renderEinstellungen(container, app) {
@@ -95,6 +96,17 @@ export function renderEinstellungen(container, app) {
         <span>Installiert</span>
         <strong id="app-version">${escapeAttr(APP_VERSION)}</strong>
       </div>
+      <div class="feld-gruppe version-zeile">
+        <span>Neueste</span>
+        <strong id="neueste-version">–</strong>
+      </div>
+      <p class="muted" id="update-status" role="status">Prüft, ob eine neuere Version der App vorliegt.</p>
+      <button type="button" class="hinzufuegen-btn" id="update-suchen-btn">${icon("suche", { klein: true })} Nach Update suchen</button>
+      <details class="manuell-bild">
+        <summary class="muted klickbar">Die App aktualisiert sich nicht?</summary>
+        <p class="muted">Leert den Zwischenspeicher der App und lädt sie neu. Anmeldung, Einstellungen und noch nicht gesendete Änderungen bleiben erhalten.</p>
+        <button type="button" class="hinzufuegen-btn" id="app-zuruecksetzen-btn">App zurücksetzen</button>
+      </details>
     </section>
   `;
 
@@ -135,6 +147,39 @@ export function renderEinstellungen(container, app) {
     await setzeMarkenfarbe(null);
     zeigeAuswahl();
   });
+
+  const updateStatus = container.querySelector("#update-status");
+  const neuesteAnzeige = container.querySelector("#neueste-version");
+  const updateKnopf = container.querySelector("#update-suchen-btn");
+  async function updatePruefen({ aktualisieren = false } = {}) {
+    updateKnopf.disabled = true;
+    updateStatus.classList.remove("fehlertext");
+    updateStatus.textContent = "Suche …";
+    try {
+      const stand = await pruefeAufUpdate();
+      neuesteAnzeige.textContent = stand.neueste || "–";
+      if (!stand.verfuegbar) {
+        updateStatus.textContent = "Du hast die neueste Version.";
+      } else if (aktualisieren) {
+        updateStatus.textContent = `Version ${stand.neueste} wird geladen …`;
+        await aktualisiereJetzt();
+      } else {
+        updateStatus.textContent = `Neue Version ${stand.neueste} verfügbar. „Nach Update suchen“ lädt sie.`;
+      }
+    } catch {
+      updateStatus.textContent = "Keine Verbindung: die neueste Version konnte nicht abgefragt werden.";
+      updateStatus.classList.add("fehlertext");
+    } finally {
+      updateKnopf.disabled = false;
+    }
+  }
+  updateKnopf.addEventListener("click", () => updatePruefen({ aktualisieren: true }));
+  container.querySelector("#app-zuruecksetzen-btn").addEventListener("click", () => {
+    if (confirm("Zwischenspeicher der App leeren und neu laden? Anmeldung und Einstellungen bleiben erhalten.")) {
+      appZuruecksetzen();
+    }
+  });
+  updatePruefen();
 
   const radiusFeld = container.querySelector("#f-naehe-radius");
   const radiusStatus = container.querySelector("#naehe-radius-status");
