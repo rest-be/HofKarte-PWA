@@ -6,6 +6,14 @@
  */
 
 import { hoflaedenInNaeheDesGeraets, STANDARD_RADIUS_METER } from "../naehe.js";
+import { ladeNaeheRadius } from "../storage.js";
+import { escapeHtml } from "../html.js";
+import { vorschauUrl } from "../bilder.js";
+
+// Re-Export: editor/detail/konflikt importierten escapeHtml früher von hier.
+export { escapeHtml };
+
+const SUCHE_VERZOEGERUNG_MS = 150;
 
 const SORT_SPALTEN = [
   { wert: "name", label: "Name" },
@@ -67,13 +75,21 @@ function sortiereUndFiltere(hoflaeden, suchbegriff, sortSpalte, sortRichtung) {
   return ergebnis;
 }
 
+/** Eingeklappt als Standard: braucht so möglichst wenig Platz. */
+let naeheOffen = false;
+const gemerkt = { suchbegriff: "", sortSpalte: null, sortRichtung: null };
+
 export function renderListe(container, app) {
   const einstellungen = app.state.einstellungen || {};
-  let suchbegriff = "";
-  let sortSpalte = einstellungen.listen_sort_spalte || "name";
-  let sortRichtung = einstellungen.listen_sort_richtung || "asc";
+  // Suche/Sortierung überleben ein Neuzeichnen (z. B. nach Daten-Refresh).
+  if (gemerkt.sortSpalte == null) {
+    gemerkt.sortSpalte = einstellungen.listen_sort_spalte || "name";
+    gemerkt.sortRichtung = einstellungen.listen_sort_richtung || "asc";
+  }
+  let { suchbegriff, sortSpalte, sortRichtung } = gemerkt;
+  const merke = () => Object.assign(gemerkt, { suchbegriff, sortSpalte, sortRichtung });
 
-  function zeichneListe() {
+  function eintraegeHtml() {
     const gefiltert = sortiereUndFiltere(
       app.state.hoflaeden,
       suchbegriff,
@@ -81,18 +97,18 @@ export function renderListe(container, app) {
       sortRichtung
     );
 
-    const listeHtml = gefiltert.length
+    return gefiltert.length
       ? gefiltert
           .map(
             (h) => `
-        <div class="hofladen-karte" data-id="${h.id}">
+        <div class="hofladen-karte" data-id="${escapeHtml(h.id)}">
           ${
             h.hauptbild_url
-              ? `<img class="miniatur" src="${h.hauptbild_url}" alt="" loading="lazy" />`
+              ? `<img class="miniatur" src="${escapeHtml(vorschauUrl(h.hauptbild_url, 256))}" alt="" loading="lazy" decoding="async" />`
               : `<div class="miniatur" aria-hidden="true"></div>`
           }
           <div class="info">
-            <p class="name">${escapeHtml(h.name)}</p>
+            <p class="name">${escapeHtml(h.name)}${h._synchronisierungAusstehend ? ` <span title="Noch nicht synchronisiert">⌁</span>` : ""}${app.konfliktFuer && app.konfliktFuer(h.id) ? ` <span title="Versionskonflikt">⚠</span>` : ""}</p>
             <p class="ort">${escapeHtml(h.ort || "")}</p>
             ${statusBadge(h.geoeffnet)} ${bewertungSterne(h.bewertung)}
           </div>
@@ -100,6 +116,29 @@ export function renderListe(container, app) {
           )
           .join("")
       : `<p class="hinweis-leiste">Keine Hofläden gefunden.</p>`;
+  }
+
+  /** Aktualisiert nur die Trefferliste - Suchfeld und Fokus bleiben unberührt. */
+  function zeichneEintraege() {
+    const box = container.querySelector("#hofladen-liste");
+    if (box) box.innerHTML = eintraegeHtml();
+  }
+
+  function richtungBeschriftung() {
+    const btn = container.querySelector("#sort-richtung");
+    if (!btn) return;
+    btn.textContent = sortRichtung === "asc" ? "↑" : "↓";
+    btn.setAttribute(
+      "aria-label",
+      sortRichtung === "asc"
+        ? "Aufsteigend sortiert, umkehren für absteigend"
+        : "Absteigend sortiert, umkehren für aufsteigend"
+    );
+  }
+
+  /** Baut das Gerüst (Suchleiste, Nähe-Karte) genau einmal auf. */
+  function zeichneListe() {
+    const listeHtml = eintraegeHtml();
 
     container.innerHTML = `
       <div id="naehe-platzhalter"></div>
@@ -114,38 +153,45 @@ export function renderListe(container, app) {
       }
 
       <div class="such-leiste">
-        <input type="search" id="such-feld" placeholder="Suchen …" value="${escapeHtml(
+        <input type="search" id="such-feld" placeholder="Suchen …" aria-label="Hofläden suchen" value="${escapeHtml(
           suchbegriff
         )}" />
-        <select id="sort-spalte">
+        <select id="sort-spalte" aria-label="Sortieren nach">
           ${SORT_SPALTEN.map(
             (s) => `<option value="${s.wert}" ${s.wert === sortSpalte ? "selected" : ""}>${s.label}</option>`
           ).join("")}
         </select>
-        <button id="sort-richtung" title="Sortierrichtung umkehren">${
-          sortRichtung === "asc" ? "↑" : "↓"
-        }</button>
+        <button id="sort-richtung" title="Sortierrichtung umkehren" aria-label="${
+          sortRichtung === "asc" ? "Aufsteigend sortiert, umkehren für absteigend" : "Absteigend sortiert, umkehren für aufsteigend"
+        }">${sortRichtung === "asc" ? "↑" : "↓"}</button>
       </div>
 
-      <div id="hofladen-liste">${listeHtml}</div>
+      <div id="hofladen-liste" class="gruppe">${listeHtml}</div>
     `;
 
+    let suchTimer = null;
     container.querySelector("#such-feld").addEventListener("input", (e) => {
       suchbegriff = e.target.value;
-      zeichneListe();
+      merke();
+      clearTimeout(suchTimer);
+      suchTimer = setTimeout(zeichneEintraege, SUCHE_VERZOEGERUNG_MS);
     });
     container.querySelector("#sort-spalte").addEventListener("change", (e) => {
       sortSpalte = e.target.value;
-      zeichneListe();
+      merke();
+      zeichneEintraege();
     });
     container.querySelector("#sort-richtung").addEventListener("click", () => {
       sortRichtung = sortRichtung === "asc" ? "desc" : "asc";
-      zeichneListe();
+      merke();
+      richtungBeschriftung();
+      zeichneEintraege();
     });
-    container.querySelectorAll(".hofladen-karte").forEach((karte) => {
-      karte.addEventListener("click", () => app.navigate(`#/hofladen/${karte.dataset.id}`));
+    // Event-Delegation: bleibt gültig, wenn die Trefferliste neu gezeichnet wird.
+    container.querySelector("#hofladen-liste").addEventListener("click", (e) => {
+      const karte = e.target.closest(".hofladen-karte");
+      if (karte) app.navigate(`#/hofladen/${karte.dataset.id}`);
     });
-
     if (app.offlineModus) {
       const hinweis = container.querySelector(".hinweis-leiste");
       if (hinweis) {
@@ -164,21 +210,22 @@ export function renderListe(container, app) {
 
   async function sucheNaehe(ergebnisBox) {
     ergebnisBox.innerHTML = `<p class="ort">Standort wird ermittelt …</p>`;
+    const radiusMeter = (await ladeNaeheRadius().catch(() => null)) ?? STANDARD_RADIUS_METER;
     try {
       app._pruefeVerbindung();
       const { treffer } = await hoflaedenInNaeheDesGeraets(app.haClient, {
-        radiusMeter: STANDARD_RADIUS_METER,
+        radiusMeter,
         nurGeoeffnet: true,
       });
       if (!treffer.length) {
-        ergebnisBox.innerHTML = `<p class="ort">Kein geöffneter Hofladen im Umkreis von ${STANDARD_RADIUS_METER} m.</p>
+        ergebnisBox.innerHTML = `<p class="ort">Kein geöffneter Hofladen im Umkreis von ${radiusMeter} m (Umkreis in den Einstellungen änderbar).</p>
           <button class="aktualisieren" id="naehe-suchen-btn">Erneut prüfen</button>`;
       } else {
         ergebnisBox.innerHTML =
           treffer
             .map(
               (t) => `
-            <div class="naehe-eintrag" data-id="${t.id}">
+            <div class="naehe-eintrag" data-id="${escapeHtml(t.id)}">
               <span>${escapeHtml(t.name)}</span>
               <span>${Math.round(t.entfernung_meter)} m</span>
             </div>`
@@ -196,13 +243,18 @@ export function renderListe(container, app) {
     const platzhalter = container.querySelector("#naehe-platzhalter");
     if (!platzhalter) return;
     platzhalter.innerHTML = `
-      <div class="naehe-karte">
-        <h2>📍 Hofläden in der Nähe</h2>
+      <details class="naehe-karte"${naeheOffen ? " open" : ""}>
+        <summary>📍 Hofläden in der Nähe</summary>
         <div id="naehe-ergebnis">
           <button class="aktualisieren" id="naehe-suchen-btn">Standort abfragen</button>
         </div>
-      </div>
+      </details>
     `;
+    // Zustand (offen/eingeklappt) merken, damit ein Neuzeichnen der Liste
+    // (z. B. beim Tippen im Suchfeld) die Karte nicht wieder einklappt.
+    platzhalter.querySelector("details").addEventListener("toggle", (e) => {
+      naeheOffen = e.target.open;
+    });
 
     // Event-Delegation auf den stabilen Container, statt Listener direkt
     // auf den Button: der Button wird bei jedem Suchlauf neu erzeugt
@@ -221,13 +273,4 @@ export function renderListe(container, app) {
   }
 
   zeichneListe();
-}
-
-export function escapeHtml(text) {
-  if (text == null) return "";
-  return String(text)
-    .replace(/&/g, "&amp;")
-    .replace(/</g, "&lt;")
-    .replace(/>/g, "&gt;")
-    .replace(/"/g, "&quot;");
 }

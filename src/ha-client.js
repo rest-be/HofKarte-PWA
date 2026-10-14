@@ -19,19 +19,81 @@
  * selbst.
  */
 
-// Direkt als natives ES-Modul von jsDelivr geladen: das Paket hat keine
-// externen Abhängigkeiten und verwendet in `dist/index.js` ausschliesslich
-// relative Imports mit expliziter ".js"-Endung - funktioniert daher ohne
-// Bundler direkt im Browser (kein esm.sh/unpkg-"Bundle"-Proxy nötig).
+// Phase 10: die Bibliothek liegt lokal unter vendor/ (siehe vendor/README.md)
+// statt auf einem CDN - die App startet damit auch offline kalt und ist
+// nicht von einem Drittserver abhängig.
 import {
   createConnection,
   createLongLivedTokenAuth,
   ERR_INVALID_AUTH,
-} from "https://cdn.jsdelivr.net/npm/home-assistant-js-websocket@9.7.0/dist/index.js";
+} from "../vendor/home-assistant-js-websocket/index.js";
 
 import { ladeCache, speichereCache } from "./storage.js";
 
+/**
+ * Prüft die eingegebene Home-Assistant-Adresse: Das Long-Lived Token wird
+ * im Klartext-Header übertragen, daher ist `https://` Pflicht. Unverschlüsseltes
+ * `http://` wird nur für lokale Entwicklung (localhost/127.0.0.1) erlaubt.
+ * Gibt die bereinigte Adresse zurück oder wirft einen Error mit Hinweistext.
+ */
+export function pruefeHaAdresse(eingabe) {
+  let url;
+  try {
+    url = new URL(String(eingabe || "").trim());
+  } catch {
+    throw new Error("Ungültige Adresse. Beispiel: https://hofkarte.duckdns.org:8123");
+  }
+  const lokal = ["localhost", "127.0.0.1", "[::1]"].includes(url.hostname);
+  if (url.protocol !== "https:" && !(url.protocol === "http:" && lokal)) {
+    throw new Error("Aus Sicherheitsgründen ist nur eine verschlüsselte Adresse (https://) erlaubt.");
+  }
+  return url.origin;
+}
+
+/** Obergrenze für den WebSocket-Upload (HA begrenzt Nachrichten auf 4 MiB; Base64 ≈ +33 %). */
+const WS_UPLOAD_MAX_BYTES = 2_500_000;
+
+/** Datei als Base64-Text (ohne `data:`-Präfix). */
+async function dateiAlsBase64(file) {
+  const bytes = new Uint8Array(await file.arrayBuffer());
+  let text = "";
+  const block = 0x8000;
+  for (let i = 0; i < bytes.length; i += block) {
+    text += String.fromCharCode(...bytes.subarray(i, i + block));
+  }
+  return btoa(text);
+}
+
 const CACHE_KEY_LISTE = "hoflaeden-liste";
+
+/**
+ * Wird von `HaClient.hofladenSpeichern()` geworfen, wenn Home Assistant
+ * eine Änderung wegen eines Versionskonflikts abgelehnt hat (Phase 8b):
+ * ein anderes Gerät hat denselben Hofladen zwischenzeitlich bereits
+ * geändert. Trägt den aktuellen Serverstand, damit die PWA eine
+ * Konflikt-Ansicht (lokaler vs. Server-Stand) zeigen kann, statt eine der
+ * beiden Änderungen stillschweigend zu verlieren.
+ *
+ * `code` ist bewusst derselbe Mechanismus wie bei den übrigen
+ * HA-Fehlern ("connection_lost", "invalid_auth"), damit Aufrufer
+ * einheitlich über `err.code` unterscheiden können.
+ */
+export class VersionskonfliktFehler extends Error {
+  constructor(aktuellerHofladen) {
+    super("Der Hofladen wurde zwischenzeitlich von einem anderen Gerät geändert (Versionskonflikt).");
+    this.name = "VersionskonfliktFehler";
+    this.code = "version_conflict";
+    this.aktuellerHofladen = aktuellerHofladen;
+  }
+}
+
+/** Bild-ID aus einer von bildHochladen() erzeugten Serve-URL extrahieren
+ * (für bildLoeschen()). Liefert `null` für extern verlinkte Bilder (die
+ * haben kein zugehöriges, in HA zu löschendes Bild-Objekt). */
+export function extractImageId(url) {
+  const treffer = /\/api\/image\/serve\/([^/]+)\//.exec(url || "");
+  return treffer ? treffer[1] : null;
+}
 
 /** Wird ausgelöst (CustomEvent auf `window`), wenn die Verbindung
  * dauerhaft verloren geht bzw. das Token ungültig ist – die App zeigt
@@ -90,6 +152,44 @@ export class HaClient {
     return antwort.einstellungen;
   }
 
+  /** Im Options Flow gewählte KI-Entität (`ai_task.…`) oder `null`
+   * (siehe `hofkarte/management/settings`, Feld `ki_entitaet`). */
+  async kiEntitaet() {
+    const antwort = await this._connection.sendMessagePromise({
+      type: "hofkarte/management/settings",
+    });
+    const wert = antwort.ki_entitaet;
+    return typeof wert === "string" && wert.startsWith("ai_task.") ? wert : null;
+  }
+
+  /** „Hofladen finden“, Schritt 1: Kandidaten in der Umgebung suchen
+   * (`hofkarte/management/discover`, nur Vorschläge, speichert nichts). */
+  async hofladenSuchen({ latitude, longitude, radius, erweitert = false, name, website }) {
+    const msg = {
+      type: "hofkarte/management/discover",
+      latitude,
+      longitude,
+      radius,
+      erweitert: !!erweitert,
+    };
+    if (name) msg.name = name;
+    if (website) msg.website = website;
+    const antwort = await this._connection.sendMessagePromise(msg);
+    return antwort.kandidaten || [];
+  }
+
+  /** „Hofladen finden“, Schritt 3: Kandidat/Website anreichern
+   * (`hofkarte/management/enrich`, Subscription). `onEreignis` erhält
+   * `{phase: "osm"|"website"|"ki"|"fertig", …}`. Gibt die Abmelde-Funktion
+   * zurück. */
+  async hofladenAnreichern({ kandidat, website, ki = false }, onEreignis) {
+    const msg = { type: "hofkarte/management/enrich" };
+    if (kandidat) msg.kandidat = kandidat;
+    if (website) msg.website = website;
+    if (ki) msg.ki = true;
+    return this._connection.subscribeMessage(onEreignis, msg);
+  }
+
   /**
    * Alle Hofläden laden – Stale-while-revalidate: liefert sofort den
    * zuletzt gecachten Stand (falls vorhanden) über `onZwischenergebnis`
@@ -133,11 +233,23 @@ export class HaClient {
     }
   }
 
+  /**
+   * Hofladen anlegen/ändern. Enthält `hofladen` eine `version` (die
+   * zuletzt von Home Assistant gelieferte), prüft HA auf einen
+   * Versionskonflikt und antwortet in diesem Fall nicht mit einem
+   * WebSocket-Fehler, sondern mit `{ konflikt: true, aktueller_hofladen }`
+   * (siehe `ws_save` in HofKarte-HA, `management.py`). Das wird hier in
+   * einen `VersionskonfliktFehler` übersetzt. Bei Erfolg enthält die
+   * Antwort den gespeicherten Hofladen inkl. der neu vergebenen `version`.
+   */
   async hofladenSpeichern(hofladen) {
     const antwort = await this._connection.sendMessagePromise({
       type: "hofkarte/management/save",
       hofladen,
     });
+    if (antwort.konflikt) {
+      throw new VersionskonfliktFehler(antwort.aktueller_hofladen);
+    }
     return antwort.hofladen;
   }
 
@@ -172,6 +284,102 @@ export class HaClient {
     }
     const antwort = await this._connection.sendMessagePromise(msg);
     return antwort.orte;
+  }
+
+  /**
+   * Bild hochladen über Home Assistants eigene `image_upload`-Komponente
+   * (`POST /api/image/upload`, Ausliefern unter
+   * `/api/image/serve/<id>/original`) – dieselbe Komponente, die auch
+   * die HA-eigene Verwaltungsoberfläche (hofkarte-panel.js,
+   * `uploadBild()`) nutzt, statt eines eigenen Upload-Endpunkts.
+   *
+   * Anders als im HA-Panel (dort `window.location.origin`, da von HA
+   * selbst ausgeliefert) muss hier die volle HA-Adresse verwendet
+   * werden, da die PWA von einer anderen Origin (GitHub Pages) läuft –
+   * das erfordert `cors_allowed_origins` in der HA-`configuration.yaml`
+   * (siehe README, Abschnitt „Voraussetzungen auf HA-Seite“), ohne das
+   * blockiert der Browser die Anfrage mit einem CORS-Fehler.
+   *
+   * Die Authentifizierung läuft über das ohnehin gespeicherte
+   * Long-Lived Access Token als Bearer-Token (REST-Endpunkte akzeptieren
+   * dieses genau wie ein per OAuth erhaltenes Zugriffstoken) - kein
+   * eigener Token-Refresh nötig.
+   *
+   * Gibt `{url, hochgeladen: true}` zurück (passend zum `bilder`-Feld
+   * des Hofladens, siehe editor.js).
+   */
+  async bildHochladen(file) {
+    // 1) Bevorzugt über die bestehende WebSocket-Verbindung (HofKarte-HA
+    //    ab dem Befehl `hofkarte/management/upload_image`): braucht kein
+    //    CORS. 2) Fallback: REST `POST /api/image/upload` (braucht
+    //    `cors_allowed_origins`) - für grosse Dateien oder ältere HA-Version.
+    if (file.size <= WS_UPLOAD_MAX_BYTES) {
+      try {
+        return await this._bildPerWebSocketHochladen(file);
+      } catch (err) {
+        const fallbackCodes = ["unknown_command", "too_large"];
+        if (!fallbackCodes.includes(err?.code)) {
+          throw new Error(
+            err?.message ? `Upload fehlgeschlagen: ${err.message}` : "Upload fehlgeschlagen."
+          );
+        }
+      }
+    }
+    return this._bildPerRestHochladen(file);
+  }
+
+  async _bildPerWebSocketHochladen(file) {
+    const daten = await dateiAlsBase64(file);
+    const ergebnis = await this._connection.sendMessagePromise({
+      type: "hofkarte/management/upload_image",
+      filename: file.name || "foto.jpg",
+      content_type: file.type,
+      data: daten,
+    });
+    return { url: `${this._haUrl}/api/image/serve/${ergebnis.id}/original`, hochgeladen: true };
+  }
+
+  async _bildPerRestHochladen(file) {
+    const formData = new FormData();
+    formData.append("file", file);
+
+    let response;
+    try {
+      response = await fetch(`${this._haUrl}/api/image/upload`, {
+        method: "POST",
+        headers: { Authorization: `Bearer ${this._token}` },
+        body: formData,
+      });
+    } catch (netzwerkFehler) {
+      throw new Error(
+        "Upload fehlgeschlagen - Home Assistant nicht erreichbar (VPN/Heimnetz prüfen) " +
+          "oder die HA-Instanz lässt Anfragen von dieser Adresse nicht zu " +
+          "(cors_allowed_origins in configuration.yaml prüfen; alternativ HofKarte-HA aktualisieren, " +
+          "dann läuft der Upload ohne CORS)."
+      );
+    }
+
+    if (response.status === 401) {
+      throw new Error("Anmeldung abgelaufen/ungültig. Bitte Token in den Einstellungen prüfen.");
+    }
+    if (!response.ok) {
+      throw new Error(
+        response.status === 413 ? "Datei ist zu gross (maximal 10 MB)." : `Upload fehlgeschlagen (${response.status}).`
+      );
+    }
+
+    const ergebnis = await response.json();
+    const url = `${this._haUrl}/api/image/serve/${ergebnis.id}/original`;
+    return { url, hochgeladen: true };
+  }
+
+  /** Über bildHochladen() erzeugtes Bild wieder entfernen (WS-Befehl
+   * `image/delete` der HA-eigenen `image_upload`-Komponente). */
+  async bildLoeschen(imageId) {
+    await this._connection.sendMessagePromise({
+      type: "image/delete",
+      image_id: imageId,
+    });
   }
 
   /**

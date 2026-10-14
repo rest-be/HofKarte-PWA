@@ -5,7 +5,9 @@
  * HofKarte-HA, keine Personenauswahl).
  */
 
-import { escapeHtml } from "./list.js";
+import { escapeHtml, sichereHttpUrl } from "../html.js";
+import { vorschauUrl } from "../bilder.js";
+import { FINDEN_QUELLEN_LABEL, FINDEN_ZEILEN } from "./../finden.js";
 
 const WOCHENTAGE = ["", "Montag", "Dienstag", "Mittwoch", "Donnerstag", "Freitag", "Samstag", "Sonntag"];
 
@@ -25,19 +27,38 @@ function oeffnungszeitenHtml(h) {
 
   const regel = Object.keys(nachTag)
     .sort((a, b) => a - b)
-    .map((tag) => `<div class="kontakt-zeile"><strong>${WOCHENTAGE[tag]}:</strong> ${nachTag[tag].join(", ")}</div>`)
+    .map((tag) => `<div class="kontakt-zeile"><strong>${escapeHtml(WOCHENTAGE[tag])}:</strong> ${escapeHtml(nachTag[tag].join(", "))}</div>`)
     .join("");
 
   const sonder = (h.sonderoeffnungszeiten || [])
     .map((s) => {
       const zeitraum = s.datum_von === s.datum_bis ? s.datum_von : `${s.datum_von} – ${s.datum_bis}`;
       const info = s.geschlossen ? "geschlossen" : `${formatZeit(s.beginn)}–${formatZeit(s.ende)}`;
-      return `<div class="kontakt-zeile">${zeitraum}: ${info}</div>`;
+      return `<div class="kontakt-zeile">${escapeHtml(zeitraum)}: ${escapeHtml(info)}</div>`;
     })
     .join("");
 
   return regel + sonder;
 }
+
+/** Kurzinfo für die eingeklappte Öffnungszeiten-Zeile: heutige Zeiten. */
+function heuteKurzinfo(h) {
+  const jetzt = new Date();
+  const iso = `${jetzt.getFullYear()}-${String(jetzt.getMonth() + 1).padStart(2, "0")}-${String(jetzt.getDate()).padStart(2, "0")}`;
+  const sonder = (h.sonderoeffnungszeiten || []).find((x) => x.datum_von <= iso && iso <= x.datum_bis);
+  if (sonder) {
+    return sonder.geschlossen ? "Heute geschlossen" : `Heute ${formatZeit(sonder.beginn)}–${formatZeit(sonder.ende)}`;
+  }
+  const wochentag = ((jetzt.getDay() + 6) % 7) + 1; // 1 = Montag
+  const zeiten = (h.oeffnungszeiten || [])
+    .filter((oz) => Number(oz.wochentag) === wochentag)
+    .map((oz) => `${formatZeit(oz.beginn)}–${formatZeit(oz.ende)}`);
+  if (zeiten.length) return `Heute ${zeiten.join(", ")}`;
+  return (h.oeffnungszeiten || []).length ? "Heute geschlossen" : "";
+}
+
+/** Merkt sich, ob der Abschnitt "Öffnungszeiten" aufgeklappt ist (bis zum Neuladen). */
+let oeffnungszeitenOffen = false;
 
 function bewertungSternenHtml(wert) {
   const n = Math.max(0, Math.min(5, Number(wert) || 0));
@@ -46,6 +67,35 @@ function bewertungSternenHtml(wert) {
     html += `<span class="stern-btn${i <= n ? " stern-gefuellt" : ""}">★</span>`;
   }
   return `<div class="sterne-reihe" role="img" aria-label="Bewertung: ${n} von 5 Sternen">${html}</div>`;
+}
+
+/** „Herkunft der Angaben“: aus welcher Quelle ein Feld stammt (nur wenn
+ * der Hofladen über „Hofladen finden“ erfasst wurde). Vermutungen der KI
+ * sind als solche gekennzeichnet. */
+function herkunftHtml(h) {
+  const quellen = Array.isArray(h.quellen) ? h.quellen : [];
+  if (!quellen.length) return "";
+  const zeilen = [];
+  const gesehen = new Set();
+  for (const zeile of FINDEN_ZEILEN) {
+    const q = zeile.felder.map((f) => quellen.find((x) => x.feld === f)).find(Boolean);
+    if (!q || gesehen.has(zeile.key)) continue;
+    gesehen.add(zeile.key);
+    const label = FINDEN_QUELLEN_LABEL[q.quelle] || q.quelle;
+    const vermutet = q.status === "inferred" ? " (vermutet)" : "";
+    const url = sichereHttpUrl(q.url);
+    const text = url
+      ? `<a href="${escapeHtml(url)}" target="_blank" rel="noopener noreferrer">${escapeHtml(label)}</a>`
+      : escapeHtml(label);
+    zeilen.push(`<div class="kontakt-zeile"><strong>${escapeHtml(zeile.label)}:</strong> ${text}${escapeHtml(vermutet)}</div>`);
+  }
+  if (!zeilen.length) return "";
+  const osm = quellen.some((q) => q.quelle === "openstreetmap");
+  return `<div class="detail-abschnitt">
+    <h3>Herkunft der Angaben</h3>
+    ${zeilen.join("")}
+    ${osm ? `<p class="muted">© OpenStreetMap-Mitwirkende (ODbL)</p>` : ""}
+  </div>`;
 }
 
 export function renderDetail(container, app, hofladenId) {
@@ -66,8 +116,11 @@ export function renderDetail(container, app, hofladenId) {
     kontaktZeilen.push(`<div class="kontakt-zeile"><a href="mailto:${escapeHtml(h.email)}">✉️ ${escapeHtml(h.email)}</a></div>`);
   }
   if (h.website) {
+    const websiteUrl = sichereHttpUrl(h.website);
     kontaktZeilen.push(
-      `<div class="kontakt-zeile"><a href="${escapeHtml(h.website)}" target="_blank" rel="noopener">🔗 ${escapeHtml(h.website)}</a></div>`
+      websiteUrl
+        ? `<div class="kontakt-zeile"><a href="${escapeHtml(websiteUrl)}" target="_blank" rel="noopener noreferrer">🔗 ${escapeHtml(h.website)}</a></div>`
+        : `<div class="kontakt-zeile">🔗 ${escapeHtml(h.website)}</div>`
     );
   }
 
@@ -76,11 +129,24 @@ export function renderDetail(container, app, hofladenId) {
     .join(", ");
   const kartenLink =
     h.latitude != null && h.longitude != null
-      ? `https://www.openstreetmap.org/?mlat=${h.latitude}&mlon=${h.longitude}#map=17/${h.latitude}/${h.longitude}`
+      ? `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(h.latitude)},${encodeURIComponent(h.longitude)}`
       : null;
 
+  const konflikt = app.konfliktFuer ? app.konfliktFuer(h.id) : null;
+
   container.innerHTML = `
-    ${h.hauptbild_url ? `<img class="detail-bild" src="${h.hauptbild_url}" alt="" />` : ""}
+    ${
+      konflikt
+        ? `<p class="hinweis-leiste konflikt-hinweis">⚠ Versionskonflikt: Dieser Hofladen wurde auf einem anderen Gerät geändert. <a href="#/konflikt/${encodeURIComponent(h.id)}">Konflikt lösen</a></p>`
+        : ""
+    }
+    ${
+      h._synchronisierungAusstehend
+        ? `<p class="hinweis-leiste">⌁ Noch nicht synchronisiert - wird automatisch übernommen, sobald wieder eine Verbindung zu Home Assistant besteht.</p>`
+        : ""
+    }
+
+    ${h.hauptbild_url ? `<img class="detail-bild" src="${escapeHtml(h.hauptbild_url)}" alt="" decoding="async" />` : ""}
 
     <h2>${escapeHtml(h.name)}</h2>
     ${
@@ -114,16 +180,19 @@ export function renderDetail(container, app, hofladenId) {
       h.latitude != null && h.longitude != null
         ? `<div class="detail-abschnitt">
              <h3>Standort / Koordinaten</h3>
-             <div class="kontakt-zeile">${h.latitude}, ${h.longitude}</div>
-             ${kartenLink ? `<div class="kontakt-zeile"><a href="${kartenLink}" target="_blank" rel="noopener">📍 Auf der Karte öffnen</a></div>` : ""}
+             <div class="kontakt-zeile">${escapeHtml(h.latitude)}, ${escapeHtml(h.longitude)}</div>
+             ${kartenLink ? `<div class="kontakt-zeile"><a href="${escapeHtml(kartenLink)}" target="_blank" rel="noopener noreferrer">📍 Auf der Karte öffnen</a></div>` : ""}
            </div>`
         : ""
     }
 
-    <div class="detail-abschnitt">
-      <h3>Öffnungszeiten</h3>
+    <details class="detail-abschnitt einklappbar" id="oeffnungszeiten-abschnitt"${oeffnungszeitenOffen ? " open" : ""}>
+      <summary>
+        <span class="titel">Öffnungszeiten</span>
+        <span class="kurzinfo">${escapeHtml(heuteKurzinfo(h))}</span>
+      </summary>
       ${oeffnungszeitenHtml(h)}
-    </div>
+    </details>
 
     ${
       h.angebote?.length
@@ -147,12 +216,17 @@ export function renderDetail(container, app, hofladenId) {
       h.bilder?.length
         ? `<div class="detail-abschnitt">
              <h3>Bilder</h3>
-             <div class="tag-liste">${h.bilder
-               .map((b) => `<img class="miniatur" src="${escapeHtml(b.url)}" alt="" style="width:72px;height:72px;object-fit:cover;border-radius:8px" />`)
+             <div class="tag-liste galerie">${h.bilder
+               .map(
+                 (b) =>
+                   `<img class="galerie-bild" src="${escapeHtml(vorschauUrl(b.url, 256))}" alt="${escapeHtml(b.beschreibung || "")}" loading="lazy" decoding="async" />`
+               )
                .join("")}</div>
            </div>`
         : ""
     }
+
+    ${herkunftHtml(h)}
 
     <div class="detail-abschnitt">
       <h3>Bewertung</h3>
@@ -165,8 +239,11 @@ export function renderDetail(container, app, hofladenId) {
     </div>
   `;
 
+  container.querySelector("#oeffnungszeiten-abschnitt").addEventListener("toggle", (e) => {
+    oeffnungszeitenOffen = e.target.open;
+  });
   container.querySelector("#bearbeiten-btn").addEventListener("click", () => {
-    app.navigate(`#/hofladen/${h.id}/bearbeiten`);
+    app.navigate(`#/hofladen/${encodeURIComponent(h.id)}/bearbeiten`);
   });
 
   container.querySelector("#loeschen-btn").addEventListener("click", async () => {

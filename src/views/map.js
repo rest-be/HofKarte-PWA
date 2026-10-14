@@ -3,10 +3,13 @@
  * 4, Schritt 35), analog zu `hofkarte-panel.js`: farbige Marker je nach
  * Öffnungsstatus, Klick öffnet die Detailansicht.
  *
- * Leaflet wird per CDN nachgeladen (kein Bundler in diesem MVP) und nur
+ * Leaflet liegt lokal unter vendor/ (Phase 10: kein CDN, offlinefähig) und wird nur
  * einmal eingebunden, auch wenn die Kartenansicht mehrfach aufgerufen
  * wird.
  */
+
+import { escapeHtml } from "../html.js";
+import { ladeKarteGeschlosseneAusblenden, speichereKarteGeschlosseneAusblenden } from "../storage.js";
 
 let leafletLadenPromise = null;
 
@@ -17,11 +20,11 @@ function ladeLeaflet() {
   leafletLadenPromise = new Promise((resolve, reject) => {
     const css = document.createElement("link");
     css.rel = "stylesheet";
-    css.href = "https://cdn.jsdelivr.net/npm/leaflet@1.9.4/dist/leaflet.css";
+    css.href = "./vendor/leaflet/leaflet.css";
     document.head.appendChild(css);
 
     const script = document.createElement("script");
-    script.src = "https://cdn.jsdelivr.net/npm/leaflet@1.9.4/dist/leaflet.js";
+    script.src = "./vendor/leaflet/leaflet.js";
     script.onload = () => resolve(window.L);
     script.onerror = () => reject(new Error("Leaflet konnte nicht geladen werden."));
     document.head.appendChild(script);
@@ -52,14 +55,31 @@ function erzeugeMarkerIcon(L, geoeffnet) {
   });
 }
 
+/** Popup als DOM-Knoten mit textContent - Hofladennamen sind nie HTML. */
+function popupInhalt(name) {
+  const strong = document.createElement("strong");
+  strong.textContent = name == null ? "" : String(name);
+  return strong;
+}
+
 export async function renderKarte(container, app) {
-  container.innerHTML = `<div id="leaflet-karte"></div>`;
+  container.innerHTML = `
+    <div class="karte-huelle">
+      <div id="leaflet-karte"></div>
+      <label class="karten-filter">
+        <input type="checkbox" id="filter-geschlossen" />
+        <span>Geschlossene ausblenden</span>
+      </label>
+    </div>`;
+  const ausblenden = await ladeKarteGeschlosseneAusblenden().catch(() => false);
+  const filterBox = container.querySelector("#filter-geschlossen");
+  if (filterBox) filterBox.checked = ausblenden;
 
   let L;
   try {
     L = await ladeLeaflet();
   } catch (err) {
-    container.innerHTML = `<p class="hinweis-leiste fehler">${err.message}</p>`;
+    container.innerHTML = `<p class="hinweis-leiste fehler">${escapeHtml(err.message)}</p>`;
     return;
   }
 
@@ -74,22 +94,45 @@ export async function renderKarte(container, app) {
     ? [hoflaeden[0].latitude, hoflaeden[0].longitude]
     : [46.8182, 8.2275]; // Schweiz-Mittelpunkt als Fallback ohne Daten
 
-  const karte = L.map("leaflet-karte").setView(mitte, hoflaeden.length ? 12 : 8);
+  // Phase 8c (Accessibility): Leaflets eigene Zoom-/Fade-Animationen
+  // respektieren `prefers-reduced-motion` nicht von sich aus - hier
+  // explizit abschalten, wenn der Nutzer reduzierte Bewegung bevorzugt.
+  const reduzierteBewegung =
+    window.matchMedia && window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+
+  const karte = L.map("leaflet-karte", {
+    zoomAnimation: !reduzierteBewegung,
+    fadeAnimation: !reduzierteBewegung,
+    markerZoomAnimation: !reduzierteBewegung,
+  }).setView(mitte, hoflaeden.length ? 12 : 8);
 
   L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", {
     attribution: "&copy; OpenStreetMap-Mitwirkende",
     maxZoom: 19,
   }).addTo(karte);
 
-  const marker = hoflaeden.map((h) =>
-    L.marker([h.latitude, h.longitude], { icon: erzeugeMarkerIcon(L, h.geoeffnet) })
-      .addTo(karte)
-      .bindPopup(`<strong>${h.name}</strong>`)
-      .on("click", () => app.navigate(`#/hofladen/${h.id}`))
-  );
+  const markerEbene = L.layerGroup().addTo(karte);
 
-  if (marker.length > 1) {
-    const gruppe = L.featureGroup(marker);
-    karte.fitBounds(gruppe.getBounds().pad(0.2));
+  /** Zeichnet die Marker neu; geschlossene (geoeffnet === false) optional ausgeblendet.
+   * Hofläden ohne bekannten Status bleiben sichtbar. */
+  function zeichneMarker({ anpassen }) {
+    markerEbene.clearLayers();
+    const nurOffene = !!filterBox?.checked;
+    const sichtbar = hoflaeden.filter((h) => !(nurOffene && h.geoeffnet === false));
+    const marker = sichtbar.map((h) =>
+      L.marker([h.latitude, h.longitude], { icon: erzeugeMarkerIcon(L, h.geoeffnet) })
+        .bindPopup(popupInhalt(h.name))
+        .on("click", () => app.navigate(`#/hofladen/${encodeURIComponent(h.id)}`))
+        .addTo(markerEbene)
+    );
+    if (anpassen && marker.length > 1) {
+      karte.fitBounds(L.featureGroup(marker).getBounds().pad(0.2));
+    }
   }
+
+  zeichneMarker({ anpassen: true });
+  filterBox?.addEventListener("change", () => {
+    speichereKarteGeschlosseneAusblenden(filterBox.checked).catch(() => {});
+    zeichneMarker({ anpassen: false });
+  });
 }

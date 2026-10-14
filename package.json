@@ -1,0 +1,12 @@
+{
+  "name": "hofkarte-pwa",
+  "private": true,
+  "description": "Entwicklungs-/Test-Tooling für HofKarte-PWA. Die PWA selbst bleibt bewusst bundlerfrei (siehe README) – dieses package.json dient ausschliesslich dazu, Playwright für die Smoke-Tests unter tests/ zu installieren, und ist kein Build-Schritt für die Auslieferung.",
+  "type": "module",
+  "scripts": {
+    "test:smoke": "node tests/run-smoke-tests.mjs"
+  },
+  "devDependencies": {
+    "playwright": "^1.47.0"
+  }
+}
