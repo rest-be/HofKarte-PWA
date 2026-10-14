@@ -743,26 +743,56 @@ if ("serviceWorker" in navigator) {
 
       let updatePromptShown = false;
 
-      function showUpdatePrompt() {
+      async function showUpdatePrompt() {
         if (updatePromptShown || !registration.waiting) {
           return;
         }
 
         updatePromptShown = true;
 
-        const accepted = window.confirm(
-          "Eine neue HofKarte-Version ist verfügbar. " +
-          "Möchtest du jetzt aktualisieren? Die App wird neu geladen."
-        );
 
-        if (accepted && registration.waiting) {
-          registration.waiting.postMessage({
-            type: "SKIP_WAITING"
-          });
-        } else {
-          updatePromptShown = false;
-        }
-      }
+let accepted = false;
+
+try {
+  const warteschlange = await ladeWarteschlange();
+
+  if (warteschlange.length > 0) {
+    window.alert(
+      `Ein Update ist verfügbar, aber es gibt noch ` +
+      `${warteschlange.length} ungesendete Änderung(en).\n\n` +
+      "Bitte synchronisiere diese zuerst. " +
+      "Die App bleibt vorerst auf der aktuellen Version."
+    );
+
+    updatePromptShown = false;
+    return;
+  }
+
+  accepted = window.confirm(
+    "Eine neue HofKarte-Version ist verfügbar. " +
+    "Es gibt keine ausstehenden Offline-Änderungen. " +
+    "Möchtest du jetzt aktualisieren?"
+  );
+} catch (err) {
+  console.error("Offline-Warteschlange konnte nicht geprüft werden:", err);
+
+  window.alert(
+    "Die ausstehenden Offline-Änderungen konnten nicht geprüft werden. " +
+    "Aus Sicherheitsgründen wird das Update nicht gestartet."
+  );
+
+  updatePromptShown = false;
+  return;
+}
+
+if (accepted && registration.waiting) {
+  registration.waiting.postMessage({
+    type: "SKIP_WAITING"
+  });
+} else {
+  updatePromptShown = false;
+}
+
 
       // Eine bereits wartende Version erkennen.
       showUpdatePrompt();
