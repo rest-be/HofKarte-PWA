@@ -1,4 +1,5 @@
-name: Deploy HofKarte PWA
+
+name: Deploy HofKarte auf GitHub Pages
 
 on:
   push:
@@ -38,20 +39,15 @@ jobs:
           path: dev-src
 
       - name: Website zusammenstellen
-        shell: bash
         run: |
           set -euo pipefail
 
           mkdir -p public public/dev
 
-          # Nur App-Dateien veröffentlichen, keine Git-Metadaten,
-          # Tests oder GitHub-Konfiguration.
           rsync -a \
             --exclude='.git/' \
             --exclude='.github/' \
             --exclude='tests/' \
-            --exclude='package.json' \
-            --exclude='package-lock.json' \
             --exclude='README.md' \
             --exclude='LICENSE' \
             --exclude='.gitignore' \
@@ -61,44 +57,39 @@ jobs:
             --exclude='.git/' \
             --exclude='.github/' \
             --exclude='tests/' \
-            --exclude='package.json' \
-            --exclude='package-lock.json' \
             --exclude='README.md' \
             --exclude='LICENSE' \
             --exclude='.gitignore' \
             dev-src/ public/dev/
 
-          # Manifest der Dev-PWA auf /dev/ begrenzen.
           python3 - <<'PY'
           import json
           from pathlib import Path
 
           p = Path("public/dev/manifest.json")
           data = json.loads(p.read_text(encoding="utf-8"))
-          data["start_url"] = "/HofKarte-PWA/dev/"
-          data["scope"] = "/HofKarte-PWA/dev/"
+
           data["name"] = "HofKarte Dev"
           data["short_name"] = "HK Dev"
+          data["start_url"] = "/HofKarte-PWA/dev/"
+          data["scope"] = "/HofKarte-PWA/dev/"
+
           p.write_text(
               json.dumps(data, ensure_ascii=False, indent=2) + "\n",
               encoding="utf-8"
           )
           PY
 
-          # Dev-Version sichtbar von Stable unterscheiden.
-          # Die übrigen Assets werden relativ zum jeweiligen
-          # Website-Verzeichnis geladen.
-
           touch public/.nojekyll
 
-      - name: GitHub Pages konfigurieren
+      - name: Pages konfigurieren
         uses: actions/configure-pages@v5
 
-      - name: Website-Artefakt hochladen
+      - name: Artefakt hochladen
         uses: actions/upload-pages-artifact@v4
         with:
           path: public
 
-      - name: GitHub Pages veröffentlichen
+      - name: Auf GitHub Pages veröffentlichen
         id: deployment
         uses: actions/deploy-pages@v4
