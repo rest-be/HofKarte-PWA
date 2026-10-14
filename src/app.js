@@ -729,10 +729,10 @@ async function starteAppIntern(wiederverbindung) {
 starteApp();
 
 
+
 /**
  * Service Worker mit manueller Update-Freigabe.
- * Stable und Dev erhalten getrennte Registrierungen durch ihre Pfade
- * und getrennte Caches durch den jeweiligen Service Worker.
+ * Stable und Dev erhalten getrennte Caches und Datenbanken.
  */
 if ("serviceWorker" in navigator) {
   window.addEventListener("load", async () => {
@@ -742,6 +742,7 @@ if ("serviceWorker" in navigator) {
       );
 
       let updatePromptShown = false;
+      let refreshing = false;
 
       async function showUpdatePrompt() {
         if (updatePromptShown || !registration.waiting) {
@@ -750,52 +751,51 @@ if ("serviceWorker" in navigator) {
 
         updatePromptShown = true;
 
+        try {
+          const warteschlange = await ladeWarteschlange();
 
-let accepted = false;
+          if (warteschlange.length > 0) {
+            window.alert(
+              `Ein Update ist verfügbar, aber es gibt noch ` +
+                `${warteschlange.length} ungesendete Änderung(en).\n\n` +
+                "Bitte synchronisiere diese zuerst. " +
+                "Die App bleibt vorerst auf der aktuellen Version."
+            );
 
-try {
-  const warteschlange = await ladeWarteschlange();
+            updatePromptShown = false;
+            return;
+          }
 
-  if (warteschlange.length > 0) {
-    window.alert(
-      `Ein Update ist verfügbar, aber es gibt noch ` +
-      `${warteschlange.length} ungesendete Änderung(en).\n\n` +
-      "Bitte synchronisiere diese zuerst. " +
-      "Die App bleibt vorerst auf der aktuellen Version."
-    );
+          const accepted = window.confirm(
+            "Eine neue HofKarte-Version ist verfügbar. " +
+              "Es gibt keine ausstehenden Offline-Änderungen. " +
+              "Möchtest du jetzt aktualisieren?"
+          );
 
-    updatePromptShown = false;
-    return;
-  }
+          if (accepted && registration.waiting) {
+            registration.waiting.postMessage({
+              type: "SKIP_WAITING",
+            });
+          } else {
+            updatePromptShown = false;
+          }
+        } catch (err) {
+          console.error(
+            "Offline-Warteschlange konnte nicht geprüft werden:",
+            err
+          );
 
-  accepted = window.confirm(
-    "Eine neue HofKarte-Version ist verfügbar. " +
-    "Es gibt keine ausstehenden Offline-Änderungen. " +
-    "Möchtest du jetzt aktualisieren?"
-  );
-} catch (err) {
-  console.error("Offline-Warteschlange konnte nicht geprüft werden:", err);
+          window.alert(
+            "Die ausstehenden Offline-Änderungen konnten nicht geprüft werden. " +
+              "Aus Sicherheitsgründen wird das Update nicht gestartet."
+          );
 
-  window.alert(
-    "Die ausstehenden Offline-Änderungen konnten nicht geprüft werden. " +
-    "Aus Sicherheitsgründen wird das Update nicht gestartet."
-  );
-
-  updatePromptShown = false;
-  return;
-}
-
-if (accepted && registration.waiting) {
-  registration.waiting.postMessage({
-    type: "SKIP_WAITING"
-  });
-} else {
-  updatePromptShown = false;
-}
-
+          updatePromptShown = false;
+        }
+      }
 
       // Eine bereits wartende Version erkennen.
-      showUpdatePrompt();
+      await showUpdatePrompt();
 
       // Neue Version suchen.
       registration.addEventListener("updatefound", () => {
@@ -810,14 +810,12 @@ if (accepted && registration.waiting) {
             installingWorker.state === "installed" &&
             navigator.serviceWorker.controller
           ) {
-            showUpdatePrompt();
+            void showUpdatePrompt();
           }
         });
       });
 
-      // Nach bestätigtem Wechsel auf die neue Version neu laden.
-      let refreshing = false;
-
+      // Erst nach Aktivierung der neuen Version neu laden.
       navigator.serviceWorker.addEventListener(
         "controllerchange",
         () => {
@@ -845,6 +843,4 @@ if (accepted && registration.waiting) {
       );
     }
   });
-}
-
 }
