@@ -1,13 +1,9 @@
-name: Deploy auf GitHub Pages
-
-# Kein Bundler/Build-Schritt nötig (reines, statisches HTML/JS/CSS) –
-# der komplette Repo-Inhalt wird 1:1 als Pages-Artefakt veröffentlicht.
-# Voraussetzung: in den Repo-Settings unter "Pages" die Quelle auf
-# "GitHub Actions" stellen (siehe README, Phase 5 im Vorgehensplan).
+name: Deploy HofKarte PWA
 
 on:
   push:
     branches:
+      - main
       - develop
   workflow_dispatch:
 
@@ -22,22 +18,87 @@ concurrency:
 
 jobs:
   deploy:
+    runs-on: ubuntu-latest
+
     environment:
       name: github-pages
       url: ${{ steps.deployment.outputs.page_url }}
-    runs-on: ubuntu-latest
-    steps:
-      - name: Repo auschecken
-        uses: actions/checkout@v4
 
-      - name: Pages konfigurieren
+    steps:
+      - name: Stable-Branch auschecken
+        uses: actions/checkout@v4
+        with:
+          ref: main
+          path: stable-src
+
+      - name: Dev-Branch auschecken
+        uses: actions/checkout@v4
+        with:
+          ref: develop
+          path: dev-src
+
+      - name: Website zusammenstellen
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          mkdir -p public public/dev
+
+          # Nur App-Dateien veröffentlichen, keine Git-Metadaten,
+          # Tests oder GitHub-Konfiguration.
+          rsync -a \
+            --exclude='.git/' \
+            --exclude='.github/' \
+            --exclude='tests/' \
+            --exclude='package.json' \
+            --exclude='package-lock.json' \
+            --exclude='README.md' \
+            --exclude='LICENSE' \
+            --exclude='.gitignore' \
+            stable-src/ public/
+
+          rsync -a \
+            --exclude='.git/' \
+            --exclude='.github/' \
+            --exclude='tests/' \
+            --exclude='package.json' \
+            --exclude='package-lock.json' \
+            --exclude='README.md' \
+            --exclude='LICENSE' \
+            --exclude='.gitignore' \
+            dev-src/ public/dev/
+
+          # Manifest der Dev-PWA auf /dev/ begrenzen.
+          python3 - <<'PY'
+          import json
+          from pathlib import Path
+
+          p = Path("public/dev/manifest.json")
+          data = json.loads(p.read_text(encoding="utf-8"))
+          data["start_url"] = "/HofKarte-PWA/dev/"
+          data["scope"] = "/HofKarte-PWA/dev/"
+          data["name"] = "HofKarte Dev"
+          data["short_name"] = "HK Dev"
+          p.write_text(
+              json.dumps(data, ensure_ascii=False, indent=2) + "\n",
+              encoding="utf-8"
+          )
+          PY
+
+          # Dev-Version sichtbar von Stable unterscheiden.
+          # Die übrigen Assets werden relativ zum jeweiligen
+          # Website-Verzeichnis geladen.
+
+          touch public/.nojekyll
+
+      - name: GitHub Pages konfigurieren
         uses: actions/configure-pages@v5
 
-      - name: Artefakt hochladen
-        uses: actions/upload-pages-artifact@v3
+      - name: Website-Artefakt hochladen
+        uses: actions/upload-pages-artifact@v4
         with:
-          path: .
+          path: public
 
-      - name: Auf GitHub Pages veröffentlichen
+      - name: GitHub Pages veröffentlichen
         id: deployment
         uses: actions/deploy-pages@v4
