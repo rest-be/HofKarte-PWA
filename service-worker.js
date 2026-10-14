@@ -21,7 +21,9 @@
  * diese liegen ausschliesslich in IndexedDB (siehe src/storage.js).
  */
 
-const CACHE_VERSION = "hofkarte-pwa-v15";
+const APP_VARIANT = "stable";
+const CACHE_PREFIX = `hofkarte-${APP_VARIANT}-`;
+const CACHE_VERSION = `${CACHE_PREFIX}pwa-v18`;
 
 const APP_SHELL_DATEIEN = [
   "./",
@@ -75,7 +77,7 @@ const APP_SHELL_DATEIEN = [
 self.addEventListener("install", (event) => {
   event.waitUntil(
     caches
-      .open(CACHE_VERSION)
+      .open()
       .then((cache) => cache.addAll(APP_SHELL_DATEIEN))
       .then(() => self.skipWaiting())
   );
@@ -88,7 +90,11 @@ self.addEventListener("activate", (event) => {
       .then((namen) =>
         Promise.all(
           namen
-            .filter((name) => name !== CACHE_VERSION)
+            .filter(
+  (name) =>
+    name.startsWith(CACHE_PREFIX) &&
+    name !== CACHE_VERSION
+)
             .map((name) => caches.delete(name))
         )
       )
