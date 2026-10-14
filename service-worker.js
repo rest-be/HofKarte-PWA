@@ -77,7 +77,7 @@ const APP_SHELL_DATEIEN = [
 self.addEventListener("install", (event) => {
   event.waitUntil(
     caches
-      .open()
+      .open(CACHE_VERSION)
       .then((cache) => cache.addAll(APP_SHELL_DATEIEN))
       .then(() => self.skipWaiting())
   );
