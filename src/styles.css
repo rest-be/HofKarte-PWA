@@ -663,7 +663,8 @@ p.ort {
   background: var(--card-bg);
 }
 
-.inhalt > h2 {
+.inhalt > h2,
+.detail-kopf > h2 {
   margin: 0 0 6px;
   font-size: 28px;
   font-weight: 700;
@@ -1486,3 +1487,200 @@ a:has(> .ic) {
     animation-duration: 0.01ms !important;
   }
 }
+
+/* --- Detail: Kopf, Schnellaktionen, Gruppen (ab 2.0.0-dev.2) ---------------- */
+
+.nur-sr {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip: rect(0 0 0 0);
+  white-space: nowrap;
+}
+
+.detail-kopf {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+}
+
+.detail-kopf > h2 {
+  flex: 1;
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+
+.kopf-aktionen {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  position: relative;
+}
+
+.kopf-btn {
+  min-height: 44px;
+  padding: 0 14px;
+  border: 0;
+  border-radius: 12px;
+  background: var(--accent);
+  color: var(--accent-ink);
+  font-size: 15px;
+  font-weight: 600;
+}
+
+.aktionsmenue > summary {
+  display: grid;
+  place-items: center;
+  width: 44px;
+  height: 44px;
+  list-style: none;
+  border-radius: 12px;
+  background: var(--fill);
+  color: var(--text-color);
+  cursor: pointer;
+}
+
+.aktionsmenue > summary::-webkit-details-marker {
+  display: none;
+}
+
+.aktionsmenue .menue-liste {
+  position: absolute;
+  right: 0;
+  top: 48px;
+  z-index: 5;
+  min-width: 160px;
+  padding: 4px;
+  border-radius: 12px;
+  background: var(--card-bg);
+  box-shadow: 0 6px 24px rgba(0, 0, 0, 0.22);
+}
+
+.aktionsmenue .menue-liste button {
+  width: 100%;
+  min-height: 44px;
+  padding: 0 12px;
+  border: 0;
+  border-radius: 8px;
+  background: transparent;
+  text-align: left;
+  font-size: 16px;
+  color: var(--text-color);
+}
+
+.aktionsmenue .menue-liste button.gefahr {
+  color: var(--danger-color);
+}
+
+.status-zeile {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin: 2px 0 12px;
+}
+
+.schnellaktionen {
+  display: grid;
+  grid-auto-flow: column;
+  grid-auto-columns: 1fr;
+  gap: 8px;
+  margin-bottom: 14px;
+}
+
+.schnellaktion {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 4px;
+  min-height: 56px;
+  border-radius: 12px;
+  background: var(--accent-soft);
+  color: var(--tint);
+  font-size: 13px;
+  font-weight: 600;
+  text-decoration: none;
+}
+
+.gruppen-leiste {
+  display: flex;
+  justify-content: flex-end;
+  margin-top: 6px;
+}
+
+.link-btn {
+  min-height: 44px;
+  padding: 0 4px;
+  border: 0;
+  background: transparent;
+  color: var(--tint);
+  font-size: 15px;
+  font-weight: 600;
+}
+
+/* Vollständigkeit: Form statt nur Farbe (voll = gefüllt, halb = halb gefüllt, leer = Ring). */
+.vollst {
+  flex: none;
+  width: 12px;
+  height: 12px;
+  border-radius: 50%;
+  box-shadow: inset 0 0 0 2px var(--tint);
+}
+
+.vollst.voll {
+  background: var(--tint);
+}
+
+.vollst.halb {
+  background: linear-gradient(90deg, var(--tint) 50%, transparent 50%);
+}
+
+.vollst.leer {
+  background: transparent;
+  box-shadow: inset 0 0 0 2px var(--muted-color);
+}
+
+details.gruppe > summary .titel {
+  flex: none;
+}
+
+details.gruppe > summary .kurzinfo {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+details.gruppe .gruppen-label {
+  margin-top: 8px;
+  color: var(--muted-color);
+  font-size: 13px;
+  text-transform: uppercase;
+}
+
+details.gruppe .tag-liste {
+  padding: 6px 0 12px;
+}
+
+details.gruppe .gruppen-text {
+  margin: 4px 0 10px;
+}
+
+.kontakt-zeile.heute {
+  background: var(--accent-soft);
+  margin: 0 -16px;
+  padding-left: 16px;
+  padding-right: 16px;
+}
+
+.heute-marke {
+  margin-left: 6px;
+  padding: 1px 7px;
+  border-radius: 999px;
+  background: var(--accent);
+  color: var(--accent-ink);
+  font-size: 12px;
+  font-weight: 600;
+}
+

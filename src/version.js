@@ -18,7 +18,7 @@
  * Beim Erhöhen bitte auch im README (Abschnitt "Version") und im
  * Vorgehensplan nachziehen.
  */
-export const APP_VERSION = "2.0.0-dev.1";
+export const APP_VERSION = "2.0.0-dev.2";
 
 /**
  * Release Notes (neueste zuerst), angezeigt auf dem Einrichtungsbildschirm
@@ -26,6 +26,15 @@ export const APP_VERSION = "2.0.0-dev.1";
  * ergänzen (und die Tabelle im README nachziehen).
  */
 export const RELEASE_NOTES = [
+  {
+    version: "2.0.0-dev.2",
+    datum: "2026-10-14",
+    punkte: [
+      "Detailansicht neu: Kopf mit Status und Bewertung, Schnellaktionen (Route, Anrufen, Webseite, E-Mail), Hinweis „Noch unvollständig“ mit Sprung zum Bearbeiten.",
+      "Sieben Gruppen wie im Home-Assistant-Panel (Grunddaten, Adresse & Standort, Kontakt & Webseite, Öffnungszeiten, Angebote & Zahlungsarten, Bilder, Herkunft), einklappbar, mit Vollständigkeitspunkt und Kurzinfo; „Alle ausklappen“.",
+      "Löschen liegt im ⋮-Menü und verlangt weiterhin eine Bestätigung.",
+    ],
+  },
   {
     version: "2.0.0-dev.1",
     datum: "2026-10-14",

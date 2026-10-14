@@ -277,13 +277,58 @@ export async function fuehreSmokeTestsAus(page, baseUrl) {
   await page.waitForTimeout(250);
   const kartenLink = await page.$eval(".detail-abschnitt a[href*='maps']", (el) => el.getAttribute("href")).catch(() => null);
   check("Detailansicht: Karten-Link öffnet Google Maps", kartenLink === "https://www.google.com/maps/search/?api=1&query=46.9481,7.4474");
-  check("Öffnungszeiten sind standardmässig eingeklappt", (await page.$eval("#oeffnungszeiten-abschnitt", (el) => el.open)) === false);
-  check("Eingeklappte Öffnungszeiten sind höchstens 60px hoch", (await page.$eval("#oeffnungszeiten-abschnitt", (el) => el.getBoundingClientRect().height)) <= 60);
-  check("Eingeklappte Öffnungszeiten zeigen die heutigen Zeiten", (await page.$eval("#oeffnungszeiten-abschnitt summary", (el) => el.textContent)).includes("Heute 08:00–18:00"));
+  // --- 2.0.0-dev.2: Gruppen im Detail ---------------------------------------
+  const gruppenIds = await page.$$eval("details.gruppe", (els) => els.map((e) => e.dataset.gruppe));
+  check(`Detail: Gruppen in HA-Reihenfolge (${gruppenIds.join(", ")})`, gruppenIds.join() === "grunddaten,adresse,kontakt,oeffnungszeiten,angebote,bilder");
+  check("Detail: Öffnungszeiten und Angebote sind standardmässig offen, Rest zu", JSON.stringify(await page.$$eval("details.gruppe", (els) => els.filter((e) => e.open).map((e) => e.dataset.gruppe))) === JSON.stringify(["oeffnungszeiten", "angebote"]));
+  check("Detail: Öffnungszeiten zeigen alle 7 Tage", (await page.$$eval("#oeffnungszeiten-abschnitt .kontakt-zeile", (els) => els.length)) === 7);
+  check("Detail: heutiger Tag ist hervorgehoben", (await page.$$("#oeffnungszeiten-abschnitt .kontakt-zeile.heute")).length === 1);
+  check("Detail: Kurzinfo der Öffnungszeiten zeigt heutige Zeiten", (await page.$eval("#oeffnungszeiten-abschnitt summary", (el) => el.textContent)).includes("Heute 08:00–18:00"));
+  check("Detail: Vollständigkeit hat Text für Screenreader", (await page.$eval("#oeffnungszeiten-abschnitt .vollst .nur-sr", (el) => el.textContent)).includes("vollständig"));
+  check("Detail: Schnellaktion Route vorhanden", !!(await page.$(".schnellaktion[href*='maps/dir']")));
+  check("Detail: Hinweis «Noch unvollständig» mit Link zum Bearbeiten", (await page.$eval("#unvollstaendig-hinweis a", (el) => el.getAttribute("href"))).endsWith("/bearbeiten"));
   await page.click("#oeffnungszeiten-abschnitt > summary");
   await page.waitForTimeout(150);
-  check("Öffnungszeiten lassen sich aufklappen und zeigen alle Tage", (await page.$$eval("#oeffnungszeiten-abschnitt .kontakt-zeile", (els) => els.length)) === 7 && (await page.$eval("#oeffnungszeiten-abschnitt", (el) => el.open)));
+  check("Detail: Gruppe lässt sich einklappen", (await page.$eval("#oeffnungszeiten-abschnitt", (el) => el.open)) === false);
+  check("Detail: eingeklappte Gruppe ist höchstens 60px hoch", (await page.$eval("#oeffnungszeiten-abschnitt", (el) => el.getBoundingClientRect().height)) <= 60);
+  await page.click("#alle-btn");
+  await page.waitForTimeout(150);
+  check("Detail: «Alle ausklappen» öffnet alle Gruppen", (await page.$$eval("details.gruppe", (els) => els.every((e) => e.open))));
+  await page.click("#alle-btn");
   await page.click("#oeffnungszeiten-abschnitt > summary");
+  const gr = await page.evaluate(async () => {
+    const g = await import("/src/gruppen.js");
+    const finde = (id) => g.HOF_GRUPPEN.find((x) => x.id === id);
+    return {
+      leer: g.vollstaendigkeit(finde("adresse"), {}),
+      halb: g.vollstaendigkeit(finde("adresse"), { adresse: "Dorfstrasse 1" }),
+      voll: g.vollstaendigkeit(finde("adresse"), { adresse: "Dorfstrasse 1", ort: "Bern", latitude: 46.9, longitude: 7.4 }),
+      kontaktZwei: g.vollstaendigkeit(finde("kontakt"), { mobilnummer: "079 1", website: "https://a.ch" }),
+      offen: g.offeneGruppen({}).map((x) => x.id).join(),
+    };
+  });
+  check("Gruppen: Vollständigkeit leer/halb/voll und Kontakt ab 2 Angaben", gr.leer === "leer" && gr.halb === "halb" && gr.voll === "voll" && gr.kontaktZwei === "voll");
+  check("Gruppen: «Noch unvollständig» ohne die rein informative Herkunft", gr.offen === "grunddaten,adresse,kontakt,oeffnungszeiten,angebote,bilder");
+  await page.evaluate(async () => {
+    await window.hofkarteApp._uebernehmeLokal({ id: "xss1", name: "<img src=x onerror=window.__xss=1>", beschreibung: "<b>fett</b>", mobilnummer: "079 123", bilder: [] });
+    window.location.hash = "#/hofladen/xss1";
+    window.dispatchEvent(new Event("hashchange"));
+  });
+  await page.waitForTimeout(250);
+  check("Detail: Name und Beschreibung werden maskiert", !(await page.$(".detail-kopf img")) && !(await page.$(".gruppen-text b")) && !(await page.evaluate(() => window.__xss)));
+  check("Detail: Schnellaktion Anrufen mit tel:-Link, ohne Route ohne Koordinaten", (await page.$eval(".schnellaktion[href^='tel:']", (el) => el.getAttribute("href"))) === "tel:079123" && !(await page.$(".schnellaktion[href*='maps/dir']")));
+  await page.evaluate(() => {
+    window.location.hash = "#/hofladen/geo1";
+    window.dispatchEvent(new Event("hashchange"));
+  });
+  await page.waitForTimeout(250);
+  if (process.env.SCREENSHOT_DIR) {
+    await page.setViewportSize({ width: 390, height: 844 });
+    await page.screenshot({ path: `${process.env.SCREENSHOT_DIR}/detail.png`, fullPage: true });
+    await page.setViewportSize({ width: 1280, height: 720 });
+  }
+  check("Detail: ⋮-Menü enthält Löschen", !!(await page.$("#aktionsmenue #loeschen-btn")));
+  check("Detail: Menü- und Bearbeiten-Knopf mindestens 44px", (await page.$eval("#aktionsmenue > summary", (el) => el.getBoundingClientRect().height)) >= 44 && (await page.$eval("#bearbeiten-btn", (el) => el.getBoundingClientRect().height)) >= 44);
   check("Detailansicht hat Zurück-Button in der Navigationsleiste", !!(await page.$("#zurueck-btn")));
   check("Zurück-Button Höhe >= 44px", (await page.$eval("#zurueck-btn", (el) => el.getBoundingClientRect().height)) >= 44);
   await page.click("#zurueck-btn");
