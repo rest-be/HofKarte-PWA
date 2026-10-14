@@ -59,7 +59,7 @@ function bewertungSternenHtml(wert) {
 /** „Herkunft der Angaben“: aus welcher Quelle ein Feld stammt (nur wenn
  * der Hofladen über „Hofladen finden“ erfasst wurde). Vermutungen der KI
  * sind als solche gekennzeichnet. */
-function herkunftHtml(h) {
+export function herkunftHtml(h) {
   const quellen = Array.isArray(h.quellen) ? h.quellen : [];
   if (!quellen.length) return "";
   const zeilen = [];

@@ -358,20 +358,59 @@ export async function fuehreSmokeTestsAus(page, baseUrl) {
   check("Einzelner Stern-Button hat aria-label", !!(await page.$eval(".stern-btn", (el) => el.getAttribute("aria-label"))));
   check("Stern-Button Höhe >= 44px", (await page.$eval(".stern-btn", (el) => el.getBoundingClientRect().height)) >= 44);
 
-  await page.click("#oz-hinzufuegen-btn");
+  await page.click("#gruppe-oeffnungszeiten > summary");
+  await page.click(".oz-plus[data-plus='1']");
   await page.waitForTimeout(200);
   const ozLabels = await page.$eval(".oeffnungszeit-zeile", (el) => ({
-    wochentag: el.querySelector(".oz-wochentag")?.getAttribute("aria-label"),
     beginn: el.querySelector(".oz-beginn")?.getAttribute("aria-label"),
     ende: el.querySelector(".oz-ende")?.getAttribute("aria-label"),
     entfernen: el.querySelector(".entfernen-btn")?.getAttribute("aria-label"),
     entfernenHoehe: el.querySelector(".entfernen-btn")?.getBoundingClientRect().height,
   }));
-  check("Wochentag-Select hat aria-label", ozLabels.wochentag === "Wochentag");
-  check("Beginn-Input hat aria-label", ozLabels.beginn === "Beginn");
-  check("Ende-Input hat aria-label", ozLabels.ende === "Ende");
+  check("Beginn-Input hat aria-label mit Wochentag", ozLabels.beginn === "Beginn Montag");
+  check("Ende-Input hat aria-label mit Wochentag", ozLabels.ende === "Ende Montag");
   check("Entfernen-Button der Öffnungszeit hat aria-label", !!ozLabels.entfernen);
   check("Entfernen-Button (Öffnungszeiten) Höhe >= 44px", ozLabels.entfernenHoehe >= 44);
+
+  // --- 2.0.0-dev.3: Editor mit Gruppen ----------------------------------------
+  const edGruppen = await page.$$eval("details.gruppe", (els) => els.map((e) => e.dataset.gruppe));
+  check(`Editor: dieselben Gruppen wie im Detail (${edGruppen.join(", ")})`, edGruppen.join() === "grunddaten,adresse,kontakt,oeffnungszeiten,angebote,bilder");
+  check("Editor: Grunddaten, Adresse und Angebote offen, Rest zu", JSON.stringify(await page.$$eval("details.gruppe", (els) => els.filter((e) => e.open && e.dataset.gruppe !== "oeffnungszeiten").map((e) => e.dataset.gruppe))) === JSON.stringify(["grunddaten", "adresse", "angebote"]));
+  check("Editor: feste Fussleiste mit Abbrechen und Speichern", (await page.$eval("#fussleiste", (el) => getComputedStyle(el).position)) === "fixed" && !!(await page.$("#fussleiste #speichern-btn")));
+  check("Editor: 7 Tage im Wochentage-Editor", (await page.$$(".oz-tag")).length === 7);
+  check("Editor: «Ungespeichert» erscheint nach einer Änderung", (await page.$eval("#ungespeichert", (el) => el.hidden)) === false);
+  await page.click(".oz-kopieren[data-kopieren='1']");
+  await page.waitForTimeout(150);
+  check("Editor: «Auf Mo–Fr kopieren» ergibt 5 Zeilen", (await page.$$(".oeffnungszeit-zeile")).length === 5 && (await page.$$(".oz-tag[data-tag='4'] .oeffnungszeit-zeile")).length === 1);
+  await page.fill("#angebot-neu", "Eier, Honig");
+  await page.press("#angebot-neu", "Enter");
+  await page.click("[data-vorschlag='Käse']");
+  check("Editor: Angebote als Chips (Eier, Honig, Käse)", (await page.$$eval("#angebote-chips .chip", (els) => els.length)) === 3 && (await page.$eval("#f-angebote", (el) => el.value)) === "Eier, Honig, Käse");
+  await page.click("#angebote-chips [aria-label='Honig entfernen']");
+  check("Editor: Chip lässt sich entfernen", (await page.$eval("#f-angebote", (el) => el.value)) === "Eier, Käse");
+  await page.click("[data-zahlung='TWINT']");
+  check("Editor: Zahlungsart als Schalter (aria-checked)", (await page.$eval("[data-zahlung='TWINT']", (el) => el.getAttribute("aria-checked"))) === "true" && (await page.$eval("#f-zahlungsarten", (el) => el.value)) === "TWINT");
+  check("Editor: Schalter mindestens 44px hoch", (await page.$eval("[data-zahlung='TWINT']", (el) => el.getBoundingClientRect().height)) >= 44);
+  check("Editor: Vollständigkeit der Angebote wird live aktualisiert (halb/voll)", (await page.$eval("#gruppe-angebote .vollst", (el) => el.className)).includes("voll"));
+  await page.click("[data-stern='4']");
+  check("Editor: Bewertung mit «Zurücksetzen»", (await page.$eval("#bewertung-reset", (el) => !el.hidden)));
+  await page.click("#bewertung-reset");
+  check("Editor: Zurücksetzen löscht die Sterne", (await page.$$(".stern-gefuellt")).length === 0);
+  await page.click("#gruppe-grunddaten > summary");
+  await page.click("#speichern-btn");
+  await page.waitForTimeout(150);
+  check("Editor: fehlender Name öffnet die Gruppe und fokussiert das Feld", (await page.$eval("#gruppe-grunddaten", (el) => el.open)) && (await page.evaluate(() => document.activeElement?.id)) === "f-name" && (await page.$eval("#f-name-fehler", (el) => !el.hidden)));
+  let rueckfrage = 0;
+  page.once("dialog", (d) => { rueckfrage++; d.dismiss(); });
+  await page.click("#abbrechen-btn");
+  await page.waitForTimeout(150);
+  check("Editor: Abbrechen fragt bei Änderungen zurück und bleibt bei «Nein»", rueckfrage === 1 && !!(await page.$("#editor-form")));
+  await page.fill("#f-latitude", "abc");
+  await page.fill("#f-name", "Test");
+  await page.click("#speichern-btn");
+  await page.waitForTimeout(100);
+  check("Editor: ungültiger Breitengrad wird mit Hinweis abgelehnt", (await page.evaluate(() => document.activeElement?.id)) === "f-latitude" && (await page.$eval("#f-latitude-fehler", (el) => !el.hidden)));
+  await page.fill("#f-latitude", "");
 
   check("Speichern-Button Höhe >= 44px", (await page.$eval("#speichern-btn", (el) => el.getBoundingClientRect().height)) >= 44);
   check("Abbrechen-Button Höhe >= 44px", (await page.$eval("#abbrechen-btn", (el) => el.getBoundingClientRect().height)) >= 44);
@@ -766,6 +805,38 @@ export async function fuehreSmokeTestsAus(page, baseUrl) {
   await page.waitForTimeout(300);
   const gespeichert = await page.evaluate(() => window.__gespeichert);
   check("Speichern sendet Herkunft nur für unveränderte Felder", !!gespeichert && gespeichert.quellen.map((q) => q.feld).sort().join() === "angebote,name");
+  // Roundtrip: unveränderter Hofladen wird mit demselben Inhalt gespeichert wie vor dem Umbau.
+  await page.evaluate(() => {
+    const app = window.hofkarteApp;
+    app.state.hoflaeden = [{
+      id: "rt1", version: 3, name: "Roundtrip-Hof", beschreibung: "Text", bemerkung: "intern", adresse: "Dorfstrasse 1", plz: "3000", ort: "Bern", land: "Schweiz",
+      website: "https://rt.example", mobilnummer: "079 111 22 33", email: "a@b.ch", latitude: 46.9, longitude: 7.4, bewertung: 4,
+      oeffnungszeiten: [{ wochentag: 2, beginn: "08:00", ende: "12:00" }, { wochentag: 2, beginn: "14:00", ende: "18:00" }],
+      angebote: [{ id: "a1", name: "Eier" }, { id: "a2", name: "Honig" }], zahlungsarten: [{ id: "z1", name: "Bargeld" }],
+      bilder: [{ url: "https://x.example/b.jpg", beschreibung: "Bild", hochgeladen: false }], quellen: [],
+    }];
+    window.__gespeichert = null;
+    window.location.hash = "#/hofladen/rt1/bearbeiten";
+    window.dispatchEvent(new Event("hashchange"));
+  });
+  await page.waitForTimeout(300);
+  if (process.env.SCREENSHOT_DIR) {
+    await page.setViewportSize({ width: 390, height: 844 });
+    await page.screenshot({ path: `${process.env.SCREENSHOT_DIR}/editor.png` });
+    await page.click("#alle-btn");
+    await page.screenshot({ path: `${process.env.SCREENSHOT_DIR}/editor-alle.png`, fullPage: true });
+    await page.click("#alle-btn");
+    await page.setViewportSize({ width: 1280, height: 720 });
+  }
+  check("Roundtrip: unveränderter Editor zeigt kein «Ungespeichert»", (await page.$eval("#ungespeichert", (el) => el.hidden)) === true && !(await page.isVisible("#ungespeichert")));
+  await page.click("#speichern-btn");
+  await page.waitForTimeout(300);
+  const rt = await page.evaluate(() => window.__gespeichert);
+  const rtOk = !!rt && rt.id === "rt1" && rt.version === 3 && rt.name === "Roundtrip-Hof" && rt.bemerkung === "intern" && rt.plz === "3000" && rt.latitude === 46.9 && rt.longitude === 7.4 && rt.bewertung === 4
+    && JSON.stringify(rt.oeffnungszeiten) === JSON.stringify([{ wochentag: 2, beginn: "08:00", ende: "12:00" }, { wochentag: 2, beginn: "14:00", ende: "18:00" }])
+    && rt.angebote.map((a) => a.name).join() === "Eier,Honig" && rt.zahlungsarten.map((z) => z.name).join() === "Bargeld"
+    && rt.bilder.length === 1 && rt.bilder[0].beschreibung === "Bild";
+  check("Roundtrip: gleiches Payload wie vor dem Umbau", rtOk);
   await page.evaluate(() => {
     const app = window.hofkarteApp;
     app.haClient = null;

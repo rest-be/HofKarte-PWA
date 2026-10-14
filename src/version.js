@@ -18,7 +18,7 @@
  * Beim Erhöhen bitte auch im README (Abschnitt "Version") und im
  * Vorgehensplan nachziehen.
  */
-export const APP_VERSION = "2.0.0-dev.2";
+export const APP_VERSION = "2.0.0-dev.3";
 
 /**
  * Release Notes (neueste zuerst), angezeigt auf dem Einrichtungsbildschirm
@@ -26,6 +26,16 @@ export const APP_VERSION = "2.0.0-dev.2";
  * ergänzen (und die Tabelle im README nachziehen).
  */
 export const RELEASE_NOTES = [
+  {
+    version: "2.0.0-dev.3",
+    datum: "2026-10-14",
+    punkte: [
+      "Bearbeiten neu: dieselben sieben Gruppen wie in der Detailansicht (Grunddaten, Adresse & Standort, Kontakt & Webseite, Öffnungszeiten, Angebote & Zahlungsarten, Bilder, Herkunft), mit Vollständigkeitspunkt, der sich beim Eingeben aktualisiert.",
+      "Angebote als Chips mit Vorschlägen, Zahlungsarten als Schalter, Öffnungszeiten pro Wochentag mit „Auf Mo–Fr kopieren“, Bewertung mit „Zurücksetzen“.",
+      "Feste Fussleiste mit „Ungespeichert“, Abbrechen fragt bei Änderungen zurück; fehlende oder ungültige Angaben öffnen die Gruppe und markieren das Feld.",
+      "Leiste „Angaben automatisch ergänzen“ (Webseite, Hofladen finden).",
+    ],
+  },
   {
     version: "2.0.0-dev.2",
     datum: "2026-10-14",
