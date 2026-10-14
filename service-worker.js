@@ -21,7 +21,12 @@
  * diese liegen ausschliesslich in IndexedDB (siehe src/storage.js).
  */
 
-const CACHE_VERSION = "hofkarte-pwa-v15";
+const APP_VARIANT = self.location.pathname.includes("/dev/")
+  ? "dev"
+  : "stable";
+
+const CACHE_PREFIX = `hofkarte-${APP_VARIANT}-`;
+const CACHE_VERSION = `${CACHE_PREFIX}pwa-v16`;
 
 const APP_SHELL_DATEIEN = [
   "./",
@@ -77,7 +82,7 @@ self.addEventListener("install", (event) => {
     caches
       .open(CACHE_VERSION)
       .then((cache) => cache.addAll(APP_SHELL_DATEIEN))
-      .then(() => self.skipWaiting())
+      .then(() => undefined)
   );
 });
 
@@ -88,12 +93,22 @@ self.addEventListener("activate", (event) => {
       .then((namen) =>
         Promise.all(
           namen
-            .filter((name) => name !== CACHE_VERSION)
+            .filter(
+              (name) =>
+                name.startsWith(CACHE_PREFIX) &&
+                name !== CACHE_VERSION
+            )
             .map((name) => caches.delete(name))
         )
       )
       .then(() => self.clients.claim())
   );
+});
+
+self.addEventListener("message", (event) => {
+  if (event.data?.type === "SKIP_WAITING") {
+    self.skipWaiting();
+  }
 });
 
 self.addEventListener("fetch", (event) => {
