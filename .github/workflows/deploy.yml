@@ -1,10 +1,13 @@
+name: Deploy auf GitHub Pages
 
-name: Deploy HofKarte auf GitHub Pages
+# Kein Bundler/Build-Schritt nötig (reines, statisches HTML/JS/CSS) –
+# der komplette Repo-Inhalt wird 1:1 als Pages-Artefakt veröffentlicht.
+# Voraussetzung: in den Repo-Settings unter "Pages" die Quelle auf
+# "GitHub Actions" stellen (siehe README, Phase 5 im Vorgehensplan).
 
 on:
   push:
     branches:
-      - main
       - develop
   workflow_dispatch:
 
@@ -19,76 +22,21 @@ concurrency:
 
 jobs:
   deploy:
-    runs-on: ubuntu-latest
-
     environment:
       name: github-pages
       url: ${{ steps.deployment.outputs.page_url }}
-
+    runs-on: ubuntu-latest
     steps:
-      - name: Stable-Branch auschecken
+      - name: Repo auschecken
         uses: actions/checkout@v4
-        with:
-          ref: main
-          path: stable-src
-
-      - name: Dev-Branch auschecken
-        uses: actions/checkout@v4
-        with:
-          ref: develop
-          path: dev-src
-
-      - name: Website zusammenstellen
-        run: |
-          set -euo pipefail
-
-          mkdir -p public public/dev
-
-          rsync -a \
-            --exclude='.git/' \
-            --exclude='.github/' \
-            --exclude='tests/' \
-            --exclude='README.md' \
-            --exclude='LICENSE' \
-            --exclude='.gitignore' \
-            stable-src/ public/
-
-          rsync -a \
-            --exclude='.git/' \
-            --exclude='.github/' \
-            --exclude='tests/' \
-            --exclude='README.md' \
-            --exclude='LICENSE' \
-            --exclude='.gitignore' \
-            dev-src/ public/dev/
-
-          python3 - <<'PY'
-          import json
-          from pathlib import Path
-
-          p = Path("public/dev/manifest.json")
-          data = json.loads(p.read_text(encoding="utf-8"))
-
-          data["name"] = "HofKarte Dev"
-          data["short_name"] = "HK Dev"
-          data["start_url"] = "/HofKarte-PWA/dev/"
-          data["scope"] = "/HofKarte-PWA/dev/"
-
-          p.write_text(
-              json.dumps(data, ensure_ascii=False, indent=2) + "\n",
-              encoding="utf-8"
-          )
-          PY
-
-          touch public/.nojekyll
 
       - name: Pages konfigurieren
         uses: actions/configure-pages@v5
 
       - name: Artefakt hochladen
-        uses: actions/upload-pages-artifact@v4
+        uses: actions/upload-pages-artifact@v3
         with:
-          path: public
+          path: .
 
       - name: Auf GitHub Pages veröffentlichen
         id: deployment
