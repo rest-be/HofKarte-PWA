@@ -646,7 +646,7 @@ export async function fuehreSmokeTestsAus(page, baseUrl) {
     await new Promise((r) => setTimeout(r, 700));
     const anzahl = () => document.querySelectorAll(".leaflet-marker-icon").length;
     const alle = anzahl();
-    const box = document.querySelector("#filter-geschlossen");
+    const box = document.querySelector("#filter-offen");
     box.click();
     await new Promise((r) => setTimeout(r, 200));
     const gefiltert = anzahl();
@@ -654,7 +654,87 @@ export async function fuehreSmokeTestsAus(page, baseUrl) {
     await new Promise((r) => setTimeout(r, 200));
     return { alle, gefiltert, wieder: anzahl() };
   });
-  check(`Karte: Filter blendet Geschlossene aus (${karte.alle} → ${karte.gefiltert} → ${karte.wieder})`, karte.alle === 3 && karte.gefiltert === 2 && karte.wieder === 3);
+  check(`Karte: «Nur geöffnet» zeigt nur geöffnete (${karte.alle} → ${karte.gefiltert} → ${karte.wieder})`, karte.alle === 3 && karte.gefiltert === 1 && karte.wieder === 3);
+
+
+  // Phase 6: Karten-Vorschau, Formmarker, Mein Standort, Escaping.
+  const sheetTest = await page.evaluate(async () => {
+    const app = window.hofkarteApp;
+    app.state.hoflaeden = [
+      { id: "s1", name: "<img src=x onerror=window.__xss6=1>", adresse: "Weg 1", ort: "Bern", latitude: 46.9, longitude: 7.4, geoeffnet: true, bilder: [] },
+      { id: "s2", name: "Zu", latitude: 46.91, longitude: 7.41, geoeffnet: false, bilder: [] },
+      { id: "s3", name: "Unbekannt", latitude: 46.92, longitude: 7.42, geoeffnet: null, bilder: [] },
+    ];
+    window.location.hash = "#/";
+    window.dispatchEvent(new Event("hashchange"));
+    await new Promise((r) => setTimeout(r, 200));
+    window.location.hash = "#/karte";
+    window.dispatchEvent(new Event("hashchange"));
+    await new Promise((r) => setTimeout(r, 700));
+    const marker = [...document.querySelectorAll(".leaflet-marker-icon")];
+    const formen = marker.map((m) => (m.querySelector("rect") ? "quadrat" : m.querySelector("circle[fill='none']") ? "ring" : "kreis")).sort().join(",");
+    const sheetVorher = document.querySelector("#karten-sheet").hidden;
+    marker.find((m) => /Weg|img/.test(m.getAttribute("title") || m.title || ""))?.click();
+    await new Promise((r) => setTimeout(r, 200));
+    const sheet = document.querySelector("#karten-sheet");
+    return {
+      formen, sheetVorher,
+      offen: !sheet.hidden,
+      titel: sheet.querySelector("h2")?.textContent,
+      imgImSheet: sheet.querySelectorAll("img").length,
+      xss: window.__xss6,
+      route: sheet.querySelector("#sheet-route")?.getAttribute("href"),
+      status: sheet.querySelector(".status-badge")?.textContent,
+      hatDetails: !!sheet.querySelector("#sheet-details"),
+    };
+  });
+  check("Karte: Marker haben Formen (Kreis/Quadrat/Ring)", sheetTest.formen === "kreis,quadrat,ring");
+  check("Karte: Vorschau ist erst nach Tipp sichtbar", sheetTest.sheetVorher === true && sheetTest.offen);
+  check("Karte: Vorschau zeigt Name als Text (Escaping), Status und Route", sheetTest.titel.startsWith("<img") && sheetTest.imgImSheet === 0 && !sheetTest.xss && sheetTest.status === "Geöffnet" && sheetTest.route.includes("destination=46.9%2C7.4") && sheetTest.hatDetails);
+  await page.click("#sheet-details");
+  await page.waitForTimeout(200);
+  check("Karte: «Details» im Sheet öffnet den Hofladen", (await page.evaluate(() => location.hash)) === "#/hofladen/s1");
+
+  // Mein Standort: nur nach Tipp.
+  await page.evaluate(() => {
+    window.__geoAufrufe6 = 0;
+    Object.defineProperty(navigator, "geolocation", { configurable: true, value: { getCurrentPosition: (ok) => { window.__geoAufrufe6++; ok({ coords: { latitude: 46.905, longitude: 7.405 } }); } } });
+    window.location.hash = "#/karte";
+    window.dispatchEvent(new Event("hashchange"));
+  });
+  await page.waitForTimeout(700);
+  check("Karte: Standort wird nicht von selbst abgefragt", (await page.evaluate(() => window.__geoAufrufe6)) === 0);
+  await page.click("#mein-standort-btn");
+  await page.waitForTimeout(300);
+  check("Karte: «Mein Standort» fragt nach Tipp ab und zeichnet Punkt", (await page.evaluate(() => window.__geoAufrufe6)) === 1 && (await page.$$(".leaflet-interactive")).length >= 1);
+
+  // Liste: Filter-Chips, Entfernung nach Tipp.
+  const listeTest = await page.evaluate(async () => {
+    const app = window.hofkarteApp;
+    app.state.hoflaeden = [
+      { id: "l1", name: "Fern", latitude: 47.5, longitude: 8.0, geoeffnet: true, bilder: [] },
+      { id: "l2", name: "Nah", latitude: 46.906, longitude: 7.406, geoeffnet: false, bilder: [] },
+      { id: "l3", name: "Ohne", geoeffnet: null, bilder: [] },
+    ];
+    window.location.hash = "#/";
+    window.dispatchEvent(new Event("hashchange"));
+    await new Promise((r) => setTimeout(r, 300));
+    return { distanzVorher: document.querySelectorAll(".entfernung").length, alle: document.querySelectorAll(".hofladen-karte").length };
+  });
+  check("Liste: ohne Tipp keine Entfernung, Standort nicht abgefragt", listeTest.distanzVorher === 0 && listeTest.alle === 3 && (await page.evaluate(() => window.__geoAufrufe6)) === 1);
+  await page.click("#chip-offen");
+  check("Liste: Chip «Geöffnet» filtert", (await page.$$(".hofladen-karte")).length === 1 && (await page.getAttribute("#chip-offen", "aria-pressed")) === "true");
+  await page.click("#chip-offen");
+  await page.click("#chip-naehe");
+  await page.waitForTimeout(300);
+  const namen = await page.$$eval(".hofladen-karte .name", (els) => els.map((e) => e.textContent.trim()));
+  check(`Liste: «In der Nähe» sortiert nach Entfernung, ohne Koordinaten am Ende (${namen.join(",")})`, namen.join(",") === "Nah,Fern,Ohne" && (await page.$$(".entfernung")).length === 2 && (await page.$eval("#sort-spalte", (e) => e.value)) === "entfernung");
+  await page.click("#chip-naehe");
+  check("Liste: «In der Nähe» aus entfernt Entfernung und Sortierung", (await page.$$(".entfernung")).length === 0 && (await page.$eval("#sort-spalte", (e) => e.value)) === "name");
+  await page.click("#chip-unvollstaendig");
+  check("Liste: Chip «Unvollständig» filtert", (await page.$$(".hofladen-karte")).length === 3 && (await page.getAttribute("#chip-unvollstaendig", "aria-pressed")) === "true");
+  await page.click("#chip-unvollstaendig");
+  check("Liste: Filter-Chips sind mindestens 44px hoch", (await page.$eval("#chip-offen", (e) => e.getBoundingClientRect().height)) >= 44);
 
   // Foto-Upload bevorzugt WebSocket (kein CORS), REST nur als Fallback.
   const upload = await page.evaluate(async () => {

@@ -18,7 +18,7 @@
  * Beim Erhöhen bitte auch im README (Abschnitt "Version") und im
  * Vorgehensplan nachziehen.
  */
-export const APP_VERSION = "2.0.0-dev.5";
+export const APP_VERSION = "2.0.0-dev.6";
 
 /**
  * Release Notes (neueste zuerst), angezeigt auf dem Einrichtungsbildschirm
@@ -26,6 +26,14 @@ export const APP_VERSION = "2.0.0-dev.5";
  * ergänzen (und die Tabelle im README nachziehen).
  */
 export const RELEASE_NOTES = [
+  {
+    version: "2.0.0-dev.6",
+    datum: "2026-10-14",
+    punkte: [
+      "Liste: Filter-Chips „In der Nähe“, „Geöffnet“ und „Unvollständig“. Die Entfernung erscheint erst nach Tipp auf „In der Nähe“ (Standort nur im Speicher) und kann als Sortierung gewählt werden.",
+      "Karte: Tipp auf einen Marker öffnet eine Vorschau mit Status, Heute-Zeiten, Route und Details; „Mein Standort“ nur auf Tipp; Marker mit Form (Kreis, Quadrat, Ring) statt nur Farbe; Filter „Nur geöffnet“.",
+    ],
+  },
   {
     version: "2.0.0-dev.5",
     datum: "2026-10-14",

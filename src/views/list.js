@@ -5,7 +5,8 @@
  * Standalone-Navigation der PWA angepasst).
  */
 
-import { hoflaedenInNaeheDesGeraets, STANDARD_RADIUS_METER } from "../naehe.js";
+import { hoflaedenInNaeheDesGeraets, aktuellerStandort, STANDARD_RADIUS_METER } from "../naehe.js";
+import { offeneGruppen } from "../gruppen.js";
 import { ladeNaeheRadius } from "../storage.js";
 import { escapeHtml } from "../html.js";
 import { vorschauUrl } from "../bilder.js";
@@ -22,6 +23,22 @@ const SORT_SPALTEN = [
   { wert: "geoeffnet", label: "Status" },
   { wert: "bewertung", label: "Bewertung" },
 ];
+
+/** Haversine-Distanz in Metern. */
+export function distanzMeter(lat1, lon1, lat2, lon2) {
+  const R = 6371000;
+  const rad = (g) => (g * Math.PI) / 180;
+  const a =
+    Math.sin(rad(lat2 - lat1) / 2) ** 2 +
+    Math.cos(rad(lat1)) * Math.cos(rad(lat2)) * Math.sin(rad(lon2 - lon1) / 2) ** 2;
+  return 2 * R * Math.asin(Math.sqrt(a));
+}
+
+export function formatDistanz(meter) {
+  if (meter == null || !Number.isFinite(meter)) return "";
+  if (meter < 1000) return `${Math.round(meter / 10) * 10 || 10} m`;
+  return `${(meter / 1000).toLocaleString("de-CH", { maximumFractionDigits: 1 })} km`;
+}
 
 function statusBadge(geoeffnet) {
   if (geoeffnet === true) return `<span class="status-badge offen">Geöffnet</span>`;
@@ -46,8 +63,19 @@ function relativeZeit(isoZeitpunkt) {
   return new Date(isoZeitpunkt).toLocaleString("de-CH");
 }
 
-function sortiereUndFiltere(hoflaeden, suchbegriff, sortSpalte, sortRichtung) {
+/**
+ * Filter: `{nurOffen, unvollstaendig}`; `position` ({latitude, longitude}) nur
+ * im Speicher, nie gespeichert. Mit Position wird `entfernung` pro Eintrag
+ * berechnet und kann als Sortierspalte dienen.
+ */
+export function sortiereUndFiltere(hoflaeden, suchbegriff, sortSpalte, sortRichtung, filter = {}, position = null) {
   let ergebnis = hoflaeden;
+  if (filter.nurOffen) ergebnis = ergebnis.filter((h) => h.geoeffnet === true);
+  if (filter.unvollstaendig) ergebnis = ergebnis.filter((h) => offeneGruppen(h).length > 0);
+  const distanz = (h) =>
+    position && h.latitude != null && h.longitude != null
+      ? distanzMeter(position.latitude, position.longitude, h.latitude, h.longitude)
+      : null;
   if (suchbegriff) {
     const begriff = suchbegriff.toLowerCase();
     ergebnis = ergebnis.filter((h) =>
@@ -58,7 +86,15 @@ function sortiereUndFiltere(hoflaeden, suchbegriff, sortSpalte, sortRichtung) {
   const faktor = sortRichtung === "desc" ? -1 : 1;
   ergebnis = [...ergebnis].sort((a, b) => {
     let av, bv;
-    if (sortSpalte === "geoeffnet") {
+    if (sortSpalte === "entfernung") {
+      // Ohne Koordinaten immer ans Ende, unabhängig von der Richtung.
+      const da = distanz(a);
+      const db = distanz(b);
+      if (da == null && db == null) return 0;
+      if (da == null) return 1;
+      if (db == null) return -1;
+      return (da - db) * faktor;
+    } else if (sortSpalte === "geoeffnet") {
       av = a.geoeffnet === true ? 2 : a.geoeffnet === false ? 0 : 1;
       bv = b.geoeffnet === true ? 2 : b.geoeffnet === false ? 0 : 1;
     } else if (sortSpalte === "bewertung") {
@@ -78,7 +114,9 @@ function sortiereUndFiltere(hoflaeden, suchbegriff, sortSpalte, sortRichtung) {
 
 /** Eingeklappt als Standard: braucht so möglichst wenig Platz. */
 let naeheOffen = false;
-const gemerkt = { suchbegriff: "", sortSpalte: null, sortRichtung: null };
+const gemerkt = { suchbegriff: "", sortSpalte: null, sortRichtung: null, nurOffen: false, unvollstaendig: false };
+/** Standort nur im Speicher, nur nach Tipp auf «In der Nähe»; wird nie gespeichert. */
+let position = null;
 
 export function renderListe(container, app) {
   const einstellungen = app.state.einstellungen || {};
@@ -87,15 +125,23 @@ export function renderListe(container, app) {
     gemerkt.sortSpalte = einstellungen.listen_sort_spalte || "name";
     gemerkt.sortRichtung = einstellungen.listen_sort_richtung || "asc";
   }
-  let { suchbegriff, sortSpalte, sortRichtung } = gemerkt;
-  const merke = () => Object.assign(gemerkt, { suchbegriff, sortSpalte, sortRichtung });
+  let { suchbegriff, sortSpalte, sortRichtung, nurOffen, unvollstaendig } = gemerkt;
+  if (sortSpalte === "entfernung" && !position) {
+    sortSpalte = "name";
+    sortRichtung = "asc";
+  }
+  const merke = () => Object.assign(gemerkt, { suchbegriff, sortSpalte, sortRichtung, nurOffen, unvollstaendig });
+  const sortOptionen = () =>
+    position ? [{ wert: "entfernung", label: "Entfernung" }, ...SORT_SPALTEN] : SORT_SPALTEN;
 
   function eintraegeHtml() {
     const gefiltert = sortiereUndFiltere(
       app.state.hoflaeden,
       suchbegriff,
       sortSpalte,
-      sortRichtung
+      sortRichtung,
+      { nurOffen, unvollstaendig },
+      position
     );
 
     return gefiltert.length
@@ -111,7 +157,7 @@ export function renderListe(container, app) {
           <div class="info">
             <p class="name">${escapeHtml(h.name)}${h._synchronisierungAusstehend ? ` <span title="Noch nicht synchronisiert" aria-label="Noch nicht synchronisiert">${icon("offline", { klein: true })}</span>` : ""}${app.konfliktFuer && app.konfliktFuer(h.id) ? ` <span title="Versionskonflikt" aria-label="Versionskonflikt">${icon("warnung", { klein: true })}</span>` : ""}</p>
             <p class="ort">${escapeHtml(h.ort || "")}</p>
-            ${statusBadge(h.geoeffnet)} ${bewertungSterne(h.bewertung)}
+            ${statusBadge(h.geoeffnet)} ${bewertungSterne(h.bewertung)}${entfernungHtml(h)}
           </div>
         </div>`
           )
@@ -119,10 +165,61 @@ export function renderListe(container, app) {
       : `<p class="hinweis-leiste">Keine Hofläden gefunden.</p>`;
   }
 
+  function entfernungHtml(h) {
+    if (!position || h.latitude == null || h.longitude == null) return "";
+    const text = formatDistanz(distanzMeter(position.latitude, position.longitude, h.latitude, h.longitude));
+    return ` <span class="entfernung">${icon("standort", { klein: true })} ${escapeHtml(text)}</span>`;
+  }
+
   /** Aktualisiert nur die Trefferliste - Suchfeld und Fokus bleiben unberührt. */
   function zeichneEintraege() {
     const box = container.querySelector("#hofladen-liste");
     if (box) box.innerHTML = eintraegeHtml();
+    const zaehler = container.querySelector("#treffer-zaehler");
+    if (zaehler) zaehler.textContent = zaehlerText();
+  }
+
+  function zaehlerText() {
+    const n = sortiereUndFiltere(app.state.hoflaeden, suchbegriff, sortSpalte, sortRichtung, { nurOffen, unvollstaendig }, position).length;
+    return n === 1 ? "1 Hofladen" : `${n} Hofläden`;
+  }
+
+  function zeichneSortOptionen() {
+    const sel = container.querySelector("#sort-spalte");
+    if (!sel) return;
+    sel.innerHTML = sortOptionen()
+      .map((s) => `<option value="${s.wert}" ${s.wert === sortSpalte ? "selected" : ""}>${s.label}</option>`)
+      .join("");
+  }
+
+  async function schalteNaehe(btn) {
+    const meldung = container.querySelector("#filter-meldung");
+    meldung.textContent = "";
+    if (position) {
+      position = null;
+      if (sortSpalte === "entfernung") {
+        sortSpalte = "name";
+        sortRichtung = "asc";
+      }
+    } else {
+      btn.disabled = true;
+      meldung.textContent = "Standort wird ermittelt …";
+      try {
+        position = await aktuellerStandort();
+        sortSpalte = "entfernung";
+        sortRichtung = "asc";
+        meldung.textContent = "";
+      } catch (err) {
+        meldung.textContent = err.message;
+      } finally {
+        btn.disabled = false;
+      }
+    }
+    merke();
+    btn.setAttribute("aria-pressed", String(!!position));
+    zeichneSortOptionen();
+    richtungBeschriftung();
+    zeichneEintraege();
   }
 
   function richtungBeschriftung() {
@@ -158,14 +255,22 @@ export function renderListe(container, app) {
           suchbegriff
         )}" />
         <select id="sort-spalte" aria-label="Sortieren nach">
-          ${SORT_SPALTEN.map(
-            (s) => `<option value="${s.wert}" ${s.wert === sortSpalte ? "selected" : ""}>${s.label}</option>`
-          ).join("")}
+          ${sortOptionen()
+            .map((s) => `<option value="${s.wert}" ${s.wert === sortSpalte ? "selected" : ""}>${s.label}</option>`)
+            .join("")}
         </select>
         <button id="sort-richtung" title="Sortierrichtung umkehren" aria-label="${
           sortRichtung === "asc" ? "Aufsteigend sortiert, umkehren für absteigend" : "Absteigend sortiert, umkehren für aufsteigend"
         }">${sortRichtung === "asc" ? "↑" : "↓"}</button>
       </div>
+
+      <div class="chip-liste filter-chips" role="group" aria-label="Filter">
+        <button type="button" class="chip" id="chip-naehe" aria-pressed="${!!position}">${icon("standort", { klein: true })} In der Nähe</button>
+        <button type="button" class="chip" id="chip-offen" aria-pressed="${nurOffen}">Geöffnet</button>
+        <button type="button" class="chip" id="chip-unvollstaendig" aria-pressed="${unvollstaendig}">Unvollständig</button>
+      </div>
+      <p class="ort filter-meldung" id="filter-meldung" role="status"></p>
+      <p class="ort" id="treffer-zaehler" aria-live="polite">${zaehlerText()}</p>
 
       <div id="hofladen-liste" class="gruppe">${listeHtml}</div>
     `;
@@ -177,6 +282,19 @@ export function renderListe(container, app) {
       clearTimeout(suchTimer);
       suchTimer = setTimeout(zeichneEintraege, SUCHE_VERZOEGERUNG_MS);
     });
+    container.querySelector("#chip-naehe").addEventListener("click", (e) => schalteNaehe(e.currentTarget));
+    for (const [id, setze] of [
+      ["#chip-offen", (v) => (nurOffen = v)],
+      ["#chip-unvollstaendig", (v) => (unvollstaendig = v)],
+    ]) {
+      container.querySelector(id).addEventListener("click", (e) => {
+        const an = e.currentTarget.getAttribute("aria-pressed") !== "true";
+        e.currentTarget.setAttribute("aria-pressed", String(an));
+        setze(an);
+        merke();
+        zeichneEintraege();
+      });
+    }
     container.querySelector("#sort-spalte").addEventListener("change", (e) => {
       sortSpalte = e.target.value;
       merke();

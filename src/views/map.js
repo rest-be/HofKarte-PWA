@@ -9,6 +9,8 @@
  */
 
 import { escapeHtml } from "../html.js";
+import { aktuellerStandort } from "../naehe.js";
+import { heuteKurzinfo } from "../gruppen.js";
 import { ladeKarteGeschlosseneAusblenden, speichereKarteGeschlosseneAusblenden } from "../storage.js";
 
 let leafletLadenPromise = null;
@@ -33,46 +35,61 @@ function ladeLeaflet() {
   return leafletLadenPromise;
 }
 
+const STATUS_TEXT = { true: "Geöffnet", false: "Geschlossen", null: "Status unbekannt" };
+
+function statusText(geoeffnet) {
+  return STATUS_TEXT[geoeffnet === true ? "true" : geoeffnet === false ? "false" : "null"];
+}
+
 function markerFarbe(geoeffnet) {
   if (geoeffnet === true) return "#2e7d32";
   if (geoeffnet === false) return "#c62828";
-  return "#9e9e9e";
+  return "#757575";
 }
 
-function erzeugeMarkerIcon(L, geoeffnet) {
+/** Innenform je Status, damit der Status nie nur an der Farbe hängt:
+ * offen = Kreis, geschlossen = Quadrat, unbekannt = Ring. */
+function innenForm(geoeffnet) {
+  if (geoeffnet === true) return `<circle cx="15" cy="15" r="6" fill="white"/>`;
+  if (geoeffnet === false) return `<rect x="9" y="9" width="12" height="12" fill="white"/>`;
+  return `<circle cx="15" cy="15" r="5" fill="none" stroke="white" stroke-width="2.5"/>`;
+}
+
+export function erzeugeMarkerIcon(L, geoeffnet) {
   const farbe = markerFarbe(geoeffnet);
   const svg = `
-    <svg xmlns="http://www.w3.org/2000/svg" width="30" height="42" viewBox="0 0 30 42">
+    <svg xmlns="http://www.w3.org/2000/svg" width="30" height="42" viewBox="0 0 30 42" aria-hidden="true">
       <path d="M15 0C6.7 0 0 6.7 0 15c0 10.5 15 27 15 27s15-16.5 15-27C30 6.7 23.3 0 15 0z" fill="${farbe}"/>
-      <circle cx="15" cy="15" r="6" fill="white"/>
+      ${innenForm(geoeffnet)}
     </svg>`;
   return L.divIcon({
     html: svg,
     className: "",
     iconSize: [30, 42],
     iconAnchor: [15, 42],
-    popupAnchor: [0, -38],
   });
 }
 
-/** Popup als DOM-Knoten mit textContent - Hofladennamen sind nie HTML. */
-function popupInhalt(name) {
-  const strong = document.createElement("strong");
-  strong.textContent = name == null ? "" : String(name);
-  return strong;
+function routeUrl(h) {
+  return `https://www.google.com/maps/dir/?api=1&destination=${encodeURIComponent(`${h.latitude},${h.longitude}`)}`;
 }
 
 export async function renderKarte(container, app) {
   container.innerHTML = `
     <div class="karte-huelle">
       <div id="leaflet-karte"></div>
-      <label class="karten-filter">
-        <input type="checkbox" id="filter-geschlossen" />
-        <span>Geschlossene ausblenden</span>
-      </label>
+      <div class="karten-knoepfe">
+        <label class="karten-filter">
+          <input type="checkbox" id="filter-offen" />
+          <span>Nur geöffnet</span>
+        </label>
+        <button type="button" class="karten-knopf" id="mein-standort-btn">Mein Standort</button>
+      </div>
+      <p class="karten-meldung" id="karten-meldung" role="status"></p>
+      <section class="karten-sheet" id="karten-sheet" role="dialog" aria-label="Hofladen-Vorschau" hidden></section>
     </div>`;
   const ausblenden = await ladeKarteGeschlosseneAusblenden().catch(() => false);
-  const filterBox = container.querySelector("#filter-geschlossen");
+  const filterBox = container.querySelector("#filter-offen");
   if (filterBox) filterBox.checked = ausblenden;
 
   let L;
@@ -113,18 +130,70 @@ export async function renderKarte(container, app) {
 
   const markerEbene = L.layerGroup().addTo(karte);
 
-  /** Zeichnet die Marker neu; geschlossene (geoeffnet === false) optional ausgeblendet.
-   * Hofläden ohne bekannten Status bleiben sichtbar. */
+  const sheet = container.querySelector("#karten-sheet");
+  const meldung = container.querySelector("#karten-meldung");
+
+  function schliesseSheet() {
+    sheet.hidden = true;
+    sheet.replaceChildren();
+  }
+
+  /** Vorschau als DOM-Knoten (textContent): Hofladendaten sind nie HTML. */
+  function zeigeSheet(h) {
+    const el = (tag, text, cls) => {
+      const n = document.createElement(tag);
+      if (text != null) n.textContent = text;
+      if (cls) n.className = cls;
+      return n;
+    };
+    sheet.replaceChildren();
+    const zu = el("button", "×", "sheet-zu");
+    zu.type = "button";
+    zu.setAttribute("aria-label", "Vorschau schliessen");
+    zu.addEventListener("click", schliesseSheet);
+    const titel = el("h2", h.name == null ? "" : String(h.name));
+    const badge = el("span", statusText(h.geoeffnet), `status-badge ${h.geoeffnet === true ? "offen" : h.geoeffnet === false ? "geschlossen" : "unbekannt"}`);
+    const ort = el("p", [h.adresse, h.ort].filter(Boolean).join(", "), "ort");
+    const heute = heuteKurzinfo(h);
+    const aktionen = el("div", null, "sheet-aktionen");
+    const route = el("a", "Route", "chip-knopf");
+    route.id = "sheet-route";
+    route.href = routeUrl(h);
+    route.target = "_blank";
+    route.rel = "noopener noreferrer";
+    const details = el("button", "Details", "chip-knopf");
+    details.type = "button";
+    details.id = "sheet-details";
+    details.addEventListener("click", () => app.navigate(`#/hofladen/${encodeURIComponent(h.id)}`));
+    aktionen.append(route, details);
+    sheet.append(zu, titel, badge, ort);
+    if (heute) sheet.append(el("p", heute));
+    sheet.append(aktionen);
+    sheet.hidden = false;
+    details.focus({ preventScroll: true });
+  }
+
+  document.addEventListener("keydown", function esc(e) {
+    if (!container.isConnected) return document.removeEventListener("keydown", esc);
+    if (e.key === "Escape" && !sheet.hidden) schliesseSheet();
+  });
+  karte.on("click", schliesseSheet);
+
+  /** Zeichnet die Marker neu; mit Filter nur geöffnete (geoeffnet === true). */
   function zeichneMarker({ anpassen }) {
     markerEbene.clearLayers();
     const nurOffene = !!filterBox?.checked;
-    const sichtbar = hoflaeden.filter((h) => !(nurOffene && h.geoeffnet === false));
+    const sichtbar = hoflaeden.filter((h) => !nurOffene || h.geoeffnet === true);
     const marker = sichtbar.map((h) =>
-      L.marker([h.latitude, h.longitude], { icon: erzeugeMarkerIcon(L, h.geoeffnet) })
-        .bindPopup(popupInhalt(h.name))
-        .on("click", () => app.navigate(`#/hofladen/${encodeURIComponent(h.id)}`))
+      L.marker([h.latitude, h.longitude], {
+        icon: erzeugeMarkerIcon(L, h.geoeffnet),
+        title: `${h.name ?? ""} – ${statusText(h.geoeffnet)}`,
+        alt: `${h.name ?? ""}, ${statusText(h.geoeffnet)}`,
+      })
+        .on("click", () => zeigeSheet(h))
         .addTo(markerEbene)
     );
+    if (!sheet.hidden && nurOffene) schliesseSheet();
     if (anpassen && marker.length > 1) {
       karte.fitBounds(L.featureGroup(marker).getBounds().pad(0.2));
     }
@@ -134,5 +203,25 @@ export async function renderKarte(container, app) {
   filterBox?.addEventListener("change", () => {
     speichereKarteGeschlosseneAusblenden(filterBox.checked).catch(() => {});
     zeichneMarker({ anpassen: false });
+  });
+
+  // «Mein Standort»: nur nach Tipp, nur im Speicher, nie gespeichert.
+  let standortMarker = null;
+  const standortBtn = container.querySelector("#mein-standort-btn");
+  standortBtn.addEventListener("click", async () => {
+    standortBtn.disabled = true;
+    meldung.textContent = "Standort wird ermittelt …";
+    try {
+      const { latitude, longitude } = await aktuellerStandort();
+      if (!container.isConnected) return;
+      if (standortMarker) standortMarker.remove();
+      standortMarker = L.circleMarker([latitude, longitude], { radius: 9, weight: 3, color: "#ffffff", fillColor: "#0a66d6", fillOpacity: 1 }).addTo(karte);
+      karte.setView([latitude, longitude], Math.max(karte.getZoom(), 14), { animate: !reduzierteBewegung });
+      meldung.textContent = "";
+    } catch (err) {
+      meldung.textContent = err.message;
+    } finally {
+      standortBtn.disabled = false;
+    }
   });
 }
