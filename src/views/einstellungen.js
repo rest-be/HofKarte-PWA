@@ -42,15 +42,17 @@ export function renderEinstellungen(container, app) {
         <span class="status-badge offen">${t("Offen bis {zeit}", { zeit: "18:30" })}</span>
         <button type="button" id="farbe-zuruecksetzen">${t("Zurücksetzen")}</button>
       </div>
-      <h3 class="sub">${t("Sprache")}</h3>
-      <div class="feld-gruppe">
-        <label for="f-sprache">${t("Sprache der App")}</label>
-        <select id="f-sprache">
-          <option value="">${t("Automatisch (Browser)")}</option>
-          ${SPRACHEN.map((s) => `<option value="${s.code}">${s.name}</option>`).join("")}
-        </select>
-        <p class="muted">${t("Gilt nur auf diesem Gerät. Texte aus Home Assistant bleiben in der dortigen Sprache.")}</p>
-      </div>
+    </section>
+
+    <section class="formular-abschnitt" id="sprache">
+      <h2>${t("Sprache")}</h2>
+      <fieldset class="sprach-wahl">
+        <legend class="nur-sr">${t("Sprache der App")}</legend>
+        ${[{ code: "", name: t("Automatisch (Browser)") }, ...SPRACHEN]
+          .map((s) => `<label class="sprach-option"><input type="radio" name="sprache" value="${s.code}" /><span>${s.name}</span></label>`)
+          .join("")}
+      </fieldset>
+      <p class="muted">${t("Gilt nur auf diesem Gerät. Texte aus Home Assistant bleiben in der dortigen Sprache.")}</p>
     </section>
 
     <section class="formular-abschnitt">
@@ -117,11 +119,13 @@ export function renderEinstellungen(container, app) {
   `;
 
   // Sprache: gilt pro Gerät; danach wird die Ansicht neu gezeichnet.
-  const spracheFeld = container.querySelector("#f-sprache");
-  spracheFeld.value = gespeicherteSprache() || "";
-  spracheFeld.addEventListener("change", () => {
-    setzeSprache(spracheFeld.value || null);
-    if (app.neuZeichnen) app.neuZeichnen();
+  const spracheWahl = gespeicherteSprache() || "";
+  container.querySelectorAll('input[name="sprache"]').forEach((radio) => {
+    radio.checked = radio.value === spracheWahl;
+    radio.addEventListener("change", () => {
+      setzeSprache(radio.value || null);
+      if (app.neuZeichnen) app.neuZeichnen();
+    });
   });
 
   const farbStatus = container.querySelector("#farbe-status");

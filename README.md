@@ -1,6 +1,6 @@
 # HofKarte-PWA
 
-**Version: 2.0.0-dev.8** – siehe Abschnitt [Version](#version) unten für die
+**Version: 2.0.0-dev.9** – siehe Abschnitt [Version](#version) unten für die
 installierte Version auf einem konkreten Gerät.
 
 Progressive Web App für HofKarte – ein reiner, zustandsloser Client für die
@@ -104,6 +104,7 @@ READMEs.
 
 | Version | Datum | Wesentliche Änderungen |
 |---|---|---|
+| 2.0.0-dev.9 | 2026-10-15 | Sprachwahl als eigene Gruppe mit grossen Zeilen; «Eigene Farbe» als runder Punkt. |
 | 2.0.0-dev.8 | 2026-10-15 | Vier Sprachen (DE/FR/IT/EN), 24h-Automat, Adresse aus Koordinaten (OpenStreetMap), „Angaben ergänzen“ mit OpenStreetMap, runder Farbpunkt. |
 | 2.0.0-dev.7 | 2026-10-14 | Zugänglichkeit (Fokusführung, „Zum Inhalt“, sichtbarer Tastaturfokus, Kontraste ≥ 4,5:1 hell und dunkel), „Erweiterte Suche“ fragt den Standort nur auf Tipp, Geräte-Test-Checkliste. |
 | 2.0.0-dev.6 | 2026-10-14 | Liste mit Filter-Chips und Entfernung auf Tipp; Karte mit Vorschau-Sheet, „Mein Standort“, Formmarkern und Filter „Nur geöffnet“. |

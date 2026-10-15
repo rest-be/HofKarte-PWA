@@ -435,8 +435,8 @@ export async function fuehreSmokeTestsAus(page, baseUrl) {
 
   const einstellungenReihenfolge = await page.$$eval(".formular-abschnitt > h2", (els) => els.map((e) => e.textContent.trim()));
   check(
-    `Einstellungen-Reihenfolge: Darstellung, Nähe, Verbindung, Token ändern, Abmelden, Version (${einstellungenReihenfolge.join(", ")})`,
-    JSON.stringify(einstellungenReihenfolge) === JSON.stringify(["Darstellung", "Hofläden in der Nähe", "Verbindung", "Token ändern", "Abmelden", "Version"])
+    `Einstellungen-Reihenfolge: Darstellung, Sprache, Nähe, Verbindung, Token ändern, Abmelden, Version (${einstellungenReihenfolge.join(", ")})`,
+    JSON.stringify(einstellungenReihenfolge) === JSON.stringify(["Darstellung", "Sprache", "Hofläden in der Nähe", "Verbindung", "Token ändern", "Abmelden", "Version"])
   );
   check("Nähe-Umkreis: Standard 500 m", (await page.$eval("#f-naehe-radius", (el) => el.value)) === "500");
   await page.fill("#f-naehe-radius", "750");
@@ -1387,7 +1387,17 @@ export async function fuehreSmokeTestsAus(page, baseUrl) {
   });
   await setzeTesthof();
   await gehe("#/einstellungen");
-  check("Sprache: Auswahl in den Einstellungen vorhanden (Automatisch, DE, FR, IT, EN)", (await page.$$eval("#f-sprache option", (o) => o.map((x) => x.value).join(","))) === ",de,fr,it,en");
+  check("Sprache: Auswahl in den Einstellungen vorhanden (Automatisch, DE, FR, IT, EN)", (await page.$$eval('input[name="sprache"]', (o) => o.map((x) => x.value).join(","))) === ",de,fr,it,en");
+  check("Sprache: eigene Gruppe, Zeilen mind. 56px hoch und 44px breit, Radio-Felder 24px", await page.evaluate(() => {
+    const g = document.querySelector("#sprache");
+    const z = [...g.querySelectorAll(".sprach-option")];
+    return !!g && g.querySelector("h2") && z.length === 5 && z.every((e) => e.getBoundingClientRect().height >= 56) && g !== document.querySelector("#darstellung") && !document.querySelector("#darstellung").contains(g);
+  }));
+  check("Farbfeld «Eigene Farbe» ist ein runder Punkt (48×48, 50 %)", await page.evaluate(() => {
+    const r = document.querySelector("#f-eigene-farbe");
+    const b = r.getBoundingClientRect();
+    return Math.abs(b.width - b.height) < 0.5 && getComputedStyle(r).borderRadius === "50%";
+  }));
   const DEUTSCH = /\b(und|nicht|noch|keine|bitte|hofladen|hofläden|speichern|abbrechen|öffnungszeiten|zurück|angaben|standort|wird|werden|für|oder|eine|einen|dein|deine|dieser|ergänzen|suchen|suche|verbindung|löschen|bearbeiten)\b/i;
   const sammleTexte = () =>
     page.evaluate(() => {
@@ -1400,7 +1410,7 @@ export async function fuehreSmokeTestsAus(page, baseUrl) {
   const ROUTEN = ["#/", "#/karte", "#/hofladen/i1", "#/hofladen/i1/bearbeiten", "#/hofladen/i1/ergaenzen", "#/neu", "#/erfassen", "#/erfassen/vorort", "#/erfassen/schnell", "#/erfassen/webseite", "#/finden", "#/einstellungen"];
   for (const [code, htmlLang, marke] of [["fr", "fr-CH", /Enregistrer|Rechercher|ferme/i], ["it", "it-CH", /Salva|Cerca|negozio agricolo/i], ["en", "en-GB", /Save|Search|farm shop/i]]) {
     await gehe("#/einstellungen");
-    await page.selectOption("#f-sprache", code);
+    await page.check(`input[name="sprache"][value="${code}"]`);
     await page.waitForTimeout(200);
     check(`Sprache ${code}: html lang = ${htmlLang}, Wahl nur im Gerätespeicher`, (await page.evaluate(() => document.documentElement.lang)) === htmlLang && (await page.evaluate(() => localStorage.getItem("hofkarte-sprache"))) === code);
     const einstellungen = await sammleTexte();
@@ -1423,7 +1433,7 @@ export async function fuehreSmokeTestsAus(page, baseUrl) {
   }
   // Zurück auf Deutsch (und «Automatisch» = Browsersprache de-CH).
   await gehe("#/einstellungen");
-  await page.selectOption("#f-sprache", "");
+  await page.check('input[name="sprache"][value=""]');
   await page.waitForTimeout(200);
   check("Sprache: «Automatisch» folgt der Browsersprache (de-CH) und löscht die Wahl", (await page.evaluate(() => document.documentElement.lang)) === "de-CH" && (await page.evaluate(() => localStorage.getItem("hofkarte-sprache"))) === null);
 

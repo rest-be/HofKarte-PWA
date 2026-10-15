@@ -1468,12 +1468,78 @@ a:has(> .ic) {
   border-top: 0.5px solid var(--separator);
 }
 
+/* Runder Farbpunkt auch für das native Farbfeld (iOS zeigt es sonst als Oval). */
 .farb-eigene input[type="color"] {
+  -webkit-appearance: none;
+  appearance: none;
+  flex: none;
+  box-sizing: border-box;
   width: 48px;
-  height: 44px;
+  height: 48px;
+  min-width: 48px;
+  aspect-ratio: 1 / 1;
   padding: 0;
   border: 0;
+  border-radius: 50%;
+  overflow: hidden;
   background: transparent;
+  box-shadow: inset 0 0 0 1px rgba(0, 0, 0, 0.12);
+}
+
+.farb-eigene input[type="color"]::-webkit-color-swatch-wrapper {
+  padding: 0;
+}
+
+.farb-eigene input[type="color"]::-webkit-color-swatch {
+  border: 0;
+  border-radius: 50%;
+}
+
+.farb-eigene input[type="color"]::-moz-color-swatch {
+  border: 0;
+  border-radius: 50%;
+}
+
+/* Sprachwahl: grosse Zeilen, leicht zu treffen. */
+.sprach-wahl {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin: 0 0 8px;
+  padding: 0;
+  border: 0;
+  min-width: 0;
+}
+
+.sprach-option {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  min-height: 56px;
+  padding: 0 16px;
+  border: 1px solid var(--separator);
+  border-radius: 12px;
+  font-size: 18px;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.sprach-option input[type="radio"] {
+  flex: none;
+  width: 24px;
+  height: 24px;
+  margin: 0;
+  accent-color: var(--accent);
+}
+
+.sprach-option:has(input:checked) {
+  border-color: var(--accent);
+  box-shadow: inset 0 0 0 1px var(--accent);
+}
+
+.sprach-option:has(input:focus-visible) {
+  outline: 3px solid var(--tint);
+  outline-offset: 2px;
 }
 
 .farb-vorschau {

@@ -18,7 +18,7 @@
  * Beim Erhöhen bitte auch im README (Abschnitt "Version") und im
  * Vorgehensplan nachziehen.
  */
-export const APP_VERSION = "2.0.0-dev.8";
+export const APP_VERSION = "2.0.0-dev.9";
 
 /**
  * Release Notes (neueste zuerst), angezeigt auf dem Einrichtungsbildschirm
@@ -26,6 +26,14 @@ export const APP_VERSION = "2.0.0-dev.8";
  * ergänzen (und die Tabelle im README nachziehen).
  */
 export const RELEASE_NOTES = [
+  {
+    version: "2.0.0-dev.9",
+    datum: "2026-10-15",
+    punkte: [
+      "Einstellungen: Die Sprache hat eine eigene Gruppe mit grossen Auswahlzeilen statt eines kleinen Menüs.",
+      "Das Feld «Eigene Farbe» ist jetzt ein runder Farbpunkt (auf dem iPhone war es oval).",
+    ],
+  },
   {
     version: "2.0.0-dev.8",
     datum: "2026-10-15",
