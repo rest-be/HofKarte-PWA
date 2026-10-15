@@ -17,6 +17,7 @@
  */
 
 import { APP_VERSION } from "./version.js";
+import { t } from "./i18n.js";
 
 const STUENDLICH_MS = 60 * 60 * 1000;
 
@@ -57,7 +58,7 @@ async function registrierung() {
 /** Fragt beim Server nach der neuesten Version (am Service Worker vorbei, nie aus dem Cache). */
 export async function neuesteVersion() {
   const antwort = await fetch(`src/version.js?nocache=${Date.now()}`, { cache: "no-store" });
-  if (!antwort.ok) throw new Error("Version konnte nicht abgefragt werden.");
+  if (!antwort.ok) throw new Error(t("Version konnte nicht abgefragt werden."));
   return versionAusText(await antwort.text());
 }
 
@@ -167,17 +168,17 @@ export function zeigeUpdateHinweis() {
   box.className = "update-hinweis";
   box.setAttribute("role", "status");
   const text = document.createElement("span");
-  text.textContent = "Neue Version verfügbar.";
+  text.textContent = t("Neue Version verfügbar.");
   const knopf = document.createElement("button");
   knopf.type = "button";
   knopf.id = "update-jetzt-btn";
-  knopf.textContent = "Jetzt aktualisieren";
+  knopf.textContent = t("Jetzt aktualisieren");
   knopf.addEventListener("click", () => window.location.reload());
   const zu = document.createElement("button");
   zu.type = "button";
   zu.className = "update-spaeter";
-  zu.setAttribute("aria-label", "Später");
-  zu.textContent = "Später";
+  zu.setAttribute("aria-label", t("Später"));
+  zu.textContent = t("Später");
   zu.addEventListener("click", () => box.remove());
   box.append(text, knopf, zu);
   document.body.appendChild(box);

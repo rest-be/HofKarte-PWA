@@ -14,9 +14,11 @@
  */
 
 import { escapeHtml } from "../html.js";
+import { t, aktuelleSprache } from "../i18n.js";
+import { ermittleAdresse, vergleicheAdresse } from "../adresse.js";
 import { bildVerkleinern } from "../bilder.js";
 import { extractImageId } from "../ha-client.js";
-import { bereinigteQuellen, quelleFuerSpeichern, quellenSchnappschuss } from "../finden.js";
+import { bereinigteQuellen, quelleFuerSpeichern, quellenSchnappschuss, quellenWert } from "../finden.js";
 import { icon, setzeSchaltflaeche } from "../icons.js";
 import { HOF_GRUPPEN, VOLLSTAENDIGKEIT_TEXT, vollstaendigkeit } from "../gruppen.js";
 import { herkunftHtml } from "./detail.js";
@@ -30,13 +32,13 @@ export function oeffneEditorGruppe(id) {
 }
 
 const WOCHENTAGE = [
-  { wert: 1, label: "Montag" },
-  { wert: 2, label: "Dienstag" },
-  { wert: 3, label: "Mittwoch" },
-  { wert: 4, label: "Donnerstag" },
-  { wert: 5, label: "Freitag" },
-  { wert: 6, label: "Samstag" },
-  { wert: 7, label: "Sonntag" },
+  { wert: 1, get label() { return t("Montag"); } },
+  { wert: 2, get label() { return t("Dienstag"); } },
+  { wert: 3, get label() { return t("Mittwoch"); } },
+  { wert: 4, get label() { return t("Donnerstag"); } },
+  { wert: 5, get label() { return t("Freitag"); } },
+  { wert: 6, get label() { return t("Samstag"); } },
+  { wert: 7, get label() { return t("Sonntag"); } },
 ];
 
 function leererHofladen() {
@@ -56,6 +58,7 @@ function leererHofladen() {
     longitude: "",
     bewertung: 0,
     oeffnungszeiten: [],
+    automat_24h: false,
     angebote: [],
     zahlungsarten: [],
     bilder: [],
@@ -79,18 +82,13 @@ export function holeStandort(optionen) {
 export function standortFehlermeldung(err) {
   switch (err?.code) {
     case 1: // PERMISSION_DENIED
-      return (
-        "Standortzugriff wurde verweigert. Bitte in den iPhone-Einstellungen " +
-        "unter „HofKarte“ (bzw. „Safari“ → „Websites“, falls die App nicht im " +
-        "Home-Bildschirm installiert ist) den Standortzugriff erlauben und " +
-        "erneut versuchen."
-      );
+      return t("Standortzugriff wurde verweigert. Bitte in den iPhone-Einstellungen unter „HofKarte“ (bzw. „Safari“ → „Websites“, falls die App nicht im Home-Bildschirm installiert ist) den Standortzugriff erlauben und erneut versuchen.");
     case 2: // POSITION_UNAVAILABLE
-      return "Standort konnte nicht ermittelt werden (Position aktuell nicht verfügbar).";
+      return t("Standort konnte nicht ermittelt werden (Position aktuell nicht verfügbar).");
     case 3: // TIMEOUT
-      return "Zeitüberschreitung beim Ermitteln des Standorts. Am besten im Freien bzw. bei gutem GPS-/WLAN-Empfang erneut versuchen.";
+      return t("Zeitüberschreitung beim Ermitteln des Standorts. Am besten im Freien bzw. bei gutem GPS-/WLAN-Empfang erneut versuchen.");
     default:
-      return "Standort konnte nicht ermittelt werden.";
+      return t("Standort konnte nicht ermittelt werden.");
   }
 }
 
@@ -102,12 +100,12 @@ export function standortFehlermeldung(err) {
 async function standortUebernehmen(container) {
   const btn = container.querySelector("#standort-uebernehmen-btn");
   if (!("geolocation" in navigator)) {
-    alert("Dieser Browser unterstützt keine Standortabfrage.");
+    alert(t("Dieser Browser unterstützt keine Standortabfrage."));
     return;
   }
 
   btn.disabled = true;
-  setzeSchaltflaeche(btn, "standort", "Ermittle Standort …");
+  setzeSchaltflaeche(btn, "standort", t("Ermittle Standort …"));
 
   try {
     let pos;
@@ -115,7 +113,7 @@ async function standortUebernehmen(container) {
       pos = await holeStandort({ enableHighAccuracy: true, timeout: 15_000, maximumAge: 0 });
     } catch (err) {
       if (err?.code === 1) throw err; // Berechtigung verweigert: kein zweiter Versuch sinnvoll
-      setzeSchaltflaeche(btn, "standort", "Erneuter Versuch …");
+      setzeSchaltflaeche(btn, "standort", t("Erneuter Versuch …"));
       pos = await holeStandort({ enableHighAccuracy: false, timeout: 20_000, maximumAge: 60_000 });
     }
     container.querySelector("#f-latitude").value = pos.coords.latitude.toFixed(6);
@@ -124,14 +122,14 @@ async function standortUebernehmen(container) {
     alert(standortFehlermeldung(err));
   } finally {
     btn.disabled = false;
-    setzeSchaltflaeche(btn, "standort", "Aktuellen Standort übernehmen");
+    setzeSchaltflaeche(btn, "standort", t("Aktuellen Standort übernehmen"));
   }
 }
 
 function textZuTags(text, praefix) {
   return text
     .split(",")
-    .map((t) => t.trim())
+    .map((s) => s.trim())
     .filter(Boolean)
     .map((name) => ({ id: neueId(praefix), name }));
 }
@@ -139,7 +137,7 @@ function textZuTags(text, praefix) {
 export function renderEditor(container, app, hofladenId) {
   const bestehender = hofladenId ? app.hofladenMitId(hofladenId) : null;
   if (hofladenId && !bestehender) {
-    container.innerHTML = `<p class="hinweis-leiste">Hofladen nicht gefunden.</p>`;
+    container.innerHTML = `<p class="hinweis-leiste">${escapeHtml(t("Hofladen nicht gefunden."))}</p>`;
     return;
   }
 
@@ -173,6 +171,7 @@ export function renderEditor(container, app, hofladenId) {
   // Lokaler Arbeitszustand für Listenfelder (Öffnungszeiten, Angebote,
   // Zahlungsarten, Bilder), damit Zeilen ohne vollständiges Neuzeichnen
   // hinzugefügt/entfernt werden können.
+  let automat24h = daten.automat_24h === true;
   const oeffnungszeiten = (daten.oeffnungszeiten || []).map((o) => ({ ...o, wochentag: Number(o.wochentag) }));
   const bilder = (daten.bilder || []).map((b) => ({ ...b }));
   const angebote = (daten.angebote || []).map((a) => a.name).filter(Boolean);
@@ -186,7 +185,7 @@ export function renderEditor(container, app, hofladenId) {
   const gleichNamig = (liste, name) => liste.some((x) => x.toLowerCase() === name.toLowerCase());
 
   function fuegeNamenHinzu(liste, text) {
-    for (const name of String(text).split(",").map((t) => t.trim()).filter(Boolean)) {
+    for (const name of String(text).split(",").map((s) => s.trim()).filter(Boolean)) {
       if (!gleichNamig(liste, name)) liste.push(name);
     }
   }
@@ -200,10 +199,10 @@ export function renderEditor(container, app, hofladenId) {
         .map(
           ({ o, i }) => `
         <div class="oeffnungszeit-zeile" data-index="${i}">
-          <input type="time" class="oz-beginn" value="${escapeHtml(o.beginn || "")}" aria-label="Beginn ${w.label}" />
+          <input type="time" class="oz-beginn" value="${escapeHtml(o.beginn || "")}" aria-label="${escapeHtml(t("Beginn {tag}", { tag: w.label }))}" />
           <span aria-hidden="true">–</span>
-          <input type="time" class="oz-ende" value="${escapeHtml(o.ende || "")}" aria-label="Ende ${w.label}" />
-          <button type="button" class="entfernen-btn" data-remove="${i}" title="Zeit entfernen" aria-label="Öffnungszeit ${w.label} entfernen">${icon("schliessen", { klein: true })}</button>
+          <input type="time" class="oz-ende" value="${escapeHtml(o.ende || "")}" aria-label="${escapeHtml(t("Ende {tag}", { tag: w.label }))}" />
+          <button type="button" class="entfernen-btn" data-remove="${i}" title="${escapeHtml(t("Zeit entfernen"))}" aria-label="${escapeHtml(t("Öffnungszeit {tag} entfernen", { tag: w.label }))}">${icon("schliessen", { klein: true })}</button>
         </div>`
         )
         .join("");
@@ -211,11 +210,11 @@ export function renderEditor(container, app, hofladenId) {
       const kopierbar = hatZeiten && w.wert <= 5;
       return `<div class="oz-tag" data-tag="${w.wert}">
         <div class="oz-tag-kopf">
-          <strong>${w.label}</strong>
-          ${hatZeiten ? "" : `<span class="muted">geschlossen</span>`}
+          <strong>${escapeHtml(w.label)}</strong>
+          ${hatZeiten ? "" : `<span class="muted">${escapeHtml(t("geschlossen"))}</span>`}
           <span class="grow"></span>
-          ${kopierbar ? `<button type="button" class="link-btn oz-kopieren" data-kopieren="${w.wert}">Auf Mo–Fr kopieren</button>` : ""}
-          <button type="button" class="link-btn oz-plus" data-plus="${w.wert}" aria-label="Zeit für ${w.label} hinzufügen">+ Zeit</button>
+          ${kopierbar ? `<button type="button" class="link-btn oz-kopieren" data-kopieren="${w.wert}">${escapeHtml(t("Auf Mo–Fr kopieren"))}</button>` : ""}
+          <button type="button" class="link-btn oz-plus" data-plus="${w.wert}" aria-label="${escapeHtml(t("Zeit für {tag} hinzufügen", { tag: w.label }))}">${escapeHtml(t("+ Zeit"))}</button>
         </div>
         ${zeilen}
       </div>`;
@@ -259,13 +258,13 @@ export function renderEditor(container, app, hofladenId) {
       btn.addEventListener("click", () => {
         const quelle = Number(btn.dataset.kopieren);
         const vorlage = oeffnungszeiten.filter((o) => o.wochentag === quelle && o.beginn && o.ende);
-        const ziele = [1, 2, 3, 4, 5].filter((t) => t !== quelle);
+        const ziele = [1, 2, 3, 4, 5].filter((d) => d !== quelle);
         const ueberschreibt = oeffnungszeiten.some((o) => ziele.includes(o.wochentag) && (o.beginn || o.ende));
-        if (ueberschreibt && !confirm("Die Zeiten der anderen Tage von Montag bis Freitag werden ersetzt. Fortfahren?")) return;
+        if (ueberschreibt && !confirm(t("Die Zeiten der anderen Tage von Montag bis Freitag werden ersetzt. Fortfahren?"))) return;
         for (let i = oeffnungszeiten.length - 1; i >= 0; i--) {
           if (ziele.includes(oeffnungszeiten[i].wochentag)) oeffnungszeiten.splice(i, 1);
         }
-        for (const t of ziele) vorlage.forEach((o) => oeffnungszeiten.push({ wochentag: t, beginn: o.beginn, ende: o.ende }));
+        for (const tg of ziele) vorlage.forEach((o) => oeffnungszeiten.push({ wochentag: tg, beginn: o.beginn, ende: o.ende }));
         zeichneTage();
         aktualisiere();
       });
@@ -276,9 +275,9 @@ export function renderEditor(container, app, hofladenId) {
     const box = container.querySelector("#angebote-chips");
     box.innerHTML = angebote.length
       ? angebote
-          .map((a, i) => `<span class="chip"><span>${escapeHtml(a)}</span><button type="button" data-chip-weg="${i}" aria-label="${escapeHtml(a)} entfernen">${icon("schliessen", { klein: true })}</button></span>`)
+          .map((a, i) => `<span class="chip"><span>${escapeHtml(a)}</span><button type="button" data-chip-weg="${i}" aria-label="${escapeHtml(t("{name} entfernen", { name: a }))}">${icon("schliessen", { klein: true })}</button></span>`)
           .join("")
-      : `<span class="muted">Noch keine Angebote.</span>`;
+      : `<span class="muted">${escapeHtml(t("Noch keine Angebote."))}</span>`;
     box.querySelectorAll("[data-chip-weg]").forEach((btn) =>
       btn.addEventListener("click", () => {
         angebote.splice(Number(btn.dataset.chipWeg), 1);
@@ -305,7 +304,7 @@ export function renderEditor(container, app, hofladenId) {
     box.innerHTML = alle
       .map((z) => {
         const an = gleichNamig(zahlungsarten, z);
-        return `<button type="button" class="schalter" role="switch" aria-checked="${an}" data-zahlung="${escapeHtml(z)}"><span class="schalter-name">${escapeHtml(z)}</span><span class="schalter-knopf" aria-hidden="true"></span><span class="nur-sr">${an ? "an" : "aus"}</span></button>`;
+        return `<button type="button" class="schalter" role="switch" aria-checked="${an}" data-zahlung="${escapeHtml(z)}"><span class="schalter-name">${escapeHtml(z)}</span><span class="schalter-knopf" aria-hidden="true"></span><span class="nur-sr">${an ? t("an") : t("aus")}</span></button>`;
       })
       .join("");
     box.querySelectorAll("[data-zahlung]").forEach((btn) =>
@@ -367,17 +366,17 @@ export function renderEditor(container, app, hofladenId) {
       <div class="bild-zeile" data-index="${i}">
         <img src="${escapeHtml(b.url || "")}" alt="" loading="lazy" />
         <div class="bild-zeile-felder">
-          <input type="text" class="bild-beschreibung" placeholder="Beschreibung (optional)" value="${escapeHtml(b.beschreibung || "")}" />
-          <div class="bild-zeile-meta">${i === 0 ? "Hauptbild · " : ""}${b.hochgeladen ? "hochgeladen" : "externe Adresse"}</div>
+          <input type="text" class="bild-beschreibung" placeholder="${escapeHtml(t("Beschreibung (optional)"))}" value="${escapeHtml(b.beschreibung || "")}" />
+          <div class="bild-zeile-meta">${i === 0 ? `${escapeHtml(t("Hauptbild"))} · ` : ""}${escapeHtml(b.hochgeladen ? t("hochgeladen") : t("externe Adresse"))}</div>
         </div>
         <div class="bild-zeile-aktionen">
-          ${i !== 0 ? `<button type="button" class="sekundaer-btn" data-hauptbild="${i}" title="Als Hauptbild festlegen" aria-label="Als Hauptbild festlegen">${icon("funkeln", { klein: true })}</button>` : ""}
-          <button type="button" class="entfernen-btn" data-remove="${i}" title="Bild entfernen" aria-label="Bild entfernen">${icon("schliessen", { klein: true })}</button>
+          ${i !== 0 ? `<button type="button" class="sekundaer-btn" data-hauptbild="${i}" title="${escapeHtml(t("Als Hauptbild festlegen"))}" aria-label="${escapeHtml(t("Als Hauptbild festlegen"))}">${icon("funkeln", { klein: true })}</button>` : ""}
+          <button type="button" class="entfernen-btn" data-remove="${i}" title="${escapeHtml(t("Bild entfernen"))}" aria-label="${escapeHtml(t("Bild entfernen"))}">${icon("schliessen", { klein: true })}</button>
         </div>
       </div>`
           )
           .join("")
-      : `<p class="muted">Noch keine Bilder hinterlegt.</p>`;
+      : `<p class="muted">${escapeHtml(t("Noch keine Bilder hinterlegt."))}</p>`;
 
     box.querySelectorAll(".bild-beschreibung").forEach((el, i) => {
       el.addEventListener("change", (e) => (bilder[i].beschreibung = e.target.value || null));
@@ -397,11 +396,11 @@ export function renderEditor(container, app, hofladenId) {
   async function fotoHochladen(file) {
     if (!file) return;
     if (!UPLOAD_ERLAUBTE_TYPEN.includes(file.type)) {
-      setUploadStatus("Nicht unterstütztes Dateiformat. Erlaubt: JPEG, PNG, GIF.", "error");
+      setUploadStatus(t("Nicht unterstütztes Dateiformat. Erlaubt: JPEG, PNG, GIF."), "error");
       return;
     }
     if (file.size > UPLOAD_MAX_BYTES) {
-      setUploadStatus("Datei ist zu gross (maximal 10 MB erlaubt).", "error");
+      setUploadStatus(t("Datei ist zu gross (maximal 10 MB erlaubt)."), "error");
       return;
     }
     try {
@@ -411,132 +410,138 @@ export function renderEditor(container, app, hofladenId) {
       return;
     }
 
-    setUploadStatus(`„${file.name}“ wird hochgeladen …`);
+    setUploadStatus(t("„{name}“ wird hochgeladen …", { name: file.name }));
     try {
       const zuLaden = await bildVerkleinern(file);
       const bild = await app.haClient.bildHochladen(zuLaden);
       bilder.push({ url: bild.url, beschreibung: null, hochgeladen: true });
-      setUploadStatus(`„${file.name}“ erfolgreich hochgeladen.`, "success");
+      setUploadStatus(t("„{name}“ erfolgreich hochgeladen.", { name: file.name }), "success");
       zeichneBilder();
     } catch (err) {
-      setUploadStatus(err?.message || "Upload fehlgeschlagen.", "error");
+      setUploadStatus(err?.message || t("Upload fehlgeschlagen."), "error");
     }
   }
 
   const GRUPPEN_FELDER = {
     grunddaten: `
         <div class="feld-gruppe">
-          <label for="f-name">Name *</label>
+          <label for="f-name">${escapeHtml(t("Name"))} *</label>
           <input type="text" id="f-name" required value="${escapeHtml(daten.name)}" />
           <p class="feld-fehler" id="f-name-fehler" role="alert" hidden></p>
         </div>
         <div class="feld-gruppe">
-          <label for="f-beschreibung">Beschreibung</label>
+          <label for="f-beschreibung">${escapeHtml(t("Beschreibung"))}</label>
           <textarea id="f-beschreibung">${escapeHtml(daten.beschreibung || "")}</textarea>
         </div>
         <div class="feld-gruppe">
-          <label id="bewertung-label">Bewertung</label>
+          <label id="bewertung-label">${escapeHtml(t("Bewertung"))}</label>
           <div class="sterne-zeile">
             <div class="sterne-reihe" id="bewertung-sterne"></div>
-            <button type="button" class="link-btn" id="bewertung-reset" hidden>Zurücksetzen</button>
+            <button type="button" class="link-btn" id="bewertung-reset" hidden>${escapeHtml(t("Zurücksetzen"))}</button>
           </div>
         </div>
         <div class="feld-gruppe">
-          <label for="f-bemerkung">Bemerkung (intern)</label>
+          <label for="f-bemerkung">${escapeHtml(t("Bemerkung (intern)"))}</label>
           <textarea id="f-bemerkung">${escapeHtml(daten.bemerkung || "")}</textarea>
         </div>`,
     adresse: `
         <div class="feld-gruppe">
-          <label for="f-adresse">Adresse</label>
+          <label for="f-adresse">${escapeHtml(t("Adresse"))}</label>
           <input type="text" id="f-adresse" value="${escapeHtml(daten.adresse || "")}" />
         </div>
         <div class="feld-zeile">
           <div class="feld-gruppe">
-            <label for="f-plz">PLZ</label>
+            <label for="f-plz">${escapeHtml(t("PLZ"))}</label>
             <input type="text" id="f-plz" inputmode="numeric" value="${escapeHtml(daten.plz || "")}" />
           </div>
           <div class="feld-gruppe">
-            <label for="f-ort">Ort</label>
+            <label for="f-ort">${escapeHtml(t("Ort"))}</label>
             <input type="text" id="f-ort" value="${escapeHtml(daten.ort || "")}" />
           </div>
         </div>
         <div class="feld-gruppe">
-          <label for="f-land">Land</label>
+          <label for="f-land">${escapeHtml(t("Land"))}</label>
           <input type="text" id="f-land" value="${escapeHtml(daten.land || "")}" />
         </div>
         <div class="feld-zeile">
           <div class="feld-gruppe">
-            <label for="f-latitude">Breitengrad</label>
+            <label for="f-latitude">${escapeHtml(t("Breitengrad"))}</label>
             <input type="text" id="f-latitude" inputmode="decimal" value="${escapeHtml(String(daten.latitude ?? ""))}" />
             <p class="feld-fehler" id="f-latitude-fehler" role="alert" hidden></p>
           </div>
           <div class="feld-gruppe">
-            <label for="f-longitude">Längengrad</label>
+            <label for="f-longitude">${escapeHtml(t("Längengrad"))}</label>
             <input type="text" id="f-longitude" inputmode="decimal" value="${escapeHtml(String(daten.longitude ?? ""))}" />
             <p class="feld-fehler" id="f-longitude-fehler" role="alert" hidden></p>
           </div>
         </div>
-        <button type="button" class="hinzufuegen-btn" id="standort-uebernehmen-btn">${icon("standort", { klein: true })} Aktuellen Standort übernehmen</button>`,
+        <button type="button" class="hinzufuegen-btn" id="standort-uebernehmen-btn">${icon("standort", { klein: true })} ${escapeHtml(t("Aktuellen Standort übernehmen"))}</button>
+        <button type="button" class="hinzufuegen-btn" id="adresse-ermitteln-btn">${icon("standort", { klein: true })} ${escapeHtml(t("Adresse aus Koordinaten ermitteln"))}</button>
+        <div id="adresse-vorschlag" class="adresse-vorschlag" role="status" aria-live="polite"></div>`,
     kontakt: `
         <div class="feld-gruppe">
-          <label for="f-mobilnummer">Mobilnummer</label>
+          <label for="f-mobilnummer">${escapeHtml(t("Mobilnummer"))}</label>
           <input type="tel" id="f-mobilnummer" value="${escapeHtml(daten.mobilnummer || "")}" />
         </div>
         <div class="feld-gruppe">
-          <label for="f-email">E-Mail</label>
+          <label for="f-email">${escapeHtml(t("E-Mail"))}</label>
           <input type="email" id="f-email" value="${escapeHtml(daten.email || "")}" />
           <p class="feld-fehler" id="f-email-fehler" role="alert" hidden></p>
         </div>
         <div class="feld-gruppe">
-          <label for="f-website">Website</label>
+          <label for="f-website">${escapeHtml(t("Website"))}</label>
           <input type="url" id="f-website" value="${escapeHtml(daten.website || "")}" />
         </div>`,
     oeffnungszeiten: `
-        <div id="oeffnungszeiten-liste"></div>`,
+        <div class="schalter-liste">
+          <button type="button" class="schalter" role="switch" id="automat-schalter" aria-checked="${automat24h}" aria-describedby="automat-hinweis"><span class="schalter-name">${escapeHtml(t("24h-Automat"))}</span><span class="schalter-knopf" aria-hidden="true"></span><span class="nur-sr">${automat24h ? t("an") : t("aus")}</span></button>
+        </div>
+        <p class="muted" id="automat-hinweis">${escapeHtml(t("Rund um die Uhr zugänglich. Dann gilt der Hofladen immer als geöffnet, ausser an Tagen mit einer Sonder-Schliessung; die Wochenzeiten werden nicht verwendet."))}</p>
+        <div id="oeffnungszeiten-liste"${automat24h ? " hidden" : ""}></div>`,
     angebote: `
-        <div class="gruppen-label">Angebote</div>
+        <div class="gruppen-label">${escapeHtml(t("Angebote"))}</div>
         <div class="chip-liste" id="angebote-chips"></div>
         <div class="chip-liste" id="angebote-vorschlaege"></div>
         <div class="liste-zeile liste-zeile-abstand">
-          <input type="text" id="angebot-neu" placeholder="Angebot hinzufügen" aria-label="Neues Angebot" enterkeyhint="done" />
-          <button type="button" class="hinzufuegen-btn" id="angebot-hinzufuegen-btn">Hinzufügen</button>
+          <input type="text" id="angebot-neu" placeholder="${escapeHtml(t("Angebot hinzufügen"))}" aria-label="${escapeHtml(t("Neues Angebot"))}" enterkeyhint="done" />
+          <button type="button" class="hinzufuegen-btn" id="angebot-hinzufuegen-btn">${escapeHtml(t("Hinzufügen"))}</button>
         </div>
         <input type="hidden" id="f-angebote" value="" />
-        <div class="gruppen-label">Zahlungsarten</div>
+        <div class="gruppen-label">${escapeHtml(t("Zahlungsarten"))}</div>
         <div class="schalter-liste" id="zahlungen-schalter"></div>
         <div class="liste-zeile liste-zeile-abstand">
-          <input type="text" id="zahlung-neu" placeholder="Weitere Zahlungsart" aria-label="Weitere Zahlungsart" enterkeyhint="done" />
-          <button type="button" class="hinzufuegen-btn" id="zahlung-hinzufuegen-btn">Hinzufügen</button>
+          <input type="text" id="zahlung-neu" placeholder="${escapeHtml(t("Weitere Zahlungsart"))}" aria-label="${escapeHtml(t("Weitere Zahlungsart"))}" enterkeyhint="done" />
+          <button type="button" class="hinzufuegen-btn" id="zahlung-hinzufuegen-btn">${escapeHtml(t("Hinzufügen"))}</button>
         </div>
         <input type="hidden" id="f-zahlungsarten" value="" />`,
     bilder: `
-        <p class="muted">Das erste Bild in der Liste ist das Hauptbild.</p>
+        <p class="muted">${escapeHtml(t("Das erste Bild in der Liste ist das Hauptbild."))}</p>
         <div id="bilder-liste"></div>
         <div class="upload-row">
-          <button type="button" class="hinzufuegen-btn" id="foto-aufnehmen-btn">${icon("kamera", { klein: true })} Foto aufnehmen</button>
-          <button type="button" class="hinzufuegen-btn" id="foto-bibliothek-btn">${icon("bild", { klein: true })} Aus Fotos wählen</button>
+          <button type="button" class="hinzufuegen-btn" id="foto-aufnehmen-btn">${icon("kamera", { klein: true })} ${escapeHtml(t("Foto aufnehmen"))}</button>
+          <button type="button" class="hinzufuegen-btn" id="foto-bibliothek-btn">${icon("bild", { klein: true })} ${escapeHtml(t("Aus Fotos wählen"))}</button>
         </div>
         <input type="file" id="foto-kamera-input" accept="image/jpeg,image/png,image/gif" capture="environment" hidden />
         <input type="file" id="foto-bibliothek-input" accept="image/jpeg,image/png,image/gif" hidden />
         <span class="upload-status muted" id="upload-status"></span>
         <details class="manuell-bild">
-          <summary class="muted klickbar">Oder externe Bild-Adresse manuell hinzufügen</summary>
+          <summary class="muted klickbar">${escapeHtml(t("Oder externe Bild-Adresse manuell hinzufügen"))}</summary>
           <div class="liste-zeile liste-zeile-abstand">
             <input type="url" id="externe-bild-url" placeholder="https://…" />
-            <button type="button" class="hinzufuegen-btn" id="bild-hinzufuegen-btn">Hinzufügen</button>
+            <button type="button" class="hinzufuegen-btn" id="bild-hinzufuegen-btn">${escapeHtml(t("Hinzufügen"))}</button>
           </div>
         </details>`,
-    herkunft: `${herkunftHtml({ quellen })}<p class="muted">Die Herkunft wird beim Speichern automatisch angepasst, wenn du eine Angabe von Hand änderst.</p>`,
+    herkunft: `${herkunftHtml({ quellen })}<p class="muted">${escapeHtml(t("Die Herkunft wird beim Speichern automatisch angepasst, wenn du eine Angabe von Hand änderst."))}</p>`,
   };
 
   function zeichneSterne() {
     const box = container.querySelector("#bewertung-sterne");
     let html = "";
     for (let i = 1; i <= 5; i++) {
-      html += `<button type="button" class="stern-btn${i <= bewertung ? " stern-gefuellt" : ""}" data-stern="${i}" aria-label="${i} von 5 Sternen" aria-pressed="${i <= bewertung}">★</button>`;
+      html += `<button type="button" class="stern-btn${i <= bewertung ? " stern-gefuellt" : ""}" data-stern="${i}" aria-label="${escapeHtml(t("{n} von 5 Sternen", { n: i }))}" aria-pressed="${i <= bewertung}">★</button>`;
     }
     box.setAttribute("role", "group");
-    box.setAttribute("aria-label", "Bewertung in Sternen");
+    box.setAttribute("aria-label", t("Bewertung in Sternen"));
     box.innerHTML = html;
     box.querySelectorAll("[data-stern]").forEach((btn) => {
       btn.addEventListener("click", () => {
@@ -572,6 +577,7 @@ export function renderEditor(container, app, hofladenId) {
       longitude: wert("#f-longitude") ? Number(wert("#f-longitude").replace(",", ".")) : null,
       bewertung,
       oeffnungszeiten: oeffnungszeiten.filter((o) => o.beginn && o.ende).map((o) => ({ ...o })),
+      automat_24h: automat24h,
       angebote: textZuTags(angebote.join(","), "angebot"),
       zahlungsarten: textZuTags(zahlungsarten.join(","), "zahlungsart"),
       bilder: bilder
@@ -591,7 +597,7 @@ export function renderEditor(container, app, hofladenId) {
     return `<details class="detail-abschnitt einklappbar gruppe" id="gruppe-${g.id}" data-gruppe="${g.id}"${offen ? " open" : ""}>
       <summary>
         <span class="vollst leer"><span class="nur-sr" data-vollst-text></span></span>
-        <span class="titel">${escapeHtml(g.titel)}</span>
+        <span class="titel">${escapeHtml(t(g.titel))}</span>
         <span class="kurzinfo" data-kurzinfo></span>
       </summary>
       <div class="gruppen-inhalt">${GRUPPEN_FELDER[g.id]}</div>
@@ -604,24 +610,24 @@ export function renderEditor(container, app, hofladenId) {
     <div id="editor-fehler" class="hinweis-leiste fehler" role="alert" hidden></div>
 
     <div class="auto-leiste">
-      <div class="auto-titel">Angaben automatisch ergänzen</div>
+      <div class="auto-titel">${escapeHtml(t("Angaben automatisch ergänzen"))}</div>
       <div class="auto-knoepfe">
-        <button type="button" class="chip chip-knopf" id="webseite-info-btn">${icon("weltkugel", { klein: true })} Von der Webseite</button>
-        ${zeigeFinden ? `<button type="button" class="chip chip-knopf" id="finden-btn">${icon("suche", { klein: true })} Hofladen finden</button>` : ""}
+        <button type="button" class="chip chip-knopf" id="webseite-info-btn">${icon("weltkugel", { klein: true })} ${escapeHtml(t("Von der Webseite"))}</button>
+        ${zeigeFinden ? `<button type="button" class="chip chip-knopf" id="finden-btn">${icon("suche", { klein: true })} ${escapeHtml(t("Hofladen finden"))}</button>` : ""}
       </div>
-      <p class="muted" id="auto-status">Liest Name, Beschreibung, Adresse, Telefon und E-Mail von der eingetragenen Webseite.</p>
+      <p class="muted" id="auto-status">${escapeHtml(t("Liest Name, Beschreibung, Adresse, Telefon und E-Mail von der eingetragenen Webseite."))}</p>
     </div>
 
-    <div class="gruppen-leiste"><button type="button" class="link-btn" id="alle-btn">Alle ausklappen</button></div>
+    <div class="gruppen-leiste"><button type="button" class="link-btn" id="alle-btn">${escapeHtml(t("Alle ausklappen"))}</button></div>
 
     <form id="editor-form" novalidate>
       ${gruppenHtml}
 
       <div class="fussleiste" id="fussleiste">
-        <span class="ungespeichert" id="ungespeichert" role="status" hidden>${icon("info", { klein: true })} Ungespeichert</span>
+        <span class="ungespeichert" id="ungespeichert" role="status" hidden>${icon("info", { klein: true })} ${escapeHtml(t("Ungespeichert"))}</span>
         <span class="grow"></span>
-        <button type="button" class="abbrechen-btn" id="abbrechen-btn">Abbrechen</button>
-        <button type="submit" class="primaer" id="speichern-btn">Speichern</button>
+        <button type="button" class="abbrechen-btn" id="abbrechen-btn">${escapeHtml(t("Abbrechen"))}</button>
+        <button type="submit" class="primaer" id="speichern-btn">${escapeHtml(t("Speichern"))}</button>
       </div>
     </form>
   `;
@@ -659,13 +665,13 @@ export function renderEditor(container, app, hofladenId) {
     const gruppen = [...container.querySelectorAll("details.gruppe")];
     const auf = gruppen.some((d) => !d.open);
     gruppen.forEach((d) => (d.open = auf));
-    e.currentTarget.textContent = auf ? "Alle einklappen" : "Alle ausklappen";
+    e.currentTarget.textContent = auf ? t("Alle einklappen") : t("Alle ausklappen");
   });
   container.querySelector("#editor-form").addEventListener("input", aktualisiere);
   container.querySelector("#editor-form").addEventListener("change", aktualisiere);
 
   container.querySelector("#abbrechen-btn").addEventListener("click", () => {
-    if (istGeaendert() && !confirm("Änderungen verwerfen?")) return;
+    if (istGeaendert() && !confirm(t("Änderungen verwerfen?"))) return;
     if (bestehender) {
       app.navigate(`#/hofladen/${bestehender.id}`);
     } else {
@@ -731,9 +737,85 @@ export function renderEditor(container, app, hofladenId) {
     e.target.value = "";
   });
 
+  container.querySelector("#automat-schalter").addEventListener("click", (e) => {
+    automat24h = !automat24h;
+    e.currentTarget.setAttribute("aria-checked", String(automat24h));
+    e.currentTarget.querySelector(".nur-sr").textContent = automat24h ? t("an") : t("aus");
+    container.querySelector("#oeffnungszeiten-liste").hidden = automat24h;
+    aktualisiere();
+  });
+
   container.querySelector("#standort-uebernehmen-btn").addEventListener("click", async () => {
     await standortUebernehmen(container);
     aktualisiere();
+  });
+
+  // Adresse aus Koordinaten (OpenStreetMap/Nominatim): nur auf Tipp; Lücken
+  // vorgewählt, Abweichungen nie; übernommen wird erst nach «Übernehmen».
+  const FELD_NAME = { adresse: () => t("Adresse"), plz: () => t("PLZ"), ort: () => t("Ort") };
+  const ADRESSE_FEHLER = {
+    koordinaten: () => t("Bitte zuerst gültige Koordinaten eintragen oder den Standort übernehmen."),
+    netz: () => t("Keine Verbindung zu OpenStreetMap. Bitte später erneut versuchen."),
+    dienst: () => t("OpenStreetMap hat die Anfrage abgelehnt. Bitte später erneut versuchen."),
+    nichts: () => t("Zu diesen Koordinaten wurde keine Adresse gefunden."),
+  };
+  container.querySelector("#adresse-ermitteln-btn").addEventListener("click", async (e) => {
+    const box = container.querySelector("#adresse-vorschlag");
+    const btn = e.currentTarget;
+    btn.disabled = true;
+    box.innerHTML = `<p class="muted">${escapeHtml(t("Adresse wird ermittelt …"))}</p>`;
+    try {
+      const treffer = await ermittleAdresse(wert("#f-latitude"), wert("#f-longitude"), { sprache: aktuelleSprache() });
+      const zeilen = vergleicheAdresse(
+        { adresse: wert("#f-adresse"), plz: wert("#f-plz"), ort: wert("#f-ort") },
+        treffer
+      ).filter((z) => z.status !== "gleich");
+      if (!zeilen.length) {
+        box.innerHTML = `<p class="muted">${escapeHtml(t("Die Adresse stimmt bereits mit OpenStreetMap überein."))}</p>`;
+        return;
+      }
+      box.innerHTML = `
+        <div class="adresse-karte">
+          <p><strong>${escapeHtml(t("Gefunden bei OpenStreetMap"))}</strong></p>
+          ${zeilen
+            .map(
+              (z) => `<label class="finden-check"><input type="checkbox" data-adr="${z.feld}" ${z.vorgewaehlt ? "checked" : ""} />
+                <span><strong>${escapeHtml(FELD_NAME[z.feld]())}:</strong> ${escapeHtml(z.neu)}${
+                z.alt ? `<br><span class="muted">${escapeHtml(t("bisher: {wert}", { wert: z.alt }))}</span>` : ""
+              }</span></label>`
+            )
+            .join("")}
+          <p class="muted">${escapeHtml(t("Abweichende Angaben sind nicht vorgewählt. Daten von OpenStreetMap-Mitwirkenden (ODbL)."))}</p>
+          <div class="aktions-reihe">
+            <button type="button" class="primaer" id="adresse-uebernehmen-btn">${escapeHtml(t("Übernehmen"))}</button>
+            <button type="button" id="adresse-verwerfen-btn">${escapeHtml(t("Verwerfen"))}</button>
+          </div>
+        </div>`;
+      box.querySelector("#adresse-verwerfen-btn").addEventListener("click", () => {
+        box.innerHTML = "";
+      });
+      box.querySelector("#adresse-uebernehmen-btn").addEventListener("click", () => {
+        const feldId = { adresse: "#f-adresse", plz: "#f-plz", ort: "#f-ort" };
+        for (const z of zeilen) {
+          if (!box.querySelector(`[data-adr="${z.feld}"]`).checked) continue;
+          container.querySelector(feldId[z.feld]).value = z.neu;
+        }
+        const jetzt = sammle();
+        for (const z of zeilen) {
+          if (!box.querySelector(`[data-adr="${z.feld}"]`).checked) continue;
+          const alt = quellen.findIndex((q) => q.feld === z.feld);
+          if (alt >= 0) quellen.splice(alt, 1);
+          quellen.push({ feld: z.feld, quelle: "openstreetmap", status: "confirmed", url: treffer.osmUrl, lizenz: "ODbL" });
+          quellenStand[z.feld] = quellenWert(z.feld, jetzt);
+        }
+        box.innerHTML = `<p class="muted">${escapeHtml(t("Adresse übernommen. Bitte prüfen und speichern."))}</p>`;
+        aktualisiere();
+      });
+    } catch (err) {
+      box.innerHTML = `<p class="muted fehlertext">${escapeHtml((ADRESSE_FEHLER[err.code] || ADRESSE_FEHLER.netz)())}</p>`;
+    } finally {
+      btn.disabled = false;
+    }
   });
 
   container.querySelector("#webseite-info-btn").addEventListener("click", async () => {
@@ -743,14 +825,14 @@ export function renderEditor(container, app, hofladenId) {
       // Kontakt-Gruppe öffnen, damit das Feld sichtbar ist.
       container.querySelector("#gruppe-kontakt").open = true;
       container.querySelector("#f-website").focus();
-      status.textContent = "Bitte zuerst eine Webseite eintragen.";
+      status.textContent = t("Bitte zuerst eine Webseite eintragen.");
       status.classList.add("fehlertext");
       return;
     }
     status.classList.remove("fehlertext");
     const btn = container.querySelector("#webseite-info-btn");
     btn.disabled = true;
-    btn.textContent = "Ermittle …";
+    btn.textContent = t("Ermittle …");
     try {
       app._pruefeVerbindung();
       const info = await app.haClient.webseiteInfo(website);
@@ -759,13 +841,13 @@ export function renderEditor(container, app, hofladenId) {
       if (info.adresse) container.querySelector("#f-adresse").value = info.adresse;
       if (info.mobilnummer) container.querySelector("#f-mobilnummer").value = info.mobilnummer;
       if (info.email) container.querySelector("#f-email").value = info.email;
-      status.textContent = "Angaben von der Webseite übernommen. Bitte prüfen und speichern.";
+      status.textContent = t("Angaben von der Webseite übernommen. Bitte prüfen und speichern.");
     } catch (err) {
-      status.textContent = `Konnte keine Infos ermitteln: ${err.message}`;
+      status.textContent = t("Konnte keine Infos ermitteln: {fehler}", { fehler: err.message });
       status.classList.add("fehlertext");
     } finally {
       btn.disabled = false;
-      btn.innerHTML = `${icon("weltkugel", { klein: true })}<span>Von der Webseite</span>`;
+      btn.innerHTML = `${icon("weltkugel", { klein: true })}<span>${escapeHtml(t("Von der Webseite"))}</span>`;
       aktualisiere();
     }
   });
@@ -796,7 +878,7 @@ export function renderEditor(container, app, hofladenId) {
   function pruefe() {
     fehlerZuruecksetzen();
     if (!wert("#f-name")) {
-      feldFehler("#f-name", "Bitte einen Namen eintragen.");
+      feldFehler("#f-name", t("Bitte einen Namen eintragen."));
       return false;
     }
     const breite = wert("#f-latitude");
@@ -804,24 +886,24 @@ export function renderEditor(container, app, hofladenId) {
     const b = Number(breite.replace(",", "."));
     const l = Number(laenge.replace(",", "."));
     if (breite && (!Number.isFinite(b) || b < -90 || b > 90)) {
-      feldFehler("#f-latitude", "Der Breitengrad muss eine Zahl zwischen -90 und 90 sein.");
+      feldFehler("#f-latitude", t("Der Breitengrad muss eine Zahl zwischen -90 und 90 sein."));
       return false;
     }
     if (laenge && (!Number.isFinite(l) || l < -180 || l > 180)) {
-      feldFehler("#f-longitude", "Der Längengrad muss eine Zahl zwischen -180 und 180 sein.");
+      feldFehler("#f-longitude", t("Der Längengrad muss eine Zahl zwischen -180 und 180 sein."));
       return false;
     }
     if (breite && !laenge) {
-      feldFehler("#f-longitude", "Bitte auch den Längengrad eintragen.");
+      feldFehler("#f-longitude", t("Bitte auch den Längengrad eintragen."));
       return false;
     }
     if (laenge && !breite) {
-      feldFehler("#f-latitude", "Bitte auch den Breitengrad eintragen.");
+      feldFehler("#f-latitude", t("Bitte auch den Breitengrad eintragen."));
       return false;
     }
     const mail = wert("#f-email");
     if (mail && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(mail)) {
-      feldFehler("#f-email", "Bitte eine gültige E-Mail-Adresse eintragen.");
+      feldFehler("#f-email", t("Bitte eine gültige E-Mail-Adresse eintragen."));
       return false;
     }
     return true;
@@ -838,7 +920,7 @@ export function renderEditor(container, app, hofladenId) {
 
     const submitBtn = container.querySelector("#speichern-btn");
     submitBtn.disabled = true;
-    submitBtn.textContent = "Speichert …";
+    submitBtn.textContent = t("Speichert …");
 
     try {
       const gespeichert = await app.speichereHofladen(zuSpeichern);
@@ -852,7 +934,7 @@ export function renderEditor(container, app, hofladenId) {
       fehlerBox.hidden = false;
       fehlerBox.scrollIntoView?.({ block: "center" });
       submitBtn.disabled = false;
-      submitBtn.textContent = "Speichern";
+      submitBtn.textContent = t("Speichern");
     }
   });
 }

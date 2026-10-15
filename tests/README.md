@@ -52,3 +52,7 @@ vollständig rendern; der Test prüft in diesem Fall nur, dass das Modul
 korrekt exportiert und ladbar ist, und filtert reine CDN-Netzwerkfehler
 aus der Konsolenfehler-Prüfung heraus. In GitHub Actions (voller
 Internetzugriff) rendert die Karte normal.
+
+## Sprachtests (ab 2.0.0-dev.8)
+
+`npm run test:i18n` (läuft auch zu Beginn von `test:smoke`) prüft ohne Browser, dass alle `t()`-Texte in den Wörterbüchern FR/IT/EN stehen. Die Smoke-Tests laufen mit deutscher Browsersprache (`locale: "de-CH"`) und prüfen am Ende FR/IT/EN auf deutsche Reste.

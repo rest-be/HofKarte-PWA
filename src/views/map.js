@@ -12,6 +12,7 @@ import { escapeHtml } from "../html.js";
 import { aktuellerStandort } from "../naehe.js";
 import { heuteKurzinfo } from "../gruppen.js";
 import { ladeKarteGeschlosseneAusblenden, speichereKarteGeschlosseneAusblenden } from "../storage.js";
+import { t } from "../i18n.js";
 
 let leafletLadenPromise = null;
 
@@ -28,7 +29,7 @@ function ladeLeaflet() {
     const script = document.createElement("script");
     script.src = "./vendor/leaflet/leaflet.js";
     script.onload = () => resolve(window.L);
-    script.onerror = () => reject(new Error("Leaflet konnte nicht geladen werden."));
+    script.onerror = () => reject(new Error(t("Leaflet konnte nicht geladen werden.")));
     document.head.appendChild(script);
   });
 
@@ -38,7 +39,7 @@ function ladeLeaflet() {
 const STATUS_TEXT = { true: "Geöffnet", false: "Geschlossen", null: "Status unbekannt" };
 
 function statusText(geoeffnet) {
-  return STATUS_TEXT[geoeffnet === true ? "true" : geoeffnet === false ? "false" : "null"];
+  return t(STATUS_TEXT[geoeffnet === true ? "true" : geoeffnet === false ? "false" : "null"]);
 }
 
 function markerFarbe(geoeffnet) {
@@ -81,12 +82,12 @@ export async function renderKarte(container, app) {
       <div class="karten-knoepfe">
         <label class="karten-filter">
           <input type="checkbox" id="filter-offen" />
-          <span>Nur geöffnet</span>
+          <span>${escapeHtml(t("Nur geöffnet"))}</span>
         </label>
-        <button type="button" class="karten-knopf" id="mein-standort-btn">Mein Standort</button>
+        <button type="button" class="karten-knopf" id="mein-standort-btn">${escapeHtml(t("Mein Standort"))}</button>
       </div>
       <p class="karten-meldung" id="karten-meldung" role="status"></p>
-      <section class="karten-sheet" id="karten-sheet" role="dialog" aria-label="Hofladen-Vorschau" hidden></section>
+      <section class="karten-sheet" id="karten-sheet" role="dialog" aria-label="${escapeHtml(t("Hofladen-Vorschau"))}" hidden></section>
     </div>`;
   const ausblenden = await ladeKarteGeschlosseneAusblenden().catch(() => false);
   const filterBox = container.querySelector("#filter-offen");
@@ -124,7 +125,7 @@ export async function renderKarte(container, app) {
   }).setView(mitte, hoflaeden.length ? 12 : 8);
 
   L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", {
-    attribution: "&copy; OpenStreetMap-Mitwirkende",
+    attribution: `&copy; ${escapeHtml(t("OpenStreetMap-Mitwirkende"))}`,
     maxZoom: 19,
   }).addTo(karte);
 
@@ -149,19 +150,19 @@ export async function renderKarte(container, app) {
     sheet.replaceChildren();
     const zu = el("button", "×", "sheet-zu");
     zu.type = "button";
-    zu.setAttribute("aria-label", "Vorschau schliessen");
+    zu.setAttribute("aria-label", t("Vorschau schliessen"));
     zu.addEventListener("click", schliesseSheet);
     const titel = el("h2", h.name == null ? "" : String(h.name));
     const badge = el("span", statusText(h.geoeffnet), `status-badge ${h.geoeffnet === true ? "offen" : h.geoeffnet === false ? "geschlossen" : "unbekannt"}`);
     const ort = el("p", [h.adresse, h.ort].filter(Boolean).join(", "), "ort");
     const heute = heuteKurzinfo(h);
     const aktionen = el("div", null, "sheet-aktionen");
-    const route = el("a", "Route", "chip-knopf");
+    const route = el("a", t("Route"), "chip-knopf");
     route.id = "sheet-route";
     route.href = routeUrl(h);
     route.target = "_blank";
     route.rel = "noopener noreferrer";
-    const details = el("button", "Details", "chip-knopf");
+    const details = el("button", t("Details"), "chip-knopf");
     details.type = "button";
     details.id = "sheet-details";
     details.addEventListener("click", () => app.navigate(`#/hofladen/${encodeURIComponent(h.id)}`));
@@ -210,7 +211,7 @@ export async function renderKarte(container, app) {
   const standortBtn = container.querySelector("#mein-standort-btn");
   standortBtn.addEventListener("click", async () => {
     standortBtn.disabled = true;
-    meldung.textContent = "Standort wird ermittelt …";
+    meldung.textContent = t("Standort wird ermittelt …");
     try {
       const { latitude, longitude } = await aktuellerStandort();
       if (!container.isConnected) return;

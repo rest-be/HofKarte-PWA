@@ -452,6 +452,14 @@ export async function fuehreSmokeTestsAus(page, baseUrl) {
   check("Markenfarbe: Standard ist Grün (#2e7d4f)", (await akzent()) === "#2e7d4f");
   check("Markenfarbe: 5 Voreinstellungen + Standard markiert", (await page.$$(".farb-wahl")).length === 5 && (await page.$eval(".farb-wahl[data-farbe='#2e7d4f']", (el) => el.getAttribute("aria-pressed"))) === "true");
   check("Markenfarbe: Farbwahl ist mindestens 44px hoch", (await page.$eval(".farb-wahl", (el) => el.getBoundingClientRect().height)) >= 44);
+  for (const breite of [1280, 390, 320]) {
+    await page.setViewportSize({ width: breite, height: 844 });
+    await page.waitForTimeout(100);
+    const formen = await page.$$eval(".farb-punkt", (els) => els.map((e) => { const r = e.getBoundingClientRect(); return [Math.round(r.width), Math.round(r.height), getComputedStyle(e).borderRadius]; }));
+    check(`Markenfarbe: Farbpunkte sind rund bei ${breite} px (${formen.map((f) => f.join("x")).join(" ")})`, formen.length === 5 && formen.every(([w, h, r]) => w === h && w >= 44 && r === "50%"));
+    if (process.env.SCREENSHOT_DIR && breite === 390) await page.screenshot({ path: `${process.env.SCREENSHOT_DIR}/farben.png`, clip: { x: 0, y: 150, width: 390, height: 300 } });
+  }
+  await page.setViewportSize({ width: 1280, height: 720 });
   await page.click(".farb-wahl[data-farbe='#1f65c0']");
   await page.waitForTimeout(200);
   check("Markenfarbe: Blau wird angewendet", (await akzent()) === "#1f65c0");
@@ -1116,6 +1124,44 @@ export async function fuehreSmokeTestsAus(page, baseUrl) {
   const ergPayload = await page.evaluate(() => window.__gespeichertErg);
   check("Ergänzen: Speichern sendet ergänzte Angaben samt Herkunft, Version bleibt", !!ergPayload && ergPayload.id === "erg1" && ergPayload.version === 2 && ergPayload.email === "a@b.ch" && ergPayload.quellen.some((q) => q.feld === "email" && q.quelle === "website") && ergPayload.name === "Hof A");
 
+  // 2.0.0-dev.8: «Mit OpenStreetMap ergänzen» (am gespeicherten Standort).
+  await page.evaluate(() => {
+    const app = window.hofkarteApp;
+    window.__suche = null;
+    window.__anreichern = null;
+    window.__geoVorOsm = window.__geoAufrufe;
+    const alt = app.haClient;
+    window.__haClientAlt = alt;
+    app.haClient = {
+      ...alt,
+      hofladenSuchen: async (args) => { window.__suche = args; return [{ name: "<b>Hof A OSM</b>", konfidenz: "hoch", adresse: "Dorf 1", plz: "3000", ort: "Bern", osm_id: 7, osm_typ: "node", latitude: 46.9, longitude: 7.4 }, { name: "Anderer Hof", konfidenz: "niedrig" }]; },
+      hofladenAnreichern: async (args, cb) => {
+        window.__anreichern = args;
+        setTimeout(() => cb({ phase: "fertig", vorschlag: { daten: { email: "osm@hof.ch" }, quellen: [{ feld: "email", quelle: "openstreetmap", status: "confirmed" }], abweichungen: {}, vermutungen: {} } }), 20);
+        return () => {};
+      },
+    };
+  });
+  await gehe("#/hofladen/erg1/ergaenzen");
+  await page.waitForTimeout(200);
+  check("OSM-Ergänzen: Quellenwahl, Webseite vorgewählt, OpenStreetMap wählbar", (await page.getAttribute("#a-quelle-web", "aria-pressed")) === "true" && (await page.getAttribute("#a-quelle-osm", "aria-pressed")) === "false" && !(await page.$eval("#a-quelle-osm", (el) => el.disabled)));
+  await page.click("#a-quelle-web");
+  await page.click("#a-start-btn");
+  await page.waitForTimeout(150);
+  check("OSM-Ergänzen: ohne Quelle eine Meldung, keine Suche", /Quelle/.test(await page.$eval(".auslesen", (el) => el.textContent)) && (await page.evaluate(() => window.__suche)) === null);
+  await page.click("#a-quelle-osm");
+  await page.click("#a-start-btn");
+  await page.waitForSelector("#a-treffer-weiter-btn", { timeout: 4000 });
+  const suche = await page.evaluate(() => window.__suche);
+  check("OSM-Ergänzen: Suche am gespeicherten Standort (300 m, Name), ohne Geräte-Standort", suche.latitude === 46.9 && suche.longitude === 7.4 && suche.radius === 300 && suche.name === "Hof A" && (await page.evaluate(() => window.__geoAufrufe === window.__geoVorOsm)));
+  check("OSM-Ergänzen: Treffer als Text (kein HTML), sicherer Treffer vorgewählt", (await page.$$("[data-a-kandidat]")).length === 2 && (await page.$eval("[data-a-kandidat][value='0']", (el) => el.checked)) && !(await page.$(".auslesen b")));
+  await page.click("#a-treffer-weiter-btn");
+  await page.waitForSelector("#a-uebernehmen-btn", { timeout: 4000 });
+  const osmArgs = await page.evaluate(() => window.__anreichern);
+  check("OSM-Ergänzen: Anreichern mit gewähltem Treffer, ohne Webseite und KI", osmArgs.kandidat.osm_id === 7 && !osmArgs.website && osmArgs.ki === false);
+  check("OSM-Ergänzen: Vorschlag wird wie bisher verglichen (Lücke E-Mail vorgewählt)", (await page.$eval("[data-feldwahl='email']", (el) => el.checked)) === true);
+  await page.evaluate(() => { window.hofkarteApp.haClient = window.__haClientAlt; });
+
   // Neuer Hofladen aus der Webseite
   await page.evaluate(() => { window.hofkarteApp.state.hoflaeden = []; window.__gespeichertErg = null; });
   await gehe("#/erfassen/webseite");
@@ -1194,6 +1240,80 @@ export async function fuehreSmokeTestsAus(page, baseUrl) {
   await page.evaluate(() => document.getElementById("update-hinweis")?.remove());
 
 
+
+  // 2.0.0-dev.8: Adresse aus Koordinaten (Nominatim).
+  let nominatimAnfragen = [];
+  await page.route("https://nominatim.openstreetmap.org/**", (route) => {
+    nominatimAnfragen.push(route.request().url());
+    route.fulfill({ status: 200, contentType: "application/json", headers: { "access-control-allow-origin": "*" }, body: JSON.stringify({ osm_type: "way", osm_id: 42, address: { road: "Dorfstrasse", house_number: "5", postcode: "3000", village: "Muri bei Bern", country: "Schweiz" } }) });
+  });
+  await page.evaluate(() => { const a = window.hofkarteApp; a.haClient = a.haClient || null; });
+  await gehe("#/neu");
+  await page.evaluate(() => { document.querySelector("#gruppe-adresse").open = true; });
+  await page.fill("#f-plz", "9999");
+  await page.fill("#f-latitude", "");
+  await page.fill("#f-longitude", "");
+  await page.click("#adresse-ermitteln-btn");
+  await page.waitForTimeout(200);
+  check("Adresse: ohne Koordinaten Hinweis, keine Anfrage", /Koordinaten/.test(await page.$eval("#adresse-vorschlag", (el) => el.textContent)) && nominatimAnfragen.length === 0);
+  await page.fill("#f-latitude", "46.9481");
+  await page.fill("#f-longitude", "7.4474");
+  check("Adresse: keine Anfrage ohne Tipp", nominatimAnfragen.length === 0);
+  await page.click("#adresse-ermitteln-btn");
+  await page.waitForSelector("#adresse-uebernehmen-btn", { timeout: 4000 });
+  check("Adresse: genau eine Anfrage mit Koordinaten, ohne weitere Daten", nominatimAnfragen.length === 1 && /lat=46\.9481/.test(nominatimAnfragen[0]) && /lon=7\.4474/.test(nominatimAnfragen[0]) && !/9999|name/.test(nominatimAnfragen[0]));
+  check("Adresse: Lücken (Adresse, Ort) vorgewählt, Abweichung (PLZ) nicht", (await page.$eval("[data-adr='adresse']", (el) => el.checked)) && (await page.$eval("[data-adr='ort']", (el) => el.checked)) && (await page.$eval("[data-adr='plz']", (el) => el.checked)) === false);
+  check("Adresse: nichts ist übernommen, bevor «Übernehmen» getippt wird", (await page.$eval("#f-adresse", (el) => el.value)) === "" && (await page.$eval("#f-plz", (el) => el.value)) === "9999");
+  await page.click("#adresse-uebernehmen-btn");
+  check("Adresse: übernommen wird nur das Gewählte (PLZ bleibt)", (await page.$eval("#f-adresse", (el) => el.value)) === "Dorfstrasse 5" && (await page.$eval("#f-ort", (el) => el.value)) === "Muri bei Bern" && (await page.$eval("#f-plz", (el) => el.value)) === "9999");
+  await page.unroute("https://nominatim.openstreetmap.org/**");
+  await page.route("https://nominatim.openstreetmap.org/**", (route) => route.abort());
+  await page.click("#adresse-ermitteln-btn");
+  await page.waitForTimeout(300);
+  check("Adresse: ohne Verbindung eine verständliche Meldung", /Keine Verbindung zu OpenStreetMap/.test(await page.$eval("#adresse-vorschlag", (el) => el.textContent)));
+  await page.unroute("https://nominatim.openstreetmap.org/**");
+  const adr = await page.evaluate(async () => {
+    const m = await import("/src/adresse.js");
+    return {
+      ort: m.adresseAusAntwort({ address: { road: "A", house_number: "1", town: "T", postcode: "1" } }).ort,
+      leer: m.adresseAusAntwort({ address: {} }),
+      komma: m.gueltigeKoordinaten("46,9", "7,4"),
+      falsch: m.gueltigeKoordinaten("91", "7"),
+      gleich: m.vergleicheAdresse({ adresse: "Dorfstrasse 5" }, { adresse: " dorfstrasse  5 " })[0].status,
+    };
+  });
+  check("Adresse: Logik (Ort-Fallback, leer, Komma, Bereich, Vergleich)", adr.ort === "T" && adr.leer === null && adr.komma.latitude === 46.9 && adr.falsch === null && adr.gleich === "gleich");
+
+
+  // 2.0.0-dev.8: 24h-Automat.
+  await page.evaluate(() => {
+    const a = window.hofkarteApp;
+    a.state.hoflaeden = [{ id: "au1", version: 1, name: "Automat Eins", automat_24h: true, geoeffnet: true, oeffnungszeiten: [], sonderoeffnungszeiten: [{ datum_von: "2026-01-01", datum_bis: "2026-01-02", geschlossen: true }], bilder: [], angebote: [], zahlungsarten: [], bewertung: 0 }];
+    window.__gespeichertAutomat = null;
+    a.speichereHofladen = async (d) => { window.__gespeichertAutomat = d; return { ...d }; };
+  });
+  await gehe("#/hofladen/au1");
+  await page.waitForTimeout(250);
+  check("Automat: Detail zeigt «24h-Automat», keine Wochentage", /24h-Automat/.test(await page.$eval("#oeffnungszeiten-abschnitt", (el) => el.textContent)) && !/Montag|Mo:/.test(await page.$eval("#oeffnungszeiten-abschnitt", (el) => el.textContent)));
+  const automatInfo = await page.evaluate(async () => {
+    const g = await import("/src/gruppen.js");
+    const h = { automat_24h: true, sonderoeffnungszeiten: [{ datum_von: "2026-03-10", datum_bis: "2026-03-12", geschlossen: true }] };
+    return { normal: g.heuteKurzinfo(h, new Date(2026, 2, 5)), ferien: g.heuteKurzinfo(h, new Date(2026, 2, 11)), voll: g.vollstaendigkeit(g.HOF_GRUPPEN.find((x) => x.id === "oeffnungszeiten"), { automat_24h: true }) };
+  });
+  check(`Automat: Kurzinfo «Rund um die Uhr», in den Ferien «Heute geschlossen», Gruppe vollständig (${automatInfo.normal} / ${automatInfo.ferien})`, /Rund um die Uhr/.test(automatInfo.normal) && automatInfo.ferien === "Heute geschlossen" && automatInfo.voll === "voll");
+  await gehe("#/hofladen/au1/bearbeiten");
+  await page.waitForTimeout(250);
+  await page.evaluate(() => { document.querySelector("#gruppe-oeffnungszeiten").open = true; });
+  check("Automat: Schalter ist an, Wochenzeiten sind ausgeblendet", (await page.getAttribute("#automat-schalter", "aria-checked")) === "true" && (await page.$eval("#oeffnungszeiten-liste", (el) => el.hidden)));
+  check("Automat: Schalter ist mindestens 44px hoch", (await page.$eval("#automat-schalter", (el) => el.getBoundingClientRect().height)) >= 44);
+  await page.click("#automat-schalter");
+  check("Automat: Schalter aus zeigt die Wochenzeiten wieder und meldet Änderung", (await page.getAttribute("#automat-schalter", "aria-checked")) === "false" && !(await page.$eval("#oeffnungszeiten-liste", (el) => el.hidden)) && (await page.isVisible("#ungespeichert")));
+  await page.click("#automat-schalter");
+  await page.click("#automat-schalter");
+  await page.click("#speichern-btn");
+  await page.waitForTimeout(250);
+  check("Automat: Speichern sendet automat_24h", (await page.evaluate(() => window.__gespeichertAutomat))?.automat_24h === false);
+
   // Phase 7: Zugänglichkeit.
   await page.evaluate(() => { const a = window.hofkarteApp; a.state.hoflaeden = [{ id: "z1", name: "Zugang", bilder: [] }]; });
   await gehe("#/");
@@ -1255,6 +1375,57 @@ export async function fuehreSmokeTestsAus(page, baseUrl) {
   await page.emulateMedia({ colorScheme: "light" });
   check(`Kontrast hell ≥ 4,5:1 (${schlechtHell.join("; ")})`, schlechtHell.length === 0);
   check(`Kontrast dunkel ≥ 4,5:1 (${schlechtDunkel.join("; ")})`, schlechtDunkel.length === 0);
+
+  // --- 2.0.0-dev.8: Sprachen (DE/FR/IT/EN) ----------------------------------------
+  const setzeTesthof = () => page.evaluate(() => {
+    const a = window.hofkarteApp;
+    a.state.hoflaeden = [{
+      id: "i1", name: "Testhof", ort: "Bern", plz: "3000", adresse: "Dorfstrasse 1", latitude: 46.9, longitude: 7.4, geoeffnet: true, bewertung: 3,
+      oeffnungszeiten: [{ wochentag: 1, beginn: "08:00", ende: "12:00" }], angebote: [{ id: "a1", name: "Eier" }], zahlungsarten: [], bilder: [],
+      quellen: [{ feld: "name", quelle: "openstreetmap", status: "confirmed", url: null, lizenz: null }],
+    }];
+  });
+  await setzeTesthof();
+  await gehe("#/einstellungen");
+  check("Sprache: Auswahl in den Einstellungen vorhanden (Automatisch, DE, FR, IT, EN)", (await page.$$eval("#f-sprache option", (o) => o.map((x) => x.value).join(","))) === ",de,fr,it,en");
+  const DEUTSCH = /\b(und|nicht|noch|keine|bitte|hofladen|hofläden|speichern|abbrechen|öffnungszeiten|zurück|angaben|standort|wird|werden|für|oder|eine|einen|dein|deine|dieser|ergänzen|suchen|suche|verbindung|löschen|bearbeiten)\b/i;
+  const sammleTexte = () =>
+    page.evaluate(() => {
+      const teile = [document.body.innerText];
+      document.querySelectorAll("[aria-label],[title],[placeholder]").forEach((el) => {
+        for (const a of ["aria-label", "title", "placeholder"]) if (el.getAttribute(a)) teile.push(el.getAttribute(a));
+      });
+      return teile.join("\n");
+    });
+  const ROUTEN = ["#/", "#/karte", "#/hofladen/i1", "#/hofladen/i1/bearbeiten", "#/hofladen/i1/ergaenzen", "#/neu", "#/erfassen", "#/erfassen/vorort", "#/erfassen/schnell", "#/erfassen/webseite", "#/finden", "#/einstellungen"];
+  for (const [code, htmlLang, marke] of [["fr", "fr-CH", /Enregistrer|Rechercher|ferme/i], ["it", "it-CH", /Salva|Cerca|negozio agricolo/i], ["en", "en-GB", /Save|Search|farm shop/i]]) {
+    await gehe("#/einstellungen");
+    await page.selectOption("#f-sprache", code);
+    await page.waitForTimeout(200);
+    check(`Sprache ${code}: html lang = ${htmlLang}, Wahl nur im Gerätespeicher`, (await page.evaluate(() => document.documentElement.lang)) === htmlLang && (await page.evaluate(() => localStorage.getItem("hofkarte-sprache"))) === code);
+    const einstellungen = await sammleTexte();
+    check(`Sprache ${code}: Einstellungen werden neu gezeichnet und übersetzt`, marke.test(einstellungen) || !DEUTSCH.test(einstellungen));
+    const befunde = [];
+    for (const route of ROUTEN) {
+      await setzeTesthof();
+      await page.evaluate((h) => { window.location.hash = h; }, route);
+      await page.waitForTimeout(350);
+      const text = await sammleTexte();
+      const treffer = text.split("\n").filter((z) => DEUTSCH.test(z) && !/Testhof|Dorfstrasse|Bern/.test(z));
+      if (treffer.length) befunde.push(`${route}: ${treffer.slice(0, 3).join(" / ")}`);
+    }
+    check(`Sprache ${code}: keine deutschen Texte auf ${ROUTEN.length} Seiten (${befunde.slice(0, 4).join(" || ")})`, befunde.length === 0);
+    await setzeTesthof();
+    await page.evaluate(() => { window.location.hash = "#/hofladen/i1"; });
+    await page.waitForTimeout(300);
+    const detailText = await sammleTexte();
+    check(`Sprache ${code}: Detail zeigt übersetzte Gruppentitel (${detailText.replace(/\n+/g, " | ").slice(0, 300)})`, { fr: /horaires/i, it: /orari/i, en: /opening hours/i }[code].test(detailText));
+  }
+  // Zurück auf Deutsch (und «Automatisch» = Browsersprache de-CH).
+  await gehe("#/einstellungen");
+  await page.selectOption("#f-sprache", "");
+  await page.waitForTimeout(200);
+  check("Sprache: «Automatisch» folgt der Browsersprache (de-CH) und löscht die Wahl", (await page.evaluate(() => document.documentElement.lang)) === "de-CH" && (await page.evaluate(() => localStorage.getItem("hofkarte-sprache"))) === null);
 
   check(
     "Keine Konsolen-/Laufzeitfehler (ohne CDN-Netzwerkfehler aus der Sandbox)",

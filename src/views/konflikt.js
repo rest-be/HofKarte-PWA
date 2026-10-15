@@ -8,6 +8,7 @@
 
 import { escapeHtml } from "./list.js";
 import { icon } from "../icons.js";
+import { t } from "../i18n.js";
 
 const FELDER = [
   ["name", "Name"],
@@ -31,9 +32,9 @@ const FELDER = [
 
 function anzeige(wert, feld) {
   if (wert == null || wert === "" || (Array.isArray(wert) && wert.length === 0)) return "–";
-  if (feld === "bilder") return `${wert.length} Bild(er)`;
+  if (feld === "bilder") return t("{n} Bild(er)", { n: wert.length });
   if (feld === "angebote" || feld === "zahlungsarten") {
-    return wert.map((t) => (typeof t === "string" ? t : t.name || t.bezeichnung || JSON.stringify(t))).join(", ");
+    return wert.map((e) => (typeof e === "string" ? e : e.name || e.bezeichnung || JSON.stringify(e))).join(", ");
   }
   if (feld === "oeffnungszeiten") {
     return wert.map((o) => `${o.wochentag ?? ""} ${o.beginn ?? ""}–${o.ende ?? ""}`.trim()).join("; ");
@@ -48,7 +49,7 @@ export function berechneUnterschiede(meine, server) {
     ([feld]) => JSON.stringify(norm(meine?.[feld])) !== JSON.stringify(norm(server?.[feld]))
   ).map(([feld, label]) => ({
     feld,
-    label,
+    label: t(label),
     meine: anzeige(meine?.[feld], feld),
     server: anzeige(server?.[feld], feld),
   }));
@@ -57,8 +58,8 @@ export function berechneUnterschiede(meine, server) {
 export function renderKonflikt(container, app, hofladenId) {
   const op = app.konfliktFuer(hofladenId);
   if (!op) {
-    container.innerHTML = `<p class="hinweis-leiste">Kein offener Konflikt für diesen Hofladen.</p>
-      <p><a href="#/hofladen/${encodeURIComponent(hofladenId)}">Zur Detailansicht</a></p>`;
+    container.innerHTML = `<p class="hinweis-leiste">${t("Kein offener Konflikt für diesen Hofladen.")}</p>
+      <p><a href="#/hofladen/${encodeURIComponent(hofladenId)}">${t("Zur Detailansicht")}</a></p>`;
     return;
   }
   const meine = op.daten;
@@ -66,25 +67,25 @@ export function renderKonflikt(container, app, hofladenId) {
   const unterschiede = berechneUnterschiede(meine, server);
 
   container.innerHTML = `
-    <h2>Versionskonflikt: ${escapeHtml(meine.name || server?.name || "")}</h2>
-    <p class="hinweis-leiste">${icon("warnung", { klein: true })} Dieser Hofladen wurde auf einem anderen Gerät geändert, seit du ihn geöffnet hast. Bitte wähle, welche Version gelten soll.</p>
+    <h2>${t("Versionskonflikt:")} ${escapeHtml(meine.name || server?.name || "")}</h2>
+    <p class="hinweis-leiste">${icon("warnung", { klein: true })} ${t("Dieser Hofladen wurde auf einem anderen Gerät geändert, seit du ihn geöffnet hast. Bitte wähle, welche Version gelten soll.")}</p>
     ${
       unterschiede.length
         ? `<div class="konflikt-liste">${unterschiede
             .map(
               (u) => `<section class="formular-abschnitt konflikt-feld" data-feld="${u.feld}">
                 <h3>${escapeHtml(u.label)}</h3>
-                <p><strong>Meine Version:</strong> ${escapeHtml(u.meine)}</p>
-                <p><strong>Server-Version:</strong> ${escapeHtml(u.server)}</p>
+                <p><strong>${t("Meine Version:")}</strong> ${escapeHtml(u.meine)}</p>
+                <p><strong>${t("Server-Version:")}</strong> ${escapeHtml(u.server)}</p>
               </section>`
             )
             .join("")}</div>`
-        : `<p>Die Inhalte sind identisch – nur die Versionsnummer weicht ab.</p>`
+        : `<p>${t("Die Inhalte sind identisch – nur die Versionsnummer weicht ab.")}</p>`
     }
     <p id="konflikt-fehler" class="hinweis-leiste fehler" hidden></p>
     <div class="aktions-reihe">
-      <button type="button" class="primaer" id="konflikt-meine">Meine Version übernehmen</button>
-      <button type="button" id="konflikt-server">Server-Version übernehmen</button>
+      <button type="button" class="primaer" id="konflikt-meine">${t("Meine Version übernehmen")}</button>
+      <button type="button" id="konflikt-server">${t("Server-Version übernehmen")}</button>
     </div>
   `;
 

@@ -39,6 +39,7 @@ import { renderErfassenEinstieg, renderVorOrt, renderSchnell, renderGespeichert 
 import { icon } from "./icons.js";
 import { initialisiereDesign } from "./design.js";
 import { initialisiereUpdates, zeigeUpdateHinweis } from "./update.js";
+import { t, tn, initialisiereSprache } from "./i18n.js";
 
 const appContainer = document.getElementById("app");
 const CACHE_KEY_LISTE = "hoflaeden-liste";
@@ -216,7 +217,7 @@ const app = {
   _pruefeVerbindung() {
     if (!this.haClient) {
       throw new Error(
-        "Keine Verbindung zu Home Assistant. Bitte VPN/Heimnetz prüfen und erneut versuchen."
+        t("Keine Verbindung zu Home Assistant. Bitte VPN/Heimnetz prüfen und erneut versuchen.")
       );
     }
   },
@@ -337,7 +338,7 @@ const app = {
    * alte Verbindung getrennt und die neue dauerhaft gespeichert. */
   async aktualisiereToken(neuesToken) {
     if (!this.haUrl) {
-      throw new Error("Keine bestehende Verbindung - bitte die App neu einrichten.");
+      throw new Error(t("Keine bestehende Verbindung - bitte die App neu einrichten."));
     }
     const neuerClient = new HaClient(this.haUrl, neuesToken);
     await neuerClient.verbinden();
@@ -503,13 +504,13 @@ function syncStatusHtml() {
   const anzahl = app.state.ausstehendeAnzahl || 0;
   const konflikte = app.state.konflikte || [];
   if (konflikte.length) {
-    return `<a class="sync-status konflikt" href="#/konflikt/${encodeURIComponent(konflikte[0].hofladenId)}">${icon("warnung", { klein: true })} ${konflikte.length === 1 ? "1 Konflikt" : `${konflikte.length} Konflikte`}</a>`;
+    return `<a class="sync-status konflikt" href="#/konflikt/${encodeURIComponent(konflikte[0].hofladenId)}">${icon("warnung", { klein: true })} ${tn(konflikte.length, "1 Konflikt", "{n} Konflikte")}</a>`;
   }
   if (!app.haClient) {
-    return `<span class="sync-status offline">${icon("offline", { klein: true })} Offline${anzahl ? ` (${anzahl} ausstehend)` : ""}</span>`;
+    return `<span class="sync-status offline">${icon("offline", { klein: true })} ${t("Offline")}${anzahl ? ` (${t("{n} ausstehend", { n: anzahl })})` : ""}</span>`;
   }
   if (anzahl > 0) {
-    return `<span class="sync-status wird-synchronisiert">↻ Wird synchronisiert …</span>`;
+    return `<span class="sync-status wird-synchronisiert">↻ ${t("Wird synchronisiert …")}</span>`;
   }
   return "";
 }
@@ -611,23 +612,24 @@ function aktualisiereSyncLeiste() {
  * (mit Blur), dazwischen scrollt die Seite.
  * opts: { titel, gross (Large Title), tiefe (0 = Tab-Ebene), zurueck (Hash) } */
 function renderMitRahmen(viewRender, aktiverTab, opts = {}) {
-  const { titel = "HofKarte", gross = false, tiefe = 0, zurueck = null } = opts;
+  const { gross = false, tiefe = 0, zurueck = null } = opts;
+  const titel = t(opts.titel || "HofKarte");
   const richtung = tiefe > letzteTiefe ? "slide-vor" : tiefe < letzteTiefe ? "slide-zurueck" : "";
   letzteTiefe = tiefe;
 
   const hashGeaendert = letzterHash !== null && window.location.hash !== letzterHash;
   appContainer.innerHTML = `
-    <button type="button" class="skip-link" id="skip-link">Zum Inhalt</button>
+    <button type="button" class="skip-link" id="skip-link">${t("Zum Inhalt")}</button>
     <header class="kopfzeile${gross ? "" : " ohne-gross"}">
       <div class="nav-zeile">
         <div class="nav-links">
-          ${zurueck ? `<button type="button" class="nav-btn zurueck" id="zurueck-btn" aria-label="Zurück">${ICON_ZURUECK}Zurück</button>` : ""}
+          ${zurueck ? `<button type="button" class="nav-btn zurueck" id="zurueck-btn" aria-label="${t("Zurück")}">${ICON_ZURUECK}${t("Zurück")}</button>` : ""}
         </div>
         ${gross ? `<div class="nav-titel" aria-hidden="true">${titel}</div>` : `<h1 class="nav-titel">${titel}</h1>`}
         <div class="nav-rechts">
           ${
             tiefe === 0 || opts.einstellungenBtn
-              ? `<button type="button" class="nav-btn" id="einstellungen-btn" title="Einstellungen" aria-label="Einstellungen">${ICON_EINSTELLUNGEN}</button>`
+              ? `<button type="button" class="nav-btn" id="einstellungen-btn" title="${t("Einstellungen")}" aria-label="${t("Einstellungen")}">${ICON_EINSTELLUNGEN}</button>`
               : ""
           }
         </div>
@@ -641,10 +643,10 @@ function renderMitRahmen(viewRender, aktiverTab, opts = {}) {
       ${gross ? `<h1 class="grosser-titel">${titel}</h1>` : ""}
       <main class="inhalt" id="inhalt" tabindex="-1"></main>
     </div>
-    <nav class="tableiste" aria-label="Hauptnavigation">
-      <button data-tab="liste"><span class="icon">${TAB_ICONS.liste}</span>Liste</button>
-      <button data-tab="karte"><span class="icon">${TAB_ICONS.karte}</span>Karte</button>
-      <button data-tab="erfassen"><span class="icon">${TAB_ICONS.neu}</span>Erfassen</button>
+    <nav class="tableiste" aria-label="${t("Hauptnavigation")}">
+      <button data-tab="liste"><span class="icon">${TAB_ICONS.liste}</span>${t("Liste")}</button>
+      <button data-tab="karte"><span class="icon">${TAB_ICONS.karte}</span>${t("Karte")}</button>
+      <button data-tab="erfassen"><span class="icon">${TAB_ICONS.neu}</span>${t("Erfassen")}</button>
     </nav>
   `;
 
@@ -768,8 +770,11 @@ async function starteAppIntern(wiederverbindung) {
   aktualisiereAnsicht();
 }
 
+initialisiereSprache();
 initialisiereDesign();
 starteApp();
+// Sprachwechsel: aktuelle Ansicht neu zeichnen.
+app.neuZeichnen = () => route();
 
 // Service Worker und Update-Suche (src/update.js; zuvor Inline-Skript in index.html - entfällt wegen CSP).
 initialisiereUpdates(zeigeUpdateHinweis);

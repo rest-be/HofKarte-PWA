@@ -83,6 +83,11 @@ async function bereiteTestkopieVor() {
 }
 
 async function main() {
+  const { fuehreI18nTestsAus } = await import(path.join(REPO_ROOT, "tests", "i18n-test.mjs"));
+  if (!(await fuehreI18nTestsAus())) {
+    console.error("\nSprachtests fehlgeschlagen.");
+    process.exit(1);
+  }
   const tempDir = await bereiteTestkopieVor();
   const server = await starteStatischenServer(tempDir);
   const { port } = server.address();
@@ -96,7 +101,8 @@ async function main() {
   const browser = await chromium.launch(launchOptions);
   let erfolgreich = false;
   try {
-    const page = await browser.newPage();
+    const context = await browser.newContext({ locale: "de-CH" });
+    const page = await context.newPage();
     const { fuehreSmokeTestsAus } = await import(path.join(REPO_ROOT, "tests", "smoke-test.js"));
     erfolgreich = await fuehreSmokeTestsAus(page, baseUrl);
   } finally {

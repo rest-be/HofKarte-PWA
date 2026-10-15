@@ -1,6 +1,6 @@
 # HofKarte-PWA
 
-**Version: 2.0.0-dev.7** – siehe Abschnitt [Version](#version) unten für die
+**Version: 2.0.0-dev.8** – siehe Abschnitt [Version](#version) unten für die
 installierte Version auf einem konkreten Gerät.
 
 Progressive Web App für HofKarte – ein reiner, zustandsloser Client für die
@@ -56,6 +56,8 @@ src/
   bilder.js               Vorschau-URLs und Verkleinerung vor dem Upload
   naehe.js                „Hofläden in der Nähe“ (Geolocation + HA-Action), Entfernung (Haversine)
   fokus.js                Fokusführung bei Seiten-/Schrittwechseln
+  i18n.js, i18n/          Sprachen (DE/FR/IT/EN): t(), tn(), Wörterbücher fr/it/en
+  adresse.js              Adresse aus Koordinaten (Nominatim, nur auf Tipp)
   design.js, gruppen.js   Markenfarbe/Kontraste; Gruppenmodell (Vollständigkeit)
   ergaenzen.js, update.js Vergleich „Angaben ergänzen“; Update-Funktion
   icons.js                Icon-Satz (SVG, ohne Fremdbibliothek)
@@ -102,6 +104,7 @@ READMEs.
 
 | Version | Datum | Wesentliche Änderungen |
 |---|---|---|
+| 2.0.0-dev.8 | 2026-10-15 | Vier Sprachen (DE/FR/IT/EN), 24h-Automat, Adresse aus Koordinaten (OpenStreetMap), „Angaben ergänzen“ mit OpenStreetMap, runder Farbpunkt. |
 | 2.0.0-dev.7 | 2026-10-14 | Zugänglichkeit (Fokusführung, „Zum Inhalt“, sichtbarer Tastaturfokus, Kontraste ≥ 4,5:1 hell und dunkel), „Erweiterte Suche“ fragt den Standort nur auf Tipp, Geräte-Test-Checkliste. |
 | 2.0.0-dev.6 | 2026-10-14 | Liste mit Filter-Chips und Entfernung auf Tipp; Karte mit Vorschau-Sheet, „Mein Standort“, Formmarkern und Filter „Nur geöffnet“. |
 | 2.0.0-dev.5 | 2026-10-14 | „Von der Webseite“ erfassen und „Angaben ergänzen“ für Bestehendes (Lücken vorgewählt, Abweichungen nie). |
@@ -357,6 +360,30 @@ Home-Bildschirm-Verknüpfung, wenn die installierte Version vor 2.0.0-dev.4 ist
 und die Verknüpfung neu anlegen; danach genügt „Nach Update suchen“ bzw. der
 Hinweis „Neue Version verfügbar“. Im Notfall „App zurücksetzen“ (die Anmeldung
 bleibt erhalten).
+
+## Sprachen, 24h-Automat und OpenStreetMap (ab 2.0.0-dev.8)
+
+- **Sprachen:** Deutsch, Français, Italiano, English. Gewählt wird unter
+  *Einstellungen → Sprache*; ohne Wahl gilt die Browsersprache (sonst Deutsch).
+  Die Wahl gilt pro Gerät (`localStorage`, nie auf dem Server). Der deutsche Text ist
+  zugleich der Schlüssel (`t("Speichern")`, `tn(n, "1 Hofladen", "{n} Hofläden")`);
+  fehlt eine Übersetzung, erscheint Deutsch. Begriffe: FR «ferme», IT «negozio agricolo»,
+  EN «farm shop». Nicht übersetzt werden Release Notes sowie Texte, die aus Home
+  Assistant kommen (Namen, Beschreibungen, Hinweise der Integration).
+  `tests/i18n-test.mjs` prüft, dass jeder `t()`-Text in allen drei Wörterbüchern steht und
+  die Platzhalter übereinstimmen; ein Smoke-Test durchläuft zwölf Ansichten in FR/IT/EN
+  und sucht nach deutschen Resten.
+- **24h-Automat:** Schalter in der Gruppe «Öffnungszeiten». Dann gilt der Hofladen
+  rund um die Uhr als geöffnet (ausser an Tagen mit Sonder-Schliessung); die
+  Wochenzeiten werden ausgeblendet und nicht verwendet. Das Feld `automat_24h` gibt es
+  ab HofKarte-HA **2026.10.2**; ältere Versionen speichern es nicht.
+- **Adresse aus Koordinaten:** Schaltfläche in der Gruppe «Adresse & Standort». Nur auf
+  Tipp werden die Koordinaten (nichts sonst) an Nominatim (OpenStreetMap, ODbL)
+  gesendet. Lücken sind vorgewählt, Abweichungen nie; übernommen wird erst nach
+  «Übernehmen», gespeichert erst im Editor.
+- **Angaben ergänzen mit OpenStreetMap:** Quelle wählbar (Webseite und/oder
+  OpenStreetMap). OpenStreetMap wird am gespeicherten Standort (300 m) durchsucht, der
+  eigene Standort wird nicht abgefragt.
 
 ## Bekannte Einschränkungen (MVP)
 

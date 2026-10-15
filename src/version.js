@@ -18,7 +18,7 @@
  * Beim Erhöhen bitte auch im README (Abschnitt "Version") und im
  * Vorgehensplan nachziehen.
  */
-export const APP_VERSION = "2.0.0-dev.7";
+export const APP_VERSION = "2.0.0-dev.8";
 
 /**
  * Release Notes (neueste zuerst), angezeigt auf dem Einrichtungsbildschirm
@@ -26,6 +26,17 @@ export const APP_VERSION = "2.0.0-dev.7";
  * ergänzen (und die Tabelle im README nachziehen).
  */
 export const RELEASE_NOTES = [
+  {
+    version: "2.0.0-dev.8",
+    datum: "2026-10-15",
+    punkte: [
+      "Die App gibt es jetzt auf Deutsch, Französisch, Italienisch und Englisch (Einstellungen → Sprache; Standard ist die Browsersprache).",
+      "24h-Automat: neuer Schalter bei den Öffnungszeiten (benötigt HofKarte-HA 2026.10.2).",
+      "Adresse aus den Koordinaten ermitteln (OpenStreetMap, nur auf Tipp; nichts wird ohne Auswahl überschrieben).",
+      "„Angaben ergänzen“ wahlweise mit OpenStreetMap statt (oder zusätzlich zu) der Webseite.",
+      "Der Farbpunkt in den Einstellungen ist wieder rund.",
+    ],
+  },
   {
     version: "2.0.0-dev.7",
     datum: "2026-10-14",

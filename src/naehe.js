@@ -17,6 +17,8 @@
  * weitergereicht.
  */
 
+import { t } from "./i18n.js";
+
 /** Standard-Umkreis (Meter); pro Gerät in den Einstellungen änderbar. */
 const STANDARD_RADIUS_METER = 500;
 const MIN_RADIUS_METER = 50;
@@ -30,7 +32,7 @@ const MAX_RADIUS_METER = 50000;
 function aktuellerStandort() {
   return new Promise((resolve, reject) => {
     if (!("geolocation" in navigator)) {
-      reject(new Error("Dieser Browser unterstützt keine Standortabfrage."));
+      reject(new Error(t("Dieser Browser unterstützt keine Standortabfrage.")));
       return;
     }
     navigator.geolocation.getCurrentPosition(
@@ -43,11 +45,11 @@ function aktuellerStandort() {
         if (err.code === err.PERMISSION_DENIED) {
           reject(
             new Error(
-              "Standortzugriff wurde abgelehnt. Bitte in den Geräte-Einstellungen erlauben."
+              t("Standortzugriff wurde abgelehnt. Bitte in den Geräte-Einstellungen erlauben.")
             )
           );
         } else {
-          reject(new Error("Standort konnte nicht ermittelt werden."));
+          reject(new Error(t("Standort konnte nicht ermittelt werden.")));
         }
       },
       { enableHighAccuracy: false, timeout: 10_000, maximumAge: 60_000 }

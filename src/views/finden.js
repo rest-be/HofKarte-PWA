@@ -34,6 +34,7 @@ import {
 } from "../finden.js";
 import { icon } from "../icons.js";
 import { fokussiereSchritt } from "../fokus.js";
+import { t, tn } from "../i18n.js";
 
 const ANREICHERN_TIMEOUT_MS = 90_000;
 
@@ -67,7 +68,7 @@ function neuerZustand() {
 }
 
 function meldung(err, fallback) {
-  return FINDEN_FEHLERMELDUNGEN[err?.code] || err?.message || fallback;
+  return FINDEN_FEHLERMELDUNGEN[err?.code] || err?.message || t(fallback);
 }
 
 export function renderFinden(container, app) {
@@ -113,8 +114,8 @@ export function renderFinden(container, app) {
 
   function zeichne() {
     if (!aktiv) return;
-    const namen = { 1: "Suche", 2: "Treffer wählen", 3: "Angaben prüfen" };
-    container.innerHTML = `<div data-finden class="finden"><h2 class="nur-leser" data-fokus>Schritt ${z.schritt} von 3: ${namen[z.schritt]}</h2>${html()}</div>`;
+    const namen = { 1: t("Suche"), 2: t("Treffer wählen"), 3: t("Angaben prüfen") };
+    container.innerHTML = `<div data-finden class="finden"><h2 class="nur-leser" data-fokus>${escapeHtml(t("Schritt {n} von 3: {name}", { n: z.schritt, name: namen[z.schritt] }))}</h2>${html()}</div>`;
     binde();
     // Fokus nur bei einem Schrittwechsel, nicht bei jedem Neuzeichnen.
     if (letzterSchritt !== undefined && letzterSchritt !== z.schritt) fokussiereSchritt(container);
@@ -126,33 +127,33 @@ export function renderFinden(container, app) {
   function schritt1() {
     const kiBlock = z.kiEntitaet
       ? `<label class="finden-check"><input type="checkbox" data-ki ${z.ki ? "checked" : ""}>
-           <span>Website-Text mit KI auswerten (Angebote, Zahlungsarten, Öffnungszeiten)<br>
-           <span class="muted">Der Text der Website wird an <b>${escapeHtml(z.kiEntitaet)}</b> gesendet – je nach Anbieter verlässt er dein Netzwerk. Die KI schlägt nur vor; Belegtes und Vermutetes wird getrennt angezeigt.</span></span></label>`
-      : `<p class="muted" data-ki-hinweis>${icon("funkeln", { klein: true })} KI-Auswertung nicht eingerichtet. Zum Aktivieren in Home Assistant unter Einstellungen → Geräte &amp; Dienste → HofKarte → Konfigurieren eine „AI Task“-Entität wählen (setzt eine KI-Integration wie Ollama oder OpenAI voraus).</p>`;
+           <span>${escapeHtml(t("Website-Text mit KI auswerten (Angebote, Zahlungsarten, Öffnungszeiten)"))}<br>
+           <span class="muted">${t("Der Text der Website wird an <b>{ki}</b> gesendet – je nach Anbieter verlässt er dein Netzwerk. Die KI schlägt nur vor; Belegtes und Vermutetes wird getrennt angezeigt.", { ki: escapeHtml(z.kiEntitaet) })}</span></span></label>`
+      : `<p class="muted" data-ki-hinweis>${icon("funkeln", { klein: true })} ${escapeHtml(t("KI-Auswertung nicht eingerichtet. Zum Aktivieren in Home Assistant unter Einstellungen → Geräte & Dienste → HofKarte → Konfigurieren eine „AI Task“-Entität wählen (setzt eine KI-Integration wie Ollama oder OpenAI voraus)."))}</p>`;
     return `
-      <p class="muted finden-intro">Sucht in OpenStreetMap nach Hofläden in der Nähe und liest, falls vorhanden, deren Website aus. Es wird nichts gespeichert.</p>
+      <p class="muted finden-intro">${escapeHtml(t("Sucht in OpenStreetMap nach Hofläden in der Nähe und liest, falls vorhanden, deren Website aus. Es wird nichts gespeichert."))}</p>
       <section class="formular-abschnitt">
-        <h2>Suche</h2>
-        <div class="feld-gruppe"><label>Name (optional)</label>
+        <h2>${escapeHtml(t("Suche"))}</h2>
+        <div class="feld-gruppe"><label>${escapeHtml(t("Name (optional)"))}</label>
           <input type="text" data-feld="name" value="${escapeHtml(z.name)}" autocomplete="off" /></div>
-        <div class="feld-gruppe"><label>Website (optional)</label>
+        <div class="feld-gruppe"><label>${escapeHtml(t("Website (optional)"))}</label>
           <input type="url" data-feld="website" value="${escapeHtml(z.website)}" placeholder="https://…" autocomplete="off" /></div>
-        <div class="feld-gruppe"><label>Breitengrad</label>
+        <div class="feld-gruppe"><label>${escapeHtml(t("Breitengrad"))}</label>
           <input type="text" inputmode="decimal" data-feld="latitude" value="${escapeHtml(String(z.latitude))}" /></div>
-        <div class="feld-gruppe"><label>Längengrad</label>
+        <div class="feld-gruppe"><label>${escapeHtml(t("Längengrad"))}</label>
           <input type="text" inputmode="decimal" data-feld="longitude" value="${escapeHtml(String(z.longitude))}" /></div>
-        <button type="button" class="hinzufuegen-btn" data-standort>${icon("standort", { klein: true })} Mein Standort</button>
+        <button type="button" class="hinzufuegen-btn" data-standort>${icon("standort", { klein: true })} ${escapeHtml(t("Mein Standort"))}</button>
         <p class="muted${z.standortFehler ? " fehler-text" : ""}" data-standort-text>${escapeHtml(z.standortText)}</p>
-        <div class="feld-gruppe"><label>Umkreis: <span data-radius-anzeige>${escapeHtml(radiusText(z.radius))}</span></label>
+        <div class="feld-gruppe"><label>${escapeHtml(t("Umkreis"))}: <span data-radius-anzeige>${escapeHtml(radiusText(z.radius))}</span></label>
           <input type="range" min="${FINDEN_MIN_RADIUS_METER}" max="${FINDEN_MAX_RADIUS_METER}" step="50" value="${z.radius}" data-radius /></div>
         <label class="finden-check"><input type="checkbox" data-erweitert ${z.erweitert ? "checked" : ""}>
-          <span>Erweiterte Suche (mehr Tags, langsamer, noch wenig getestet)</span></label>
+          <span>${escapeHtml(t("Erweiterte Suche (mehr Tags, langsamer, noch wenig getestet)"))}</span></label>
         ${kiBlock}
       </section>
       ${fehlerHtml()}
       <div class="aktions-reihe">
-        <button type="button" class="primaer" data-suchen ${z.busy ? "disabled" : ""}>${z.busy ? "Suche läuft …" : "Suchen"}</button>
-        <button type="button" data-leer>Manuell erfassen</button>
+        <button type="button" class="primaer" data-suchen ${z.busy ? "disabled" : ""}>${escapeHtml(z.busy ? t("Suche läuft …") : t("Suchen"))}</button>
+        <button type="button" data-leer>${escapeHtml(t("Manuell erfassen"))}</button>
       </div>`;
   }
 
@@ -165,11 +166,11 @@ export function renderFinden(container, app) {
         return `<label class="finden-kandidat${z.gewaehlt === i ? " gewaehlt" : ""}">
           <input type="radio" name="finden-kandidat" value="${i}" data-kandidat ${z.gewaehlt === i ? "checked" : ""} />
           <span class="finden-text">
-            <span class="finden-name">${escapeHtml(k.name || "(ohne Namen)")}</span>
-            <span class="muted">${escapeHtml(KONFIDENZ_TEXT[k.konfidenz] || "")}</span>
+            <span class="finden-name">${escapeHtml(k.name || t("(ohne Namen)"))}</span>
+            <span class="muted">${escapeHtml(KONFIDENZ_TEXT[k.konfidenz] ? t(KONFIDENZ_TEXT[k.konfidenz]) : "")}</span>
             ${adresse ? `<span class="muted">${escapeHtml(adresse)}</span>` : ""}
             <span class="muted">${escapeHtml(kandidatGruende(k))}</span>
-            ${bestehend ? `<span class="finden-warnung">${icon("warnung", { klein: true })} Möglicherweise schon erfasst: ${escapeHtml(bestehend.name)}</span>` : ""}
+            ${bestehend ? `<span class="finden-warnung">${icon("warnung", { klein: true })} ${escapeHtml(t("Möglicherweise schon erfasst: {name}", { name: bestehend.name }))}</span>` : ""}
           </span></label>`;
       })
       .join("");
@@ -177,16 +178,16 @@ export function renderFinden(container, app) {
     return `
       <p class="muted finden-intro">${
         z.kandidaten.length
-          ? `${z.kandidaten.length} Treffer. Bitte den passenden Hofladen wählen (sortiert nach Übereinstimmung).`
-          : "In OpenStreetMap wurde im Umkreis nichts gefunden. Du kannst die Website direkt auswerten lassen oder den Hofladen von Hand erfassen."
+          ? escapeHtml(tn(z.kandidaten.length, "1 Treffer. Bitte den passenden Hofladen wählen (sortiert nach Übereinstimmung).", "{n} Treffer. Bitte den passenden Hofladen wählen (sortiert nach Übereinstimmung)."))
+          : escapeHtml(t("In OpenStreetMap wurde im Umkreis nichts gefunden. Du kannst die Website direkt auswerten lassen oder den Hofladen von Hand erfassen."))
       }</p>
-      ${z.kandidaten.length ? `<section class="formular-abschnitt"><h2>Treffer</h2>${eintraege}</section>` : ""}
+      ${z.kandidaten.length ? `<section class="formular-abschnitt"><h2>${escapeHtml(t("Treffer"))}</h2>${eintraege}</section>` : ""}
       ${fehlerHtml()}
       <div class="aktions-reihe">
-        <button type="button" class="primaer" data-weiter ${z.gewaehlt === null ? "disabled" : ""}>Weiter</button>
-        ${mitWebsite ? `<button type="button" data-nur-website>Nur Website auswerten</button>` : ""}
-        <button type="button" data-leer>Manuell erfassen</button>
-        <button type="button" data-zurueck>Zurück</button>
+        <button type="button" class="primaer" data-weiter ${z.gewaehlt === null ? "disabled" : ""}>${escapeHtml(t("Weiter"))}</button>
+        ${mitWebsite ? `<button type="button" data-nur-website>${escapeHtml(t("Nur Website auswerten"))}</button>` : ""}
+        <button type="button" data-leer>${escapeHtml(t("Manuell erfassen"))}</button>
+        <button type="button" data-zurueck>${escapeHtml(t("Zurück"))}</button>
       </div>`;
   }
 
@@ -196,7 +197,7 @@ export function renderFinden(container, app) {
     const status = (phase, titel) => {
       const e = ev[phase];
       if (!e) return z.busy ? `⏳ ${titel} …` : "";
-      const text = phase === "website" ? FINDEN_WEBSITE_STATUS[e.status] || e.status : "OpenStreetMap-Daten übernommen";
+      const text = phase === "website" ? FINDEN_WEBSITE_STATUS[e.status] || e.status : t("OpenStreetMap-Daten übernommen");
       return `${e.status === "ok" ? "✔" : "ℹ"} ${text}`;
     };
     const kiText = !z.ki
@@ -204,11 +205,11 @@ export function renderFinden(container, app) {
       : ev.ki
         ? `${ev.ki.status === "ok" ? "✔" : "ℹ"} ${FINDEN_KI_STATUS[ev.ki.status] || ev.ki.status}`
         : z.busy
-          ? "⏳ KI …"
+          ? `⏳ ${t("KI …")}`
           : "";
-    const fortschritt = [status("osm", "OpenStreetMap"), status("website", "Website"), kiText]
+    const fortschritt = [status("osm", "OpenStreetMap"), status("website", t("Website")), kiText]
       .filter(Boolean)
-      .map((t) => `<p class="muted finden-status">${escapeHtml(t)}</p>`)
+      .map((s) => `<p class="muted finden-status">${escapeHtml(s)}</p>`)
       .join("");
 
     let zeilen = "";
@@ -229,7 +230,7 @@ export function renderFinden(container, app) {
           : "";
         const abwFeld = zeile.felder.find((x) => abweichungen[x]);
         const abw = abwFeld
-          ? `<span class="finden-warnung">${icon("warnung", { klein: true })} weicht von ${escapeHtml(FINDEN_QUELLEN_LABEL[abweichungen[abwFeld]] || "der anderen Quelle")} ab</span>`
+          ? `<span class="finden-warnung">${icon("warnung", { klein: true })} ${escapeHtml(t("weicht von {quelle} ab", { quelle: FINDEN_QUELLEN_LABEL[abweichungen[abwFeld]] || t("der anderen Quelle") }))}</span>`
           : "";
         zeilen += `<label class="finden-zeile"><input type="checkbox" data-feldwahl="${escapeHtml(zeile.key)}" ${z.felder[zeile.key] ? "checked" : ""} />
           <span class="finden-text"><span class="finden-label">${escapeHtml(zeile.label)}</span>
@@ -241,24 +242,24 @@ export function renderFinden(container, app) {
         const werte = Array.isArray(vermutungen[v.key]) ? vermutungen[v.key] : [];
         if (!werte.length) continue;
         vermutet += `<label class="finden-zeile finden-vermutung"><input type="checkbox" data-feldwahl="vermutung:${escapeHtml(v.key)}" ${z.felder[`vermutung:${v.key}`] ? "checked" : ""} />
-          <span class="finden-text"><span class="finden-label">${escapeHtml(v.label)} (vermutet)</span>
+          <span class="finden-text"><span class="finden-label">${escapeHtml(v.label)} ${escapeHtml(t("(vermutet)"))}</span>
           <span>${escapeHtml(werte.map((x) => x.name ?? x).join(", "))}</span>
-          <span class="finden-warnung">${icon("warnung", { klein: true })} Von der KI genannt, steht aber nicht im Text der Website. Bitte selbst prüfen.</span></span></label>`;
+          <span class="finden-warnung">${icon("warnung", { klein: true })} ${escapeHtml(t("Von der KI genannt, steht aber nicht im Text der Website. Bitte selbst prüfen."))}</span></span></label>`;
       }
-      if (!zeilen && !vermutet) zeilen = `<p class="muted">Es wurden keine verwertbaren Angaben gefunden.</p>`;
+      if (!zeilen && !vermutet) zeilen = `<p class="muted">${escapeHtml(t("Es wurden keine verwertbaren Angaben gefunden."))}</p>`;
       var block = `
-        <p class="muted finden-intro">Gewählte Angaben werden in ein neues Formular übernommen. Gespeichert wird erst dort.</p>
-        ${zeilen ? `<section class="formular-abschnitt"><h2>Angaben</h2>${zeilen}</section>` : ""}
-        ${vermutet ? `<section class="formular-abschnitt"><h2>Vermutungen der KI (nicht belegt)</h2>${vermutet}</section>` : ""}
-        ${osmDabei ? `<p class="muted">© OpenStreetMap-Mitwirkende (ODbL)</p>` : ""}`;
+        <p class="muted finden-intro">${escapeHtml(t("Gewählte Angaben werden in ein neues Formular übernommen. Gespeichert wird erst dort."))}</p>
+        ${zeilen ? `<section class="formular-abschnitt"><h2>${escapeHtml(t("Angaben"))}</h2>${zeilen}</section>` : ""}
+        ${vermutet ? `<section class="formular-abschnitt"><h2>${escapeHtml(t("Vermutungen der KI (nicht belegt)"))}</h2>${vermutet}</section>` : ""}
+        ${osmDabei ? `<p class="muted">${escapeHtml(t("© OpenStreetMap-Mitwirkende (ODbL)"))}</p>` : ""}`;
     }
     return `
       <div class="finden-fortschritt">${fortschritt}</div>
       ${block || ""}
       ${fehlerHtml()}
       <div class="aktions-reihe">
-        <button type="button" class="primaer" data-uebernehmen ${z.vorschlag ? "" : "disabled"}>In Formular übernehmen</button>
-        <button type="button" data-zurueck>Zurück</button>
+        <button type="button" class="primaer" data-uebernehmen ${z.vorschlag ? "" : "disabled"}>${escapeHtml(t("In Formular übernehmen"))}</button>
+        <button type="button" data-zurueck>${escapeHtml(t("Zurück"))}</button>
       </div>`;
   }
 
@@ -272,7 +273,7 @@ export function renderFinden(container, app) {
 
   // --- Aktionen -------------------------------------------------------------
   async function ermittleStandort() {
-    z.standortText = "Standort wird ermittelt …";
+    z.standortText = t("Standort wird ermittelt …");
     z.standortFehler = false;
     aktualisiereStandortText();
     let pos = null;
@@ -288,10 +289,10 @@ export function renderFinden(container, app) {
     if (pos) {
       z.latitude = pos.latitude.toFixed(6);
       z.longitude = pos.longitude.toFixed(6);
-      z.standortText = "Aktueller Standort des Geräts übernommen.";
+      z.standortText = t("Aktueller Standort des Geräts übernommen.");
       z.standortFehler = false;
     } else {
-      z.standortText = `${fehler.message} Koordinaten können von Hand eingetragen werden.`;
+      z.standortText = `${fehler.message} ${t("Koordinaten können von Hand eingetragen werden.")}`;
       z.standortFehler = true;
     }
     if (z.schritt === 1 && !z.busy) zeichne();
@@ -382,7 +383,7 @@ export function renderFinden(container, app) {
         timer = setTimeout(() => {
           if (z.busy) {
             z.busy = false;
-            z.fehler = "Die Anreicherung hat zu lange gedauert.";
+            z.fehler = t("Die Anreicherung hat zu lange gedauert.");
             beendeAbo();
             zeichne();
           }
