@@ -40,18 +40,20 @@ export function renderEinstellungen(container, app) {
       <div class="farb-vorschau">
         <span class="vorschau-knopf">${t("Vorschau")}</span>
         <span class="status-badge offen">${t("Offen bis {zeit}", { zeit: "18:30" })}</span>
-        <button type="button" id="farbe-zuruecksetzen">${t("Zurücksetzen")}</button>
+        <button type="button" class="hinzufuegen-btn" id="farbe-zuruecksetzen">${t("Zurücksetzen")}</button>
       </div>
     </section>
 
     <section class="formular-abschnitt" id="sprache">
       <h2>${t("Sprache")}</h2>
-      <fieldset class="sprach-wahl">
-        <legend class="nur-sr">${t("Sprache der App")}</legend>
-        ${[{ code: "", name: t("Automatisch (Browser)") }, ...SPRACHEN]
-          .map((s) => `<label class="sprach-option"><input type="radio" name="sprache" value="${s.code}" /><span>${s.name}</span></label>`)
-          .join("")}
-      </fieldset>
+      <div class="feld-gruppe">
+        <label for="f-sprache">${t("Sprache der App")}</label>
+        <select id="f-sprache" class="sprach-auswahl">
+          <option value="">${t("Automatisch (Browser)")}</option>
+          ${SPRACHEN.map((l) => `<option value="${l.code}">${l.name}</option>`).join("")}
+        </select>
+      </div>
+      <button type="button" class="hinzufuegen-btn" id="sprache-zuruecksetzen">${t("Zurücksetzen")}</button>
       <p class="muted">${t("Gilt nur auf diesem Gerät. Texte aus Home Assistant bleiben in der dortigen Sprache.")}</p>
     </section>
 
@@ -119,14 +121,15 @@ export function renderEinstellungen(container, app) {
   `;
 
   // Sprache: gilt pro Gerät; danach wird die Ansicht neu gezeichnet.
-  const spracheWahl = gespeicherteSprache() || "";
-  container.querySelectorAll('input[name="sprache"]').forEach((radio) => {
-    radio.checked = radio.value === spracheWahl;
-    radio.addEventListener("change", () => {
-      setzeSprache(radio.value || null);
-      if (app.neuZeichnen) app.neuZeichnen();
-    });
-  });
+  const spracheFeld = container.querySelector("#f-sprache");
+  spracheFeld.value = gespeicherteSprache() || "";
+  const wendeSpracheAn = (code) => {
+    setzeSprache(code || null);
+    if (app.neuZeichnen) app.neuZeichnen();
+  };
+  spracheFeld.addEventListener("change", () => wendeSpracheAn(spracheFeld.value));
+  // «Zurücksetzen»: zurück auf «Automatisch» (Browsersprache).
+  container.querySelector("#sprache-zuruecksetzen").addEventListener("click", () => wendeSpracheAn(""));
 
   const farbStatus = container.querySelector("#farbe-status");
   const eigeneFarbe = container.querySelector("#f-eigene-farbe");

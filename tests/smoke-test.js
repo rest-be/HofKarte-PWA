@@ -1387,12 +1387,14 @@ export async function fuehreSmokeTestsAus(page, baseUrl) {
   });
   await setzeTesthof();
   await gehe("#/einstellungen");
-  check("Sprache: Auswahl in den Einstellungen vorhanden (Automatisch, DE, FR, IT, EN)", (await page.$$eval('input[name="sprache"]', (o) => o.map((x) => x.value).join(","))) === ",de,fr,it,en");
-  check("Sprache: eigene Gruppe, Zeilen mind. 56px hoch und 44px breit, Radio-Felder 24px", await page.evaluate(() => {
+  check("Sprache: Auswahl in den Einstellungen vorhanden (Automatisch, DE, FR, IT, EN)", (await page.$$eval("#f-sprache option", (o) => o.map((x) => x.value).join(","))) === ",de,fr,it,en");
+  check("Sprache: eigene Gruppe mit Dropdown (mind. 52px hoch) und Zurücksetzen-Knopf", await page.evaluate(() => {
     const g = document.querySelector("#sprache");
-    const z = [...g.querySelectorAll(".sprach-option")];
-    return !!g && g.querySelector("h2") && z.length === 5 && z.every((e) => e.getBoundingClientRect().height >= 56) && g !== document.querySelector("#darstellung") && !document.querySelector("#darstellung").contains(g);
+    const sel = g?.querySelector("select#f-sprache");
+    const btn = g?.querySelector("#sprache-zuruecksetzen");
+    return [!!g, !!g?.querySelector("h2"), sel?.getBoundingClientRect().height, btn?.getBoundingClientRect().height].join() && !!g && !!g.querySelector("h2") && !document.querySelector("#darstellung").contains(g) && sel.getBoundingClientRect().height >= 52 && btn.getBoundingClientRect().height >= 44;
   }));
+  check("Farbe: Zurücksetzen-Knopf sichtbar und mind. 44px hoch", await page.evaluate(() => { const b = document.querySelector("#farbe-zuruecksetzen"); const r = b.getBoundingClientRect(); return r.width > 0 && r.height >= 44; }));
   check("Farbfeld «Eigene Farbe» ist ein runder Punkt (48×48, 50 %)", await page.evaluate(() => {
     const r = document.querySelector("#f-eigene-farbe");
     const b = r.getBoundingClientRect();
@@ -1410,7 +1412,7 @@ export async function fuehreSmokeTestsAus(page, baseUrl) {
   const ROUTEN = ["#/", "#/karte", "#/hofladen/i1", "#/hofladen/i1/bearbeiten", "#/hofladen/i1/ergaenzen", "#/neu", "#/erfassen", "#/erfassen/vorort", "#/erfassen/schnell", "#/erfassen/webseite", "#/finden", "#/einstellungen"];
   for (const [code, htmlLang, marke] of [["fr", "fr-CH", /Enregistrer|Rechercher|ferme/i], ["it", "it-CH", /Salva|Cerca|negozio agricolo/i], ["en", "en-GB", /Save|Search|farm shop/i]]) {
     await gehe("#/einstellungen");
-    await page.check(`input[name="sprache"][value="${code}"]`);
+    await page.selectOption("#f-sprache", code);
     await page.waitForTimeout(200);
     check(`Sprache ${code}: html lang = ${htmlLang}, Wahl nur im Gerätespeicher`, (await page.evaluate(() => document.documentElement.lang)) === htmlLang && (await page.evaluate(() => localStorage.getItem("hofkarte-sprache"))) === code);
     const einstellungen = await sammleTexte();
@@ -1433,7 +1435,7 @@ export async function fuehreSmokeTestsAus(page, baseUrl) {
   }
   // Zurück auf Deutsch (und «Automatisch» = Browsersprache de-CH).
   await gehe("#/einstellungen");
-  await page.check('input[name="sprache"][value=""]');
+  await page.click("#sprache-zuruecksetzen");
   await page.waitForTimeout(200);
   check("Sprache: «Automatisch» folgt der Browsersprache (de-CH) und löscht die Wahl", (await page.evaluate(() => document.documentElement.lang)) === "de-CH" && (await page.evaluate(() => localStorage.getItem("hofkarte-sprache"))) === null);
 

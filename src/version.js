@@ -18,7 +18,7 @@
  * Beim Erhöhen bitte auch im README (Abschnitt "Version") und im
  * Vorgehensplan nachziehen.
  */
-export const APP_VERSION = "2.0.0-dev.9";
+export const APP_VERSION = "2.0.0-dev.10";
 
 /**
  * Release Notes (neueste zuerst), angezeigt auf dem Einrichtungsbildschirm
@@ -26,6 +26,14 @@ export const APP_VERSION = "2.0.0-dev.9";
  * ergänzen (und die Tabelle im README nachziehen).
  */
 export const RELEASE_NOTES = [
+  {
+    version: "2.0.0-dev.10",
+    datum: "2026-10-16",
+    punkte: [
+      "Einstellungen → Sprache: Auswahl wieder als Dropdown (grösser), dazu ein Knopf «Zurücksetzen» (zurück auf Automatisch).",
+      "Der Knopf «Zurücksetzen» bei der Markenfarbe ist jetzt als Knopf erkennbar und gross genug zum Tippen.",
+    ],
+  },
   {
     version: "2.0.0-dev.9",
     datum: "2026-10-15",
