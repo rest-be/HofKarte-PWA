@@ -1510,6 +1510,68 @@ export async function fuehreSmokeTestsAus(page, baseUrl) {
   await page.click('#aktive-filter [data-filter="chip-ohne-foto"]');
   check("Filter: ohne aktive Filter verschwinden Zähler und Chip-Zeile wieder", !(await page.isVisible("#filter-zahl")) && !(await page.isVisible("#aktive-filter")));
 
+
+  // --- 2.0.0-dev.14: Kartensuche ---------------------------------------------------
+  await page.evaluate(async () => {
+    const app = window.hofkarteApp;
+    app.haClient = null; app.offlineModus = true;
+    app.state.hoflaeden = [
+      { id: "k1", name: "Alpenhof", ort: "Bern", latitude: 46.9, longitude: 7.4, geoeffnet: true, bilder: [] },
+      { id: "k2", name: "Alpweide Thun", ort: "Thun", latitude: 46.75, longitude: 7.63, geoeffnet: false, bilder: [] },
+      { id: "k3", name: "Bergkäserei", ort: "Zweisimmen", latitude: 46.55, longitude: 7.37, geoeffnet: null, bilder: [] },
+      { id: "k4", name: "Ohne Ort Hof", ort: "Irgendwo", geoeffnet: null, bilder: [] },
+    ];
+    window.location.hash = "#/";
+    window.dispatchEvent(new Event("hashchange"));
+    await new Promise((r) => setTimeout(r, 200));
+    window.location.hash = "#/karte";
+    window.dispatchEvent(new Event("hashchange"));
+    await new Promise((r) => setTimeout(r, 700));
+  });
+  const markerAnzahl = () => page.$$eval(".leaflet-marker-icon", (m) => m.length);
+  check("Kartensuche: Suchfeld oben mit Label, Combobox-Rolle, Liste zu", (await page.getAttribute("#karten-suche", "role")) === "combobox" && !!(await page.getAttribute("#karten-suche", "aria-label")) && (await page.getAttribute("#karten-suche", "aria-expanded")) === "false" && !(await page.isVisible("#karten-treffer")));
+  await page.fill("#karten-suche", "alp");
+  check("Kartensuche: Treffer mit Namen, Ort, Status und «Alle Treffer zeigen (2)»", (await page.$$eval("#karten-treffer [role=option]", (o) => o.length)) === 3 && /Alpenhof/.test(await page.textContent("#karten-treffer")) && /Alle Treffer zeigen \(2\)/.test(await page.textContent("#karten-treffer")) && (await page.getAttribute("#karten-suche", "aria-expanded")) === "true");
+  check("Kartensuche: Trefferzahl wird für Screenreader angesagt", (await page.textContent("#karten-suche-status")) === "2 Treffer");
+  check("Kartensuche: Treffer-Zeilen sind mind. 44px hoch", await page.$$eval("#karten-treffer [role=option]", (o) => o.every((x) => x.getBoundingClientRect().height >= 44)));
+  await page.keyboard.press("ArrowDown");
+  check("Kartensuche: Pfeiltaste wählt die erste Zeile (aria-activedescendant)", (await page.getAttribute("#karten-suche", "aria-activedescendant")) === "karten-treffer-0" && (await page.getAttribute("#karten-treffer-0", "aria-selected")) === "true");
+  await page.keyboard.press("Enter");
+  await page.waitForTimeout(400);
+  check("Kartensuche: Enter springt zum Hofladen, öffnet Vorschau und hebt den Marker hervor", (await page.textContent("#karten-sheet h2")) === "Alpenhof" && (await page.$$eval(".marker-aktiv", (m) => m.length)) === 1 && !(await page.isVisible("#karten-treffer")));
+  await page.fill("#karten-suche", "bergkas");
+  check("Kartensuche: Akzente und Gross-/Kleinschreibung sind egal (bergkas → Bergkäserei)", /Bergkäserei/.test(await page.textContent("#karten-treffer")));
+  await page.fill("#karten-suche", "ALP");
+  await page.click("#karten-treffer-alle");
+  await page.waitForTimeout(400);
+  check("Kartensuche: «Alle Treffer zeigen» begrenzt die Marker auf die Treffer, Chip zum Zurücksetzen", (await markerAnzahl()) === 2 && (await page.isVisible("#karten-suchchip")) && /ALP/.test(await page.textContent("#karten-suchchip")));
+  await page.click("#karten-suchchip");
+  await page.waitForTimeout(300);
+  check("Kartensuche: Chip setzt Suche zurück, wieder alle 3 Marker (ein Hofladen ohne Position)", (await markerAnzahl()) === 3 && !(await page.isVisible("#karten-suchchip")) && (await page.inputValue("#karten-suche")) === "");
+  await page.fill("#karten-suche", "zzzz");
+  check("Kartensuche: ohne Treffer erscheint «Keine Treffer»", /Keine Treffer/.test(await page.textContent("#karten-treffer")) && (await page.$$eval("#karten-treffer [role=option]", (o) => o.length)) === 0);
+  await page.click("#karten-suche-loeschen");
+  check("Kartensuche: Löschen-Knopf leert das Feld und schliesst die Liste", (await page.inputValue("#karten-suche")) === "" && !(await page.isVisible("#karten-treffer")));
+  await page.fill("#karten-suche", "ohne ort");
+  check("Kartensuche: Treffer ohne Position sind als «Keine Position» markiert", /Keine Position/.test(await page.textContent("#karten-treffer")));
+  await page.click("#karten-treffer [role=option]");
+  await page.waitForTimeout(300);
+  check("Kartensuche: Treffer ohne Position öffnet das Detail", (await page.evaluate(() => location.hash)) === "#/hofladen/k4");
+  await page.evaluate(async () => {
+    window.location.hash = "#/";
+    window.dispatchEvent(new Event("hashchange"));
+    await new Promise((r) => setTimeout(r, 200));
+    window.location.hash = "#/karte";
+    window.dispatchEvent(new Event("hashchange"));
+    await new Promise((r) => setTimeout(r, 700));
+  });
+  await page.check("#filter-offen");
+  await page.waitForTimeout(200);
+  await page.fill("#karten-suche", "alpweide");
+  await page.click("#karten-treffer [role=option]");
+  await page.waitForTimeout(400);
+  check("Kartensuche: ausgeblendeter Hofladen hebt «Nur geöffnet» auf und wird gezeigt", !(await page.isChecked("#filter-offen")) && (await page.textContent("#karten-sheet h2")) === "Alpweide Thun" && (await page.$$eval(".marker-aktiv", (m) => m.length)) === 1);
+
   // Grosse Schrift (Dynamic Type simuliert): nichts läuft seitlich über den Rand.
   await setzeTesthof();
   await page.evaluate(() => document.documentElement.style.setProperty("font-size", "28px", "important"));

@@ -18,7 +18,7 @@
  * Beim Erhöhen bitte auch im README (Abschnitt "Version") und im
  * Vorgehensplan nachziehen.
  */
-export const APP_VERSION = "2.0.0-dev.13";
+export const APP_VERSION = "2.0.0-dev.14";
 
 /**
  * Release Notes (neueste zuerst), angezeigt auf dem Einrichtungsbildschirm
@@ -26,6 +26,16 @@ export const APP_VERSION = "2.0.0-dev.13";
  * ergänzen (und die Tabelle im README nachziehen).
  */
 export const RELEASE_NOTES = [
+  {
+    version: "2.0.0-dev.14",
+    datum: "2026-10-16",
+    punkte: [
+      "Karte: neue Suche oben auf der Karte. Treffer (Name, Beschreibung, Ort; auch ohne Akzente) erscheinen als Liste; ein Tipp zoomt auf den Hofladen und öffnet die Vorschau.",
+      "«Alle Treffer zeigen» begrenzt die Karte auf die Treffer; ein Chip setzt die Suche zurück.",
+      "Bedienung per Tastatur (Pfeiltasten, Enter, Escape) und Screenreader (Trefferzahl wird angesagt). Die Suche funktioniert auch offline.",
+      "Die Zoom-Tasten der Karte sitzen jetzt unten rechts.",
+    ],
+  },
   {
     version: "2.0.0-dev.13",
     datum: "2026-10-16",
