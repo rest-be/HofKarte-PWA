@@ -20,6 +20,8 @@ import { bildVerkleinern } from "../bilder.js";
 import { extractImageId } from "../ha-client.js";
 import { bereinigteQuellen, quelleFuerSpeichern, quellenSchnappschuss, quellenWert } from "../finden.js";
 import { icon, setzeSchaltflaeche } from "../icons.js";
+
+const GRUPPEN_ICON = { grunddaten: "hof", adresse: "standort", kontakt: "telefon", oeffnungszeiten: "uhr", angebote: "korb", bilder: "bild", herkunft: "verknuepfung" };
 import { HOF_GRUPPEN, VOLLSTAENDIGKEIT_TEXT, vollstaendigkeit } from "../gruppen.js";
 import { herkunftHtml } from "./detail.js";
 
@@ -596,9 +598,10 @@ export function renderEditor(container, app, hofladenId) {
     const offen = gruppenZustand.has(g.id) ? gruppenZustand.get(g.id) : g.offenEditor;
     return `<details class="detail-abschnitt einklappbar gruppe" id="gruppe-${g.id}" data-gruppe="${g.id}"${offen ? " open" : ""}>
       <summary>
+        <span class="gruppen-icon" aria-hidden="true">${icon(GRUPPEN_ICON[g.id] || "info", { klein: true })}</span>
+        <span class="gruppen-text"><span class="titel">${escapeHtml(t(g.titel))}</span>
+        <span class="kurzinfo" data-kurzinfo></span></span>
         <span class="vollst leer"><span class="nur-sr" data-vollst-text></span></span>
-        <span class="titel">${escapeHtml(t(g.titel))}</span>
-        <span class="kurzinfo" data-kurzinfo></span>
       </summary>
       <div class="gruppen-inhalt">${GRUPPEN_FELDER[g.id]}</div>
     </details>`;

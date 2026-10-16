@@ -18,7 +18,7 @@
  * Beim Erhöhen bitte auch im README (Abschnitt "Version") und im
  * Vorgehensplan nachziehen.
  */
-export const APP_VERSION = "2.0.0-dev.10";
+export const APP_VERSION = "2.0.0-dev.11";
 
 /**
  * Release Notes (neueste zuerst), angezeigt auf dem Einrichtungsbildschirm
@@ -26,6 +26,16 @@ export const APP_VERSION = "2.0.0-dev.10";
  * ergänzen (und die Tabelle im README nachziehen).
  */
 export const RELEASE_NOTES = [
+  {
+    version: "2.0.0-dev.11",
+    datum: "2026-10-16",
+    punkte: [
+      "Neues Erscheinungsbild nach dem Entwurf «HofKarte PWA»: helle Grünton-Flächen, Karten mit feinem Rahmen, abgerundete Statuspillen (Punkt, Ring oder Strich), neue Tableiste.",
+      "Liste: jeder Hofladen als eigene Karte mit grösserem Vorschaubild; Filter-Chips im Entwurfs-Stil.",
+      "Detail und Bearbeiten: Gruppen mit Symbol-Kachel, Kurzinfo unter dem Titel und Vollständigkeits-Punkt; Schnellaktionen als weisse Kacheln.",
+      "Dunkelmodus an die neuen Farben angepasst.",
+    ],
+  },
   {
     version: "2.0.0-dev.10",
     datum: "2026-10-16",

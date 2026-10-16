@@ -169,6 +169,8 @@ function gruppenInhalt(id, h) {
   }
 }
 
+const GRUPPEN_ICON = { grunddaten: "hof", adresse: "standort", kontakt: "telefon", oeffnungszeiten: "uhr", angebote: "korb", bilder: "bild", herkunft: "verknuepfung" };
+
 function gruppeHtml(gruppe, h) {
   const inhalt = gruppenInhalt(gruppe.id, h);
   // Die Herkunft erscheint nur, wenn es Quellen gibt.
@@ -180,9 +182,10 @@ function gruppeHtml(gruppe, h) {
   const kurz = gruppe.kurzinfo(h);
   return `<details class="detail-abschnitt einklappbar gruppe" id="${htmlId}" data-gruppe="${gruppe.id}"${offen ? " open" : ""}>
       <summary>
+        <span class="gruppen-icon" aria-hidden="true">${icon(GRUPPEN_ICON[gruppe.id] || "info", { klein: true })}</span>
+        <span class="gruppen-text"><span class="titel">${escapeHtml(t(gruppe.titel))}</span>
+        <span class="kurzinfo">${escapeHtml(kurz)}</span></span>
         <span class="vollst ${stand}"><span class="nur-sr">${VOLLSTAENDIGKEIT_TEXT[stand]}: </span></span>
-        <span class="titel">${escapeHtml(t(gruppe.titel))}</span>
-        <span class="kurzinfo">${escapeHtml(kurz)}</span>
       </summary>
       ${inhalt}
     </details>`;
