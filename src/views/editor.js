@@ -19,6 +19,7 @@ import { ermittleAdresse, vergleicheAdresse } from "../adresse.js";
 import { bildVerkleinern } from "../bilder.js";
 import { extractImageId } from "../ha-client.js";
 import { bereinigteQuellen, quelleFuerSpeichern, quellenSchnappschuss, quellenWert } from "../finden.js";
+import { leerzustandHtml } from "../leerzustand.js";
 import { icon, setzeSchaltflaeche } from "../icons.js";
 
 const GRUPPEN_ICON = { grunddaten: "hof", adresse: "standort", kontakt: "telefon", oeffnungszeiten: "uhr", angebote: "korb", bilder: "bild", herkunft: "verknuepfung" };
@@ -139,7 +140,7 @@ function textZuTags(text, praefix) {
 export function renderEditor(container, app, hofladenId) {
   const bestehender = hofladenId ? app.hofladenMitId(hofladenId) : null;
   if (hofladenId && !bestehender) {
-    container.innerHTML = `<p class="hinweis-leiste">${escapeHtml(t("Hofladen nicht gefunden."))}</p>`;
+    container.innerHTML = leerzustandHtml({ symbol: "suche", titel: t("Hofladen nicht gefunden."), aktion: { href: "#/", label: t("Zur Liste") } });
     return;
   }
 
@@ -599,7 +600,7 @@ export function renderEditor(container, app, hofladenId) {
     return `<details class="detail-abschnitt einklappbar gruppe" id="gruppe-${g.id}" data-gruppe="${g.id}"${offen ? " open" : ""}>
       <summary>
         <span class="gruppen-icon" aria-hidden="true">${icon(GRUPPEN_ICON[g.id] || "info", { klein: true })}</span>
-        <span class="gruppen-text"><span class="titel">${escapeHtml(t(g.titel))}</span>
+        <span class="gruppen-kopf-text"><span class="titel">${escapeHtml(t(g.titel))}</span>
         <span class="kurzinfo" data-kurzinfo></span></span>
         <span class="vollst leer"><span class="nur-sr" data-vollst-text></span></span>
       </summary>

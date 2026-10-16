@@ -8,6 +8,7 @@
 
 import { escapeHtml } from "./list.js";
 import { icon } from "../icons.js";
+import { leerzustandHtml } from "../leerzustand.js";
 import { t } from "../i18n.js";
 
 const FELDER = [
@@ -58,8 +59,11 @@ export function berechneUnterschiede(meine, server) {
 export function renderKonflikt(container, app, hofladenId) {
   const op = app.konfliktFuer(hofladenId);
   if (!op) {
-    container.innerHTML = `<p class="hinweis-leiste">${t("Kein offener Konflikt für diesen Hofladen.")}</p>
-      <p><a href="#/hofladen/${encodeURIComponent(hofladenId)}">${t("Zur Detailansicht")}</a></p>`;
+    container.innerHTML = leerzustandHtml({
+      symbol: "haken",
+      titel: t("Kein offener Konflikt für diesen Hofladen."),
+      aktion: { href: `#/hofladen/${encodeURIComponent(hofladenId)}`, label: t("Zur Detailansicht") },
+    });
     return;
   }
   const meine = op.daten;

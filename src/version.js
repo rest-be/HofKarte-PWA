@@ -18,7 +18,7 @@
  * Beim Erhöhen bitte auch im README (Abschnitt "Version") und im
  * Vorgehensplan nachziehen.
  */
-export const APP_VERSION = "2.0.0-dev.11";
+export const APP_VERSION = "2.0.0-dev.12";
 
 /**
  * Release Notes (neueste zuerst), angezeigt auf dem Einrichtungsbildschirm
@@ -26,6 +26,18 @@ export const APP_VERSION = "2.0.0-dev.11";
  * ergänzen (und die Tabelle im README nachziehen).
  */
 export const RELEASE_NOTES = [
+  {
+    version: "2.0.0-dev.12",
+    datum: "2026-10-16",
+    punkte: [
+      "Teilen: Im Menü ⋮ eines Hofladens «Teilen» (Name, Adresse, Öffnungszeiten, Kartenlink); ohne Teilen-Menü wird der Text kopiert.",
+      "«Foto fehlt» als Marker in der Liste und im Detail, dazu der Filter «Ohne Foto».",
+      "Offline-Anzeige nennt zusätzlich den Stand der Daten (z. B. «Stand 14:32»).",
+      "Leer- und Fehlerzustände im neuen Design: «Noch keine Hofläden», «Keine Treffer» (mit Zurücksetzen), «Hofladen nicht gefunden».",
+      "Entfernung in der Liste deutlicher dargestellt.",
+      "Grosse Schrift: Die App folgt der Textgrösse des Geräts; Zeilen und Titel umbrechen, nichts läuft über den Rand.",
+    ],
+  },
   {
     version: "2.0.0-dev.11",
     datum: "2026-10-16",

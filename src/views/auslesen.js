@@ -10,6 +10,7 @@
  */
 
 import { escapeHtml, sichereHttpUrl } from "../html.js";
+import { leerzustandHtml } from "../leerzustand.js";
 import { icon } from "../icons.js";
 import { fokussiereSchritt } from "../fokus.js";
 import { t, tn } from "../i18n.js";
@@ -35,7 +36,7 @@ const STATUS_TEXT = {
 export function renderAuslesen(container, app, hofladenId = null) {
   const bestehend = hofladenId ? app.hofladenMitId(hofladenId) : null;
   if (hofladenId && !bestehend) {
-    container.innerHTML = `<p class="hinweis-leiste">${escapeHtml(t("Hofladen nicht gefunden."))}</p>`;
+    container.innerHTML = leerzustandHtml({ symbol: "suche", titel: t("Hofladen nicht gefunden."), aktion: { href: "#/", label: t("Zur Liste") } });
     return;
   }
   const z = {

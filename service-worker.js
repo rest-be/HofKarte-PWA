@@ -21,7 +21,7 @@
  * diese liegen ausschliesslich in IndexedDB (siehe src/storage.js).
  */
 
-const CACHE_VERSION = "hofkarte-pwa-v26";
+const CACHE_VERSION = "hofkarte-pwa-v27";
 
 const APP_SHELL_DATEIEN = [
   "./",
@@ -47,6 +47,8 @@ const APP_SHELL_DATEIEN = [
   "./src/naehe.js",
   "./src/finden.js",
   "./src/html.js",
+  "./src/teilen.js",
+  "./src/leerzustand.js",
   "./src/bilder.js",
   "./src/views/setup.js",
   "./src/views/list.js",

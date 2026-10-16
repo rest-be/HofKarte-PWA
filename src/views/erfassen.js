@@ -15,6 +15,7 @@
 
 import { entfernungMeter } from "../naehe.js";
 import { escapeHtml, sichereHttpUrl } from "../html.js";
+import { leerzustandHtml } from "../leerzustand.js";
 import { icon } from "../icons.js";
 import { bildVerkleinern } from "../bilder.js";
 import { findeBestehenden, kandidatGruende, istHttpUrl, FINDEN_FEHLERMELDUNGEN } from "../finden.js";
@@ -474,7 +475,7 @@ export function renderSchnell(container, app) {
 export function renderGespeichert(container, app, hofladenId) {
   const h = app.hofladenMitId(hofladenId);
   if (!h) {
-    container.innerHTML = `<p class="hinweis-leiste">${escapeHtml(t("Hofladen nicht gefunden."))}</p><p><a href="#/">${escapeHtml(t("Zur Liste"))}</a></p>`;
+    container.innerHTML = leerzustandHtml({ symbol: "suche", titel: t("Hofladen nicht gefunden."), aktion: { href: "#/", label: t("Zur Liste") } });
     return;
   }
   const luecken = offeneGruppen(h);

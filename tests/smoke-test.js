@@ -1439,6 +1439,64 @@ export async function fuehreSmokeTestsAus(page, baseUrl) {
   await page.waitForTimeout(200);
   check("Sprache: «Automatisch» folgt der Browsersprache (de-CH) und löscht die Wahl", (await page.evaluate(() => document.documentElement.lang)) === "de-CH" && (await page.evaluate(() => localStorage.getItem("hofkarte-sprache"))) === null);
 
+
+  // --- 2.0.0-dev.12: Teilen, Foto fehlt, Stand, Leerzustände, grosse Schrift -----------
+  await setzeTesthof();
+  await page.evaluate(() => {
+    const a = window.hofkarteApp;
+    a.state.hoflaeden.push({ id: "i2", name: "Hof mit Foto", ort: "Thun", bilder: [{ url: "data:image/gif;base64,R0lGODlhAQABAAAAACw=" }], angebote: [], zahlungsarten: [], oeffnungszeiten: [] });
+  });
+  await gehe("#/");
+  const kartenTexte = await page.$$eval(".hofladen-karte", (k) => k.map((x) => `${x.querySelector(".name").textContent.trim()}|${!!x.querySelector(".foto-fehlt")}`));
+  check(`Liste: «Foto fehlt» nur bei Hofläden ohne Foto (${kartenTexte.join(", ")})`, kartenTexte.includes("Testhof|true") && kartenTexte.includes("Hof mit Foto|false"));
+  await page.click("#chip-ohne-foto");
+  check("Liste: Filter «Ohne Foto» zeigt nur Hofläden ohne Foto", (await page.$$eval(".hofladen-karte", (k) => k.length)) === 1);
+  await page.fill("#such-feld", "zzzz-kein-treffer");
+  await page.waitForTimeout(400);
+  check("Liste: Leerzustand «Keine Treffer» mit Knopf zum Zurücksetzen", (await page.$$eval("#filter-zuruecksetzen", (b) => b.length)) === 1 && /Keine Treffer/.test(await page.textContent("#hofladen-liste")));
+  await page.click("#filter-zuruecksetzen");
+  await page.waitForTimeout(300);
+  check("Liste: Zurücksetzen räumt Suche und Filter, alle Hofläden wieder sichtbar", (await page.$$eval(".hofladen-karte", (k) => k.length)) === 2 && (await page.inputValue("#such-feld")) === "" && (await page.getAttribute("#chip-ohne-foto", "aria-pressed")) === "false");
+  await page.evaluate(() => { const a = window.hofkarteApp; a.state.hoflaeden = []; window.location.hash = "#/erfassen"; window.location.hash = "#/"; });
+  await page.waitForTimeout(400);
+  check("Liste: Leerzustand «Noch keine Hofläden» führt zu Erfassen", /Noch keine Hofläden/.test(await page.textContent("#hofladen-liste")) && (await page.getAttribute("#leer-erfassen", "href")) === "#/erfassen");
+
+  await setzeTesthof();
+  await gehe("#/hofladen/i1");
+  check("Detail: Gruppe Bilder zeigt «Foto fehlt»", /Foto fehlt/.test(await page.textContent("#gruppe-bilder > summary")));
+  const teilText = await page.evaluate(async () => {
+    const { teilenText } = await import("/src/teilen.js");
+    return teilenText(window.hofkarteApp.hofladenMitId("i1"));
+  });
+  check(`Teilen: Text enthält Name, Adresse, Zeiten und Kartenlink (${teilText.replace(/\n/g, " / ")})`, teilText.startsWith("Testhof") && teilText.includes("Dorfstrasse 1, 3000 Bern") && teilText.includes("Montag: 08:00–12:00") && teilText.includes("openstreetmap.org/?mlat=46.9&mlon=7.4"));
+  await page.evaluate(() => { window.__geteilt = null; navigator.share = async (d) => { window.__geteilt = d; }; });
+  await page.click("#aktionsmenue > summary");
+  await page.click("#teilen-btn");
+  await page.waitForTimeout(200);
+  check("Teilen: ruft das Teilen-Menü des Geräts mit Titel und Text auf", await page.evaluate(() => window.__geteilt?.title === "Testhof" && window.__geteilt.text.includes("Dorfstrasse 1")));
+  await page.evaluate(() => { navigator.share = undefined; Object.defineProperty(navigator, "clipboard", { value: { writeText: async (t) => { window.__kopiert = t; } }, configurable: true }); });
+  await page.click("#aktionsmenue > summary");
+  await page.click("#teilen-btn");
+  await page.waitForTimeout(200);
+  check("Teilen: ohne Teilen-Menü wird der Text kopiert und bestätigt", (await page.evaluate(() => window.__kopiert?.startsWith("Testhof"))) && /kopiert/.test(await page.textContent("#teilen-status")));
+
+  await page.evaluate(() => { const a = window.hofkarteApp; a.haClient = null; a.offlineModus = true; a.state.zuletztAktualisiert = new Date().toISOString(); });
+  await gehe("#/");
+  check("Offline-Anzeige nennt den Stand der Daten (Uhrzeit)", /Offline[^<]*Stand \d{1,2}:\d{2}/.test(await page.textContent(".sync-status.offline")));
+
+  // Grosse Schrift (Dynamic Type simuliert): nichts läuft seitlich über den Rand.
+  await setzeTesthof();
+  await page.evaluate(() => document.documentElement.style.setProperty("font-size", "28px", "important"));
+  const ueberlaeufe = [];
+  for (const route of ["#/", "#/hofladen/i1", "#/hofladen/i1/bearbeiten", "#/einstellungen", "#/erfassen", "#/erfassen/vorort", "#/erfassen/webseite"]) {
+    await gehe(route);
+    const ueber = await page.evaluate(() => document.documentElement.scrollWidth > document.documentElement.clientWidth + 1);
+    if (ueber) ueberlaeufe.push(route);
+  }
+  await page.evaluate(() => document.documentElement.style.removeProperty("font-size"));
+  check(`Grosse Schrift (165 %): kein seitlicher Überlauf (${ueberlaeufe.join(", ")})`, ueberlaeufe.length === 0);
+  await setzeTesthof();
+
   check(
     "Keine Konsolen-/Laufzeitfehler (ohne CDN-Netzwerkfehler aus der Sandbox)",
     consoleErrors.filter((e) => !/tile\\.openstreetmap|ERR_TUNNEL|net::/i.test(e)).length === 0

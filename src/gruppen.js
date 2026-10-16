@@ -25,6 +25,11 @@ function heuteIso(jetzt) {
   return `${jetzt.getFullYear()}-${String(jetzt.getMonth() + 1).padStart(2, "0")}-${String(jetzt.getDate()).padStart(2, "0")}`;
 }
 
+/** Kein Foto vorhanden (weder Bilderliste noch Hauptbild). Abgeleitet, nichts Zusätzliches gespeichert. */
+export function fotoFehlt(h) {
+  return !((h.bilder || []).length || gefuellt(h.hauptbild_url));
+}
+
 /** Kurzinfo für die Öffnungszeiten: heutige Zeiten (Sonderzeiten haben Vorrang). */
 export function heuteKurzinfo(h, jetzt = new Date()) {
   const iso = heuteIso(jetzt);
@@ -102,7 +107,7 @@ export const HOF_GRUPPEN = [
     offenDetail: false,
     offenEditor: false,
     fortschritt: (h) => ({ da: (h.bilder || []).length || gefuellt(h.hauptbild_url) ? 1 : 0, von: 1 }),
-    kurzinfo: (h) => anzahl(h.bilder, "1 Bild", "{n} Bilder"),
+    kurzinfo: (h) => anzahl(h.bilder, "1 Bild", "{n} Bilder") || (fotoFehlt(h) ? t("Foto fehlt") : ""),
   },
   {
     id: "herkunft",

@@ -10,6 +10,8 @@ import { t } from "../i18n.js";
 import { escapeHtml, sichereHttpUrl } from "../html.js";
 import { vorschauUrl } from "../bilder.js";
 import { FINDEN_QUELLEN_LABEL, FINDEN_ZEILEN } from "./../finden.js";
+import { teileHofladen } from "../teilen.js";
+import { leerzustandHtml } from "../leerzustand.js";
 import { icon } from "../icons.js";
 import { HOF_GRUPPEN, VOLLSTAENDIGKEIT_TEXT, formatZeit, offeneGruppen, vollstaendigkeit } from "../gruppen.js";
 
@@ -183,7 +185,7 @@ function gruppeHtml(gruppe, h) {
   return `<details class="detail-abschnitt einklappbar gruppe" id="${htmlId}" data-gruppe="${gruppe.id}"${offen ? " open" : ""}>
       <summary>
         <span class="gruppen-icon" aria-hidden="true">${icon(GRUPPEN_ICON[gruppe.id] || "info", { klein: true })}</span>
-        <span class="gruppen-text"><span class="titel">${escapeHtml(t(gruppe.titel))}</span>
+        <span class="gruppen-kopf-text"><span class="titel">${escapeHtml(t(gruppe.titel))}</span>
         <span class="kurzinfo">${escapeHtml(kurz)}</span></span>
         <span class="vollst ${stand}"><span class="nur-sr">${VOLLSTAENDIGKEIT_TEXT[stand]}: </span></span>
       </summary>
@@ -214,7 +216,7 @@ export function renderDetail(container, app, hofladenId) {
   const h = app.hofladenMitId(hofladenId);
 
   if (!h) {
-    container.innerHTML = `<p class="hinweis-leiste">${escapeHtml(t("Hofladen nicht gefunden."))}</p>`;
+    container.innerHTML = leerzustandHtml({ symbol: "suche", titel: t("Hofladen nicht gefunden."), aktion: { href: "#/", label: t("Zur Liste") } });
     return;
   }
 
@@ -244,6 +246,7 @@ export function renderDetail(container, app, hofladenId) {
         <details class="aktionsmenue" id="aktionsmenue">
           <summary aria-label="${escapeHtml(t("Weitere Aktionen"))}" title="${escapeHtml(t("Weitere Aktionen"))}">${icon("mehr")}</summary>
           <div class="menue-liste">
+            <button type="button" id="teilen-btn">${escapeHtml(t("Teilen"))}</button>
             <button type="button" id="ergaenzen-btn">${escapeHtml(t("Angaben ergänzen"))}</button>
             <button type="button" class="gefahr" id="loeschen-btn">${escapeHtml(t("Löschen …"))}</button>
           </div>
@@ -262,6 +265,7 @@ export function renderDetail(container, app, hofladenId) {
     </div>
 
     ${schnellaktionenHtml(h)}
+    <p class="muted teilen-status" id="teilen-status" role="status" aria-live="polite"></p>
 
     ${
       luecken.length
@@ -288,6 +292,15 @@ export function renderDetail(container, app, hofladenId) {
     const btn = container.querySelector("#alle-btn");
     btn.textContent = aufklappen ? t("Alle einklappen") : t("Alle ausklappen");
     btn.setAttribute("aria-pressed", String(aufklappen));
+  });
+  container.querySelector("#teilen-btn").addEventListener("click", async () => {
+    container.querySelector("#aktionsmenue").open = false;
+    const ergebnis = await teileHofladen(h);
+    const meldung = {
+      kopiert: t("Hofladen als Text kopiert."),
+      fehler: t("Teilen ist auf diesem Gerät nicht möglich."),
+    }[ergebnis];
+    container.querySelector("#teilen-status").textContent = meldung || "";
   });
   container.querySelector("#ergaenzen-btn").addEventListener("click", () => {
     app.navigate(`#/hofladen/${encodeURIComponent(h.id)}/ergaenzen`);

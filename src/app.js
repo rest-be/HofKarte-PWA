@@ -12,6 +12,7 @@
  */
 
 import { fokussiere } from "./fokus.js";
+import { escapeHtml } from "./html.js";
 import {
   ladeVerbindung,
   speichereVerbindung,
@@ -39,7 +40,7 @@ import { renderErfassenEinstieg, renderVorOrt, renderSchnell, renderGespeichert 
 import { icon } from "./icons.js";
 import { initialisiereDesign } from "./design.js";
 import { initialisiereUpdates, zeigeUpdateHinweis } from "./update.js";
-import { t, tn, initialisiereSprache } from "./i18n.js";
+import { t, tn, initialisiereSprache, aktuelleLocale } from "./i18n.js";
 
 const appContainer = document.getElementById("app");
 const CACHE_KEY_LISTE = "hoflaeden-liste";
@@ -500,6 +501,17 @@ function route() {
  * nur, wenn es etwas Nennenswertes zu zeigen gibt (offline und/oder
  * ausstehende Operationen), nicht im unauffälligen Normalzustand (siehe
  * PWA-HA-Vorgehensplan.md Abschnitt 10.3, Punkt 4). */
+/** "Stand 14:32" (heute) bzw. "Stand 15.10., 14:32" der zuletzt bekannten Daten. */
+function standText() {
+  const z = app.state.zuletztAktualisiert;
+  const d = z ? new Date(z) : null;
+  if (!d || Number.isNaN(d.getTime())) return "";
+  const heute = d.toDateString() === new Date().toDateString();
+  const zeit = d.toLocaleTimeString(aktuelleLocale(), { hour: "2-digit", minute: "2-digit" });
+  const text = heute ? zeit : `${d.toLocaleDateString(aktuelleLocale(), { day: "numeric", month: "numeric" })}, ${zeit}`;
+  return t("Stand {zeit}", { zeit: text });
+}
+
 function syncStatusHtml() {
   const anzahl = app.state.ausstehendeAnzahl || 0;
   const konflikte = app.state.konflikte || [];
@@ -507,7 +519,7 @@ function syncStatusHtml() {
     return `<a class="sync-status konflikt" href="#/konflikt/${encodeURIComponent(konflikte[0].hofladenId)}">${icon("warnung", { klein: true })} ${tn(konflikte.length, "1 Konflikt", "{n} Konflikte")}</a>`;
   }
   if (!app.haClient) {
-    return `<span class="sync-status offline">${icon("offline", { klein: true })} ${t("Offline")}${anzahl ? ` (${t("{n} ausstehend", { n: anzahl })})` : ""}</span>`;
+    return `<span class="sync-status offline">${icon("offline", { klein: true })} ${t("Offline")}${anzahl ? ` (${t("{n} ausstehend", { n: anzahl })})` : ""}${standText() ? ` · ${escapeHtml(standText())}` : ""}</span>`;
   }
   if (anzahl > 0) {
     return `<span class="sync-status wird-synchronisiert">↻ ${t("Wird synchronisiert …")}</span>`;

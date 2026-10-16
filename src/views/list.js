@@ -6,7 +6,8 @@
  */
 
 import { hoflaedenInNaeheDesGeraets, aktuellerStandort, entfernungMeter as distanzMeter, STANDARD_RADIUS_METER } from "../naehe.js";
-import { offeneGruppen } from "../gruppen.js";
+import { leerzustandHtml } from "../leerzustand.js";
+import { fotoFehlt, offeneGruppen } from "../gruppen.js";
 import { ladeNaeheRadius } from "../storage.js";
 import { escapeHtml } from "../html.js";
 import { vorschauUrl } from "../bilder.js";
@@ -62,6 +63,7 @@ function relativeZeit(isoZeitpunkt) {
 export function sortiereUndFiltere(hoflaeden, suchbegriff, sortSpalte, sortRichtung, filter = {}, position = null) {
   let ergebnis = hoflaeden;
   if (filter.nurOffen) ergebnis = ergebnis.filter((h) => h.geoeffnet === true);
+  if (filter.ohneFoto) ergebnis = ergebnis.filter((h) => fotoFehlt(h));
   if (filter.unvollstaendig) ergebnis = ergebnis.filter((h) => offeneGruppen(h).length > 0);
   const distanz = (h) =>
     position && h.latitude != null && h.longitude != null
@@ -105,7 +107,7 @@ export function sortiereUndFiltere(hoflaeden, suchbegriff, sortSpalte, sortRicht
 
 /** Eingeklappt als Standard: braucht so möglichst wenig Platz. */
 let naeheOffen = false;
-const gemerkt = { suchbegriff: "", sortSpalte: null, sortRichtung: null, nurOffen: false, unvollstaendig: false };
+const gemerkt = { suchbegriff: "", sortSpalte: null, sortRichtung: null, nurOffen: false, unvollstaendig: false, ohneFoto: false };
 /** Standort nur im Speicher, nur nach Tipp auf «In der Nähe»; wird nie gespeichert. */
 let position = null;
 
@@ -116,12 +118,12 @@ export function renderListe(container, app) {
     gemerkt.sortSpalte = einstellungen.listen_sort_spalte || "name";
     gemerkt.sortRichtung = einstellungen.listen_sort_richtung || "asc";
   }
-  let { suchbegriff, sortSpalte, sortRichtung, nurOffen, unvollstaendig } = gemerkt;
+  let { suchbegriff, sortSpalte, sortRichtung, nurOffen, unvollstaendig, ohneFoto } = gemerkt;
   if (sortSpalte === "entfernung" && !position) {
     sortSpalte = "name";
     sortRichtung = "asc";
   }
-  const merke = () => Object.assign(gemerkt, { suchbegriff, sortSpalte, sortRichtung, nurOffen, unvollstaendig });
+  const merke = () => Object.assign(gemerkt, { suchbegriff, sortSpalte, sortRichtung, nurOffen, unvollstaendig, ohneFoto });
   const sortOptionen = () =>
     position ? [{ wert: "entfernung", label: "Entfernung" }, ...SORT_SPALTEN] : SORT_SPALTEN;
 
@@ -131,7 +133,7 @@ export function renderListe(container, app) {
       suchbegriff,
       sortSpalte,
       sortRichtung,
-      { nurOffen, unvollstaendig },
+      { nurOffen, unvollstaendig, ohneFoto },
       position
     );
 
@@ -148,12 +150,24 @@ export function renderListe(container, app) {
           <div class="info">
             <p class="name">${escapeHtml(h.name)}${h._synchronisierungAusstehend ? ` <span title="${escapeHtml(t("Noch nicht synchronisiert"))}" aria-label="${escapeHtml(t("Noch nicht synchronisiert"))}">${icon("offline", { klein: true })}</span>` : ""}${app.konfliktFuer && app.konfliktFuer(h.id) ? ` <span title="${escapeHtml(t("Versionskonflikt"))}" aria-label="${escapeHtml(t("Versionskonflikt"))}">${icon("warnung", { klein: true })}</span>` : ""}</p>
             <p class="ort">${escapeHtml(h.ort || "")}</p>
-            ${statusBadge(h.geoeffnet)} ${bewertungSterne(h.bewertung)}${entfernungHtml(h)}
+            ${statusBadge(h.geoeffnet)} ${bewertungSterne(h.bewertung)}${entfernungHtml(h)}${fotoFehlt(h) ? ` <span class="foto-fehlt">${icon("kamera", { klein: true })} ${escapeHtml(t("Foto fehlt"))}</span>` : ""}
           </div>
         </div>`
           )
           .join("")
-      : `<p class="hinweis-leiste">${escapeHtml(t("Keine Hofläden gefunden."))}</p>`;
+      : app.state.hoflaeden.length
+      ? leerzustandHtml({
+          symbol: "suche",
+          titel: t("Keine Treffer"),
+          text: t("Passe die Suche oder die Filter an."),
+          aktion: { id: "filter-zuruecksetzen", label: t("Suche und Filter zurücksetzen") },
+        })
+      : leerzustandHtml({
+          symbol: "hof",
+          titel: t("Noch keine Hofläden"),
+          text: t("Erfasse den ersten Hofladen: vor Ort oder von einer Webseite."),
+          aktion: { href: "#/erfassen", id: "leer-erfassen", label: t("Hofladen erfassen") },
+        });
   }
 
   function entfernungHtml(h) {
@@ -171,7 +185,7 @@ export function renderListe(container, app) {
   }
 
   function zaehlerText() {
-    const n = sortiereUndFiltere(app.state.hoflaeden, suchbegriff, sortSpalte, sortRichtung, { nurOffen, unvollstaendig }, position).length;
+    const n = sortiereUndFiltere(app.state.hoflaeden, suchbegriff, sortSpalte, sortRichtung, { nurOffen, unvollstaendig, ohneFoto }, position).length;
     return tn(n, "1 Hofladen", "{n} Hofläden");
   }
 
@@ -259,6 +273,7 @@ export function renderListe(container, app) {
         <button type="button" class="chip" id="chip-naehe" aria-pressed="${!!position}">${icon("standort", { klein: true })} ${escapeHtml(t("In der Nähe"))}</button>
         <button type="button" class="chip" id="chip-offen" aria-pressed="${nurOffen}">${escapeHtml(t("Geöffnet"))}</button>
         <button type="button" class="chip" id="chip-unvollstaendig" aria-pressed="${unvollstaendig}">${escapeHtml(t("Unvollständig"))}</button>
+        <button type="button" class="chip" id="chip-ohne-foto" aria-pressed="${ohneFoto}">${icon("kamera", { klein: true })} ${escapeHtml(t("Ohne Foto"))}</button>
       </div>
       <p class="ort filter-meldung" id="filter-meldung" role="status"></p>
       <p class="ort" id="treffer-zaehler" aria-live="polite">${zaehlerText()}</p>
@@ -277,6 +292,7 @@ export function renderListe(container, app) {
     for (const [id, setze] of [
       ["#chip-offen", (v) => (nurOffen = v)],
       ["#chip-unvollstaendig", (v) => (unvollstaendig = v)],
+      ["#chip-ohne-foto", (v) => (ohneFoto = v)],
     ]) {
       container.querySelector(id).addEventListener("click", (e) => {
         const an = e.currentTarget.getAttribute("aria-pressed") !== "true";
@@ -299,6 +315,15 @@ export function renderListe(container, app) {
     });
     // Event-Delegation: bleibt gültig, wenn die Trefferliste neu gezeichnet wird.
     container.querySelector("#hofladen-liste").addEventListener("click", (e) => {
+      if (e.target.closest("#filter-zuruecksetzen")) {
+        suchbegriff = "";
+        nurOffen = false;
+        unvollstaendig = false;
+        ohneFoto = false;
+        merke();
+        zeichneListe();
+        return;
+      }
       const karte = e.target.closest(".hofladen-karte");
       if (karte) app.navigate(`#/hofladen/${karte.dataset.id}`);
     });
