@@ -463,4 +463,8 @@ export default {
   "Suche und Filter zurücksetzen": "Reset search and filters",
   "Noch keine Hofläden": "No farm shops yet",
   "Erfasse den ersten Hofladen: vor Ort oder von einer Webseite.": "Add the first farm shop: on site or from a website.",
+  "Filter und Sortierung": "Filters and sorting",
+  "Aktive Filter": "Active filters",
+  "Filter entfernen: {name}": "Remove filter: {name}",
+  "Filter, {n} aktiv": "Filters, {n} active",
 };

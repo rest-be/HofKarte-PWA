@@ -463,4 +463,8 @@ export default {
   "Suche und Filter zurücksetzen": "Réinitialiser la recherche et les filtres",
   "Noch keine Hofläden": "Pas encore de fermes",
   "Erfasse den ersten Hofladen: vor Ort oder von einer Webseite.": "Saisissez la première ferme : sur place ou depuis un site web.",
+  "Filter und Sortierung": "Filtres et tri",
+  "Aktive Filter": "Filtres actifs",
+  "Filter entfernen: {name}": "Retirer le filtre : {name}",
+  "Filter, {n} aktiv": "Filtres, {n} actif(s)",
 };

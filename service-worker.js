@@ -21,7 +21,7 @@
  * diese liegen ausschliesslich in IndexedDB (siehe src/storage.js).
  */
 
-const CACHE_VERSION = "hofkarte-pwa-v27";
+const CACHE_VERSION = "hofkarte-pwa-v28";
 
 const APP_SHELL_DATEIEN = [
   "./",

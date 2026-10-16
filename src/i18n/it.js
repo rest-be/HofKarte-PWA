@@ -463,4 +463,8 @@ export default {
   "Suche und Filter zurücksetzen": "Reimposta ricerca e filtri",
   "Noch keine Hofläden": "Ancora nessun negozio agricolo",
   "Erfasse den ersten Hofladen: vor Ort oder von einer Webseite.": "Registra il primo negozio agricolo: sul posto o da un sito web.",
+  "Filter und Sortierung": "Filtri e ordinamento",
+  "Aktive Filter": "Filtri attivi",
+  "Filter entfernen: {name}": "Rimuovi il filtro: {name}",
+  "Filter, {n} aktiv": "Filtri, {n} attivo/i",
 };

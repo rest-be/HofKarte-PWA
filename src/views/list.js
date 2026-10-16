@@ -110,6 +110,8 @@ let naeheOffen = false;
 const gemerkt = { suchbegriff: "", sortSpalte: null, sortRichtung: null, nurOffen: false, unvollstaendig: false, ohneFoto: false };
 /** Standort nur im Speicher, nur nach Tipp auf «In der Nähe»; wird nie gespeichert. */
 let position = null;
+/** Filter-Bereich auf- oder eingeklappt (eingeklappt als Standard, spart Platz). */
+let filterOffen = false;
 
 export function renderListe(container, app) {
   const einstellungen = app.state.einstellungen || {};
@@ -176,12 +178,39 @@ export function renderListe(container, app) {
     return ` <span class="entfernung">${icon("standort", { klein: true })} ${escapeHtml(text)}</span>`;
   }
 
+  const FILTER_DEFS = () => [
+    { id: "chip-naehe", name: t("In der Nähe"), aktiv: !!position },
+    { id: "chip-offen", name: t("Geöffnet"), aktiv: nurOffen },
+    { id: "chip-unvollstaendig", name: t("Unvollständig"), aktiv: unvollstaendig },
+    { id: "chip-ohne-foto", name: t("Ohne Foto"), aktiv: ohneFoto },
+  ];
+
+  /** Zeigt aktive Filter als entfernbare Chips unter der Suche; Zähler am Filter-Knopf. */
+  function zeichneAktiveFilter() {
+    const aktiv = FILTER_DEFS().filter((f) => f.aktiv);
+    const box = container.querySelector("#aktive-filter");
+    const zahl = container.querySelector("#filter-zahl");
+    const btn = container.querySelector("#filter-btn");
+    if (!box) return;
+    box.hidden = aktiv.length === 0;
+    box.innerHTML = aktiv
+      .map(
+        (f) => `<button type="button" class="aktiver-filter" data-filter="${f.id}" aria-label="${escapeHtml(t("Filter entfernen: {name}", { name: f.name }))}"><span>${escapeHtml(f.name)}</span> ${icon("schliessen", { klein: true })}</button>`
+      )
+      .join("");
+    zahl.hidden = aktiv.length === 0;
+    zahl.textContent = String(aktiv.length);
+    btn.setAttribute("aria-label", aktiv.length ? t("Filter, {n} aktiv", { n: aktiv.length }) : t("Filter"));
+    for (const f of FILTER_DEFS()) container.querySelector(`#${f.id}`)?.setAttribute("aria-pressed", String(f.aktiv));
+  }
+
   /** Aktualisiert nur die Trefferliste - Suchfeld und Fokus bleiben unberührt. */
   function zeichneEintraege() {
     const box = container.querySelector("#hofladen-liste");
     if (box) box.innerHTML = eintraegeHtml();
     const zaehler = container.querySelector("#treffer-zaehler");
     if (zaehler) zaehler.textContent = zaehlerText();
+    zeichneAktiveFilter();
   }
 
   function zaehlerText() {
@@ -259,22 +288,27 @@ export function renderListe(container, app) {
         <input type="search" id="such-feld" placeholder="${escapeHtml(t("Suchen …"))}" aria-label="${escapeHtml(t("Hofläden suchen"))}" value="${escapeHtml(
           suchbegriff
         )}" />
-        <select id="sort-spalte" aria-label="${escapeHtml(t("Sortieren nach"))}">
-          ${sortOptionen()
-            .map((s) => `<option value="${s.wert}" ${s.wert === sortSpalte ? "selected" : ""}>${escapeHtml(t(s.label))}</option>`)
-            .join("")}
-        </select>
-        <button id="sort-richtung" title="${escapeHtml(t("Sortierrichtung umkehren"))}" aria-label="${escapeHtml(
-          sortRichtung === "asc" ? t("Aufsteigend sortiert, umkehren für absteigend") : t("Absteigend sortiert, umkehren für aufsteigend")
-        )}">${sortRichtung === "asc" ? "↑" : "↓"}</button>
+        <button type="button" class="filter-btn" id="filter-btn" aria-expanded="${filterOffen}" aria-controls="filter-panel">${icon("filter", { klein: true })} <span>${escapeHtml(t("Filter"))}</span><span class="filter-zahl" id="filter-zahl" hidden></span></button>
       </div>
 
-      <div class="chip-liste filter-chips" role="group" aria-label="${escapeHtml(t("Filter"))}">
-        <button type="button" class="chip" id="chip-naehe" aria-pressed="${!!position}">${icon("standort", { klein: true })} ${escapeHtml(t("In der Nähe"))}</button>
-        <button type="button" class="chip" id="chip-offen" aria-pressed="${nurOffen}">${escapeHtml(t("Geöffnet"))}</button>
-        <button type="button" class="chip" id="chip-unvollstaendig" aria-pressed="${unvollstaendig}">${escapeHtml(t("Unvollständig"))}</button>
-        <button type="button" class="chip" id="chip-ohne-foto" aria-pressed="${ohneFoto}">${icon("kamera", { klein: true })} ${escapeHtml(t("Ohne Foto"))}</button>
+      <div class="filter-panel" id="filter-panel" role="group" aria-label="${escapeHtml(t("Filter und Sortierung"))}"${filterOffen ? "" : " hidden"}>
+        <button type="button" class="filter-zeile" id="chip-naehe" aria-pressed="${!!position}">${icon("standort", { klein: true })} <span>${escapeHtml(t("In der Nähe"))}</span><span class="filter-schalter" aria-hidden="true"></span></button>
+        <button type="button" class="filter-zeile" id="chip-offen" aria-pressed="${nurOffen}">${icon("uhr", { klein: true })} <span>${escapeHtml(t("Geöffnet"))}</span><span class="filter-schalter" aria-hidden="true"></span></button>
+        <button type="button" class="filter-zeile" id="chip-unvollstaendig" aria-pressed="${unvollstaendig}">${icon("info", { klein: true })} <span>${escapeHtml(t("Unvollständig"))}</span><span class="filter-schalter" aria-hidden="true"></span></button>
+        <button type="button" class="filter-zeile" id="chip-ohne-foto" aria-pressed="${ohneFoto}">${icon("kamera", { klein: true })} <span>${escapeHtml(t("Ohne Foto"))}</span><span class="filter-schalter" aria-hidden="true"></span></button>
+        <div class="filter-sortierung">
+          <select id="sort-spalte" aria-label="${escapeHtml(t("Sortieren nach"))}">
+            ${sortOptionen()
+              .map((s) => `<option value="${s.wert}" ${s.wert === sortSpalte ? "selected" : ""}>${escapeHtml(t(s.label))}</option>`)
+              .join("")}
+          </select>
+          <button type="button" id="sort-richtung" title="${escapeHtml(t("Sortierrichtung umkehren"))}" aria-label="${escapeHtml(
+            sortRichtung === "asc" ? t("Aufsteigend sortiert, umkehren für absteigend") : t("Absteigend sortiert, umkehren für aufsteigend")
+          )}">${sortRichtung === "asc" ? "↑" : "↓"}</button>
+        </div>
       </div>
+
+      <div class="aktive-filter" id="aktive-filter" aria-label="${escapeHtml(t("Aktive Filter"))}" role="group" hidden></div>
       <p class="ort filter-meldung" id="filter-meldung" role="status"></p>
       <p class="ort" id="treffer-zaehler" aria-live="polite">${zaehlerText()}</p>
 
@@ -289,6 +323,17 @@ export function renderListe(container, app) {
       suchTimer = setTimeout(zeichneEintraege, SUCHE_VERZOEGERUNG_MS);
     });
     container.querySelector("#chip-naehe").addEventListener("click", (e) => schalteNaehe(e.currentTarget));
+    container.querySelector("#filter-btn").addEventListener("click", (e) => {
+      filterOffen = !filterOffen;
+      container.querySelector("#filter-panel").hidden = !filterOffen;
+      e.currentTarget.setAttribute("aria-expanded", String(filterOffen));
+    });
+    container.querySelector("#aktive-filter").addEventListener("click", (e) => {
+      const chip = e.target.closest("[data-filter]");
+      if (!chip) return;
+      container.querySelector(`#${chip.dataset.filter}`).click();
+      container.querySelector("#filter-btn").focus();
+    });
     for (const [id, setze] of [
       ["#chip-offen", (v) => (nurOffen = v)],
       ["#chip-unvollstaendig", (v) => (unvollstaendig = v)],
@@ -341,6 +386,7 @@ export function renderListe(container, app) {
     }
 
     zeichneNaeheKarte();
+    zeichneAktiveFilter();
   }
 
   async function sucheNaehe(ergebnisBox) {

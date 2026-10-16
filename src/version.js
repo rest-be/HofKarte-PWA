@@ -18,7 +18,7 @@
  * Beim Erhöhen bitte auch im README (Abschnitt "Version") und im
  * Vorgehensplan nachziehen.
  */
-export const APP_VERSION = "2.0.0-dev.12";
+export const APP_VERSION = "2.0.0-dev.13";
 
 /**
  * Release Notes (neueste zuerst), angezeigt auf dem Einrichtungsbildschirm
@@ -26,6 +26,14 @@ export const APP_VERSION = "2.0.0-dev.12";
  * ergänzen (und die Tabelle im README nachziehen).
  */
 export const RELEASE_NOTES = [
+  {
+    version: "2.0.0-dev.13",
+    datum: "2026-10-16",
+    punkte: [
+      "Liste: Die Filter sitzen hinter einem Knopf «Filter» neben der Suche (mit Zähler). Die Auswahl klappt darunter auf und enthält auch die Sortierung.",
+      "Aktive Filter erscheinen als kleine Chips unter der Suche und lassen sich mit einem Tipp entfernen; ohne aktive Filter entfällt die Zeile.",
+    ],
+  },
   {
     version: "2.0.0-dev.12",
     datum: "2026-10-16",

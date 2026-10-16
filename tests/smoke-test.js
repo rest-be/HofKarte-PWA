@@ -30,6 +30,10 @@ export async function fuehreSmokeTestsAus(page, baseUrl) {
   let fail = 0;
   const fehlgeschlagen = [];
 
+  const oeffneFilter = async () => {
+    if ((await page.getAttribute("#filter-btn", "aria-expanded")) !== "true") await page.click("#filter-btn");
+  };
+
   function check(label, bedingung) {
     if (bedingung) {
       pass++;
@@ -418,6 +422,7 @@ export async function fuehreSmokeTestsAus(page, baseUrl) {
   await page.click("[data-tab='liste']");
   await page.waitForTimeout(300);
   check("Suchfeld hat aria-label", !!(await page.$eval("#such-feld", (el) => el.getAttribute("aria-label"))));
+  await oeffneFilter();
   check("Sortier-Select hat aria-label", !!(await page.$eval("#sort-spalte", (el) => el.getAttribute("aria-label"))));
   check("Sortierrichtung-Button hat aria-label", !!(await page.$eval("#sort-richtung", (el) => el.getAttribute("aria-label"))));
   check(
@@ -730,6 +735,7 @@ export async function fuehreSmokeTestsAus(page, baseUrl) {
     return { distanzVorher: document.querySelectorAll(".entfernung").length, alle: document.querySelectorAll(".hofladen-karte").length };
   });
   check("Liste: ohne Tipp keine Entfernung, Standort nicht abgefragt", listeTest.distanzVorher === 0 && listeTest.alle === 3 && (await page.evaluate(() => window.__geoAufrufe6)) === 1);
+  await oeffneFilter();
   await page.click("#chip-offen");
   check("Liste: Chip «Geöffnet» filtert", (await page.$$(".hofladen-karte")).length === 1 && (await page.getAttribute("#chip-offen", "aria-pressed")) === "true");
   await page.click("#chip-offen");
@@ -1449,6 +1455,7 @@ export async function fuehreSmokeTestsAus(page, baseUrl) {
   await gehe("#/");
   const kartenTexte = await page.$$eval(".hofladen-karte", (k) => k.map((x) => `${x.querySelector(".name").textContent.trim()}|${!!x.querySelector(".foto-fehlt")}`));
   check(`Liste: «Foto fehlt» nur bei Hofläden ohne Foto (${kartenTexte.join(", ")})`, kartenTexte.includes("Testhof|true") && kartenTexte.includes("Hof mit Foto|false"));
+  await oeffneFilter();
   await page.click("#chip-ohne-foto");
   check("Liste: Filter «Ohne Foto» zeigt nur Hofläden ohne Foto", (await page.$$eval(".hofladen-karte", (k) => k.length)) === 1);
   await page.fill("#such-feld", "zzzz-kein-treffer");
@@ -1483,6 +1490,25 @@ export async function fuehreSmokeTestsAus(page, baseUrl) {
   await page.evaluate(() => { const a = window.hofkarteApp; a.haClient = null; a.offlineModus = true; a.state.zuletztAktualisiert = new Date().toISOString(); });
   await gehe("#/");
   check("Offline-Anzeige nennt den Stand der Daten (Uhrzeit)", /Offline[^<]*Stand \d{1,2}:\d{2}/.test(await page.textContent(".sync-status.offline")));
+
+
+  // --- 2.0.0-dev.13: Filter hinter einem Knopf -------------------------------------
+  await setzeTesthof();
+  await gehe("#/");
+  if ((await page.getAttribute("#filter-btn", "aria-expanded")) === "true") await page.click("#filter-btn");
+  check("Filter: Bereich ist eingeklappt, Filter-Knopf neben der Suche", (await page.getAttribute("#filter-btn", "aria-expanded")) === "false" && !(await page.isVisible("#filter-panel")) && !(await page.isVisible("#aktive-filter")));
+  check("Filter: keine Chip-Zeile im Normalzustand (Liste beginnt höher)", await page.evaluate(() => document.querySelector("#filter-btn").getBoundingClientRect().top === document.querySelector("#such-feld").getBoundingClientRect().top || Math.abs(document.querySelector("#filter-btn").getBoundingClientRect().top - document.querySelector("#such-feld").getBoundingClientRect().top) < 4));
+  await page.click("#filter-btn");
+  check("Filter: Knopf öffnet die Auswahl mit 4 Filtern und Sortierung", (await page.getAttribute("#filter-btn", "aria-expanded")) === "true" && (await page.$$eval("#filter-panel .filter-zeile", (z) => z.length)) === 4 && (await page.isVisible("#sort-spalte")));
+  await page.click("#chip-offen");
+  await page.click("#chip-ohne-foto");
+  check("Filter: Zähler am Knopf und aktive Filter als Chips", (await page.textContent("#filter-zahl")) === "2" && (await page.$$eval("#aktive-filter .aktiver-filter", (c) => c.length)) === 2 && /2/.test(await page.getAttribute("#filter-btn", "aria-label")));
+  check("Filter: aktive Chips sind mind. 44px hoch", await page.$$eval("#aktive-filter .aktiver-filter", (c) => c.every((x) => x.getBoundingClientRect().height >= 44)));
+  await page.click("#filter-btn");
+  await page.click('#aktive-filter [data-filter="chip-offen"]');
+  check("Filter: Tipp auf einen aktiven Chip entfernt den Filter", (await page.textContent("#filter-zahl")) === "1" && (await page.getAttribute("#chip-offen", "aria-pressed")) === "false" && (await page.$$eval("#aktive-filter .aktiver-filter", (c) => c.length)) === 1);
+  await page.click('#aktive-filter [data-filter="chip-ohne-foto"]');
+  check("Filter: ohne aktive Filter verschwinden Zähler und Chip-Zeile wieder", !(await page.isVisible("#filter-zahl")) && !(await page.isVisible("#aktive-filter")));
 
   // Grosse Schrift (Dynamic Type simuliert): nichts läuft seitlich über den Rand.
   await setzeTesthof();
