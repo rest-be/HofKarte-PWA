@@ -19,7 +19,7 @@
  * Vorgehensplan und im Startbild in index.html (`.splash-version`)
  * nachziehen; der Smoke-Test prüft die Übereinstimmung.
  */
-export const APP_VERSION = "2.0.0-dev.15";
+export const APP_VERSION = "2.0.0-dev.16";
 
 /**
  * Release Notes (neueste zuerst), angezeigt auf dem Einrichtungsbildschirm
@@ -27,6 +27,14 @@ export const APP_VERSION = "2.0.0-dev.15";
  * ergänzen (und die Tabelle im README nachziehen).
  */
 export const RELEASE_NOTES = [
+  {
+    version: "2.0.0-dev.16",
+    datum: "2026-10-17",
+    punkte: [
+      "Einstellungen → Navigation: Der Knopf «Route» öffnet wahlweise Google Maps oder Apple Karten, zentral für alle Hofläden. Standard: Apple Karten auf iPhone/iPad, sonst Google Maps.",
+      "Die Masken bleiben unverändert (ein Knopf «Route»); auch «Auf der Karte öffnen» und die Routenvorschau folgen der Wahl.",
+    ],
+  },
   {
     version: "2.0.0-dev.15",
     datum: "2026-10-17",

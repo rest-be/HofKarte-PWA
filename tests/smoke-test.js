@@ -440,8 +440,8 @@ export async function fuehreSmokeTestsAus(page, baseUrl) {
 
   const einstellungenReihenfolge = await page.$$eval(".formular-abschnitt > h2", (els) => els.map((e) => e.textContent.trim()));
   check(
-    `Einstellungen-Reihenfolge: Darstellung, Sprache, Nähe, Verbindung, Token ändern, Abmelden, Version (${einstellungenReihenfolge.join(", ")})`,
-    JSON.stringify(einstellungenReihenfolge) === JSON.stringify(["Darstellung", "Sprache", "Hofläden in der Nähe", "Verbindung", "Token ändern", "Abmelden", "Version"])
+    `Einstellungen-Reihenfolge: Darstellung, Sprache, Navigation, Nähe, Verbindung, Token ändern, Abmelden, Version (${einstellungenReihenfolge.join(", ")})`,
+    JSON.stringify(einstellungenReihenfolge) === JSON.stringify(["Darstellung", "Sprache", "Navigation", "Hofläden in der Nähe", "Verbindung", "Token ändern", "Abmelden", "Version"])
   );
   check("Nähe-Umkreis: Standard 500 m", (await page.$eval("#f-naehe-radius", (el) => el.value)) === "500");
   await page.fill("#f-naehe-radius", "750");
@@ -1592,6 +1592,48 @@ export async function fuehreSmokeTestsAus(page, baseUrl) {
   check(`Startbild: Titel, Icon, Version und Ladetext in dieser Reihenfolge (${splash.reihenfolge})`, splash.vorhanden && splash.titel === "HofKarte" && /icons\/icon-192\.png$/.test(splash.icon) && splash.laden === "HofKarte wird geladen …" && splash.reihenfolge === "splash-titel>splash-icon>splash-version>splash-laden");
   check(`Startbild: Versionsnummer stimmt mit src/version.js überein (${splash.version} / ${splash.soll})`, splash.version === splash.soll);
   check("Startbild: wird von der App ersetzt (nach dem Start nicht mehr sichtbar)", (await page.$$eval(".splash", (e) => e.length)) === 0);
+
+
+  // --- 2.0.0-dev.16: Navigation (Google Maps / Apple Karten) -------------------------
+  const nav = await page.evaluate(async () => {
+    const m = await import("/src/navigation.js");
+    const h = { latitude: 46.9, longitude: 7.4, name: "Hof & Co" };
+    localStorage.removeItem("hofkarte-navigation");
+    const standard = m.standardDienst();
+    return {
+      standard,
+      google: m.routenLink(h, "google"),
+      apple: m.routenLink(h, "apple"),
+      kartenG: m.kartenLink(h, "google"),
+      kartenA: m.kartenLink(h, "apple"),
+      ungueltig: (m.setzeDienst("quatsch"), m.gespeicherterDienst()),
+    };
+  });
+  check(`Navigation: Google-Link (${nav.google})`, nav.google === "https://www.google.com/maps/dir/?api=1&destination=46.9%2C7.4");
+  check(`Navigation: Apple-Link (${nav.apple})`, nav.apple === "https://maps.apple.com/?daddr=46.9,7.4&dirflg=d");
+  check("Navigation: Kartenlinks (Ort ohne Route) für beide Dienste", nav.kartenG === "https://www.google.com/maps/search/?api=1&query=46.9,7.4" && nav.kartenA === "https://maps.apple.com/?ll=46.9,7.4&q=Hof%20%26%20Co");
+  check("Navigation: Standard ohne Wahl ist Google Maps auf diesem (Nicht-Apple-)Gerät, ungültige Wahl wird ignoriert", nav.standard === "google" && nav.ungueltig === null);
+  const appleStandard = await page.evaluate(async () => {
+    const m = await import("/src/navigation.js");
+    const ua = Object.getOwnPropertyDescriptor(Navigator.prototype, "userAgent");
+    Object.defineProperty(navigator, "userAgent", { value: "Mozilla/5.0 (iPhone; CPU iPhone OS 18_0 like Mac OS X)", configurable: true });
+    const r = m.standardDienst();
+    delete navigator.userAgent;
+    return { r, zurueck: navigator.userAgent === ua.get.call(navigator) };
+  });
+  check("Navigation: auf dem iPhone ist Apple Karten der Standard", appleStandard.r === "apple" && appleStandard.zurueck);
+  await setzeTesthof();
+  await gehe("#/hofladen/i1");
+  check("Navigation: Detail hat genau einen Knopf «Route» (Google Maps als Standard)", (await page.$$eval(".schnellaktion", (a) => a.filter((x) => /Route/.test(x.textContent)).length)) === 1 && (await page.getAttribute(".schnellaktion[href*='maps']", "href")).startsWith("https://www.google.com/maps/dir/"));
+  await gehe("#/einstellungen");
+  check("Navigation: Einstellungen zeigen Auswahl (Google Maps/Apple Karten), Zurücksetzen und Standard-Hinweis", (await page.$$eval("#f-navigation option", (o) => o.map((x) => x.textContent).join(","))) === "Google Maps,Apple Karten" && (await page.inputValue("#f-navigation")) === "google" && /Standard auf diesem Gerät: Google Maps/.test(await page.textContent("#navigation-hinweis")) && (await page.$eval("#navigation-zuruecksetzen", (b) => b.getBoundingClientRect().height)) >= 44);
+  await page.selectOption("#f-navigation", "apple");
+  check("Navigation: Wahl wird nur auf dem Gerät gespeichert", (await page.evaluate(() => localStorage.getItem("hofkarte-navigation"))) === "apple");
+  await gehe("#/hofladen/i1");
+  check("Navigation: Detail folgt der Wahl (Route und «Auf der Karte öffnen» → Apple Karten), weiterhin ein Knopf", (await page.$$eval(".schnellaktion", (a) => a.filter((x) => /Route/.test(x.textContent)).length)) === 1 && (await page.getAttribute(".schnellaktion[href*='maps']", "href")) === "https://maps.apple.com/?daddr=46.9,7.4&dirflg=d" && (await page.$$eval("a[href^='https://maps.apple.com/?ll=']", (a) => a.length)) === 1);
+  await gehe("#/einstellungen");
+  await page.click("#navigation-zuruecksetzen");
+  check("Navigation: Zurücksetzen löscht die Wahl und zeigt wieder den Standard", (await page.evaluate(() => localStorage.getItem("hofkarte-navigation"))) === null && (await page.inputValue("#f-navigation")) === "google");
 
   // Grosse Schrift (Dynamic Type simuliert): nichts läuft seitlich über den Rand.
   await setzeTesthof();

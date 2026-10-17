@@ -1,6 +1,6 @@
 # HofKarte-PWA
 
-**Version: 2.0.0-dev.15** – siehe Abschnitt [Version](#version) unten für die
+**Version: 2.0.0-dev.16** – siehe Abschnitt [Version](#version) unten für die
 installierte Version auf einem konkreten Gerät.
 
 Progressive Web App für HofKarte – ein reiner, zustandsloser Client für die
@@ -104,6 +104,7 @@ READMEs.
 
 | Version | Datum | Wesentliche Änderungen |
 |---|---|---|
+| 2.0.0-dev.16 | 2026-10-17 | Navigation wählbar: Google Maps oder Apple Karten (Standard je Gerät). |
 | 2.0.0-dev.15 | 2026-10-17 | Startbild (Splash) mit Titel, Icon und Versionsnummer. |
 | 2.0.0-dev.14 | 2026-10-16 | Karte: Suche mit Trefferliste, Hinspringen und «Alle Treffer zeigen». |
 | 2.0.0-dev.13 | 2026-10-16 | Liste: Filter und Sortierung hinter einem Filter-Knopf, aktive Filter als Chips. |

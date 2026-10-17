@@ -10,6 +10,7 @@ import { t } from "../i18n.js";
 import { escapeHtml, sichereHttpUrl } from "../html.js";
 import { vorschauUrl } from "../bilder.js";
 import { FINDEN_QUELLEN_LABEL, FINDEN_ZEILEN } from "./../finden.js";
+import { kartenLink, routenLink } from "../navigation.js";
 import { teileHofladen } from "../teilen.js";
 import { leerzustandHtml } from "../leerzustand.js";
 import { icon } from "../icons.js";
@@ -111,15 +112,13 @@ function gruppenInhalt(id, h) {
     case "adresse": {
       const adresseZeile = [h.adresse, [h.plz, h.ort].filter(Boolean).join(" "), h.land].filter(Boolean).join(", ");
       const hatKoordinaten = h.latitude != null && h.longitude != null;
-      const kartenLink = hatKoordinaten
-        ? `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(h.latitude)},${encodeURIComponent(h.longitude)}`
-        : null;
+      const kartenLinkUrl = hatKoordinaten ? kartenLink(h) : null;
       if (!adresseZeile && !hatKoordinaten) return leer(t("Keine Adresse hinterlegt."));
       return (
         (adresseZeile ? `<div class="kontakt-zeile">${escapeHtml(adresseZeile)}</div>` : "") +
         (hatKoordinaten ? `<div class="kontakt-zeile">${escapeHtml(h.latitude)}, ${escapeHtml(h.longitude)}</div>` : "") +
-        (kartenLink
-          ? `<div class="kontakt-zeile"><a href="${escapeHtml(kartenLink)}" target="_blank" rel="noopener noreferrer">${icon("standort", { klein: true })} ${escapeHtml(t("Auf der Karte öffnen"))}</a></div>`
+        (kartenLinkUrl
+          ? `<div class="kontakt-zeile"><a href="${escapeHtml(kartenLinkUrl)}" target="_blank" rel="noopener noreferrer">${icon("standort", { klein: true })} ${escapeHtml(t("Auf der Karte öffnen"))}</a></div>`
           : "")
       );
     }
@@ -196,7 +195,7 @@ function gruppeHtml(gruppe, h) {
 function schnellaktionenHtml(h) {
   const aktionen = [];
   if (h.latitude != null && h.longitude != null) {
-    const ziel = `https://www.google.com/maps/dir/?api=1&destination=${encodeURIComponent(h.latitude)},${encodeURIComponent(h.longitude)}`;
+    const ziel = routenLink(h);
     aktionen.push(`<a class="schnellaktion" href="${escapeHtml(ziel)}" target="_blank" rel="noopener noreferrer">${icon("route")}<span>${escapeHtml(t("Route"))}</span></a>`);
   }
   if (h.mobilnummer) {

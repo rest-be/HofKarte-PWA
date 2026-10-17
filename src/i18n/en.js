@@ -477,4 +477,7 @@ export default {
   "{n} Treffer ohne Position werden nicht auf der Karte gezeigt.": "{n} result(s) without a position are not shown on the map.",
   "1 Treffer": "1 result",
   "{n} Treffer": "{n} results",
+  "Navigation": "Navigation",
+  "Route öffnen mit": "Open route with",
+  "Gilt für den Knopf «Route» bei allen Hofläden, nur auf diesem Gerät. Standard auf diesem Gerät: {dienst}.": "Applies to the “Route” button for all farm shops, on this device only. Default on this device: {dienst}.",
 };

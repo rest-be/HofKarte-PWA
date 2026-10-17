@@ -17,6 +17,7 @@ import { FARBEN, STANDARD_FARBE, aktuelleMarkenfarbe, setzeMarkenfarbe, normalis
 import { icon } from "../icons.js";
 import { aktualisiereJetzt, appZuruecksetzen, pruefeAufUpdate } from "../update.js";
 import { STANDARD_RADIUS_METER, MIN_RADIUS_METER, MAX_RADIUS_METER } from "../naehe.js";
+import { NAVIGATIONSDIENSTE, aktuellerDienst, setzeDienst, standardDienst } from "../navigation.js";
 import { t, SPRACHEN, gespeicherteSprache, setzeSprache } from "../i18n.js";
 
 export function renderEinstellungen(container, app) {
@@ -55,6 +56,18 @@ export function renderEinstellungen(container, app) {
       </div>
       <button type="button" class="hinzufuegen-btn" id="sprache-zuruecksetzen">${t("Zurücksetzen")}</button>
       <p class="muted">${t("Gilt nur auf diesem Gerät. Texte aus Home Assistant bleiben in der dortigen Sprache.")}</p>
+    </section>
+
+    <section class="formular-abschnitt" id="navigation">
+      <h2>${t("Navigation")}</h2>
+      <div class="feld-gruppe">
+        <label for="f-navigation">${t("Route öffnen mit")}</label>
+        <select id="f-navigation" class="sprach-auswahl">
+          ${NAVIGATIONSDIENSTE.map((d) => `<option value="${d.code}">${d.name}</option>`).join("")}
+        </select>
+      </div>
+      <button type="button" class="hinzufuegen-btn" id="navigation-zuruecksetzen">${t("Zurücksetzen")}</button>
+      <p class="muted" id="navigation-hinweis"></p>
     </section>
 
     <section class="formular-abschnitt">
@@ -130,6 +143,24 @@ export function renderEinstellungen(container, app) {
   spracheFeld.addEventListener("change", () => wendeSpracheAn(spracheFeld.value));
   // «Zurücksetzen»: zurück auf «Automatisch» (Browsersprache).
   container.querySelector("#sprache-zuruecksetzen").addEventListener("click", () => wendeSpracheAn(""));
+
+  // Navigation: Dienst für den Knopf «Route»; gilt für alle Hofläden, nur auf diesem Gerät.
+  const navigationFeld = container.querySelector("#f-navigation");
+  const navigationHinweis = container.querySelector("#navigation-hinweis");
+  const zeigeNavigation = () => {
+    navigationFeld.value = aktuellerDienst();
+    const standard = NAVIGATIONSDIENSTE.find((d) => d.code === standardDienst()).name;
+    navigationHinweis.textContent = t("Gilt für den Knopf «Route» bei allen Hofläden, nur auf diesem Gerät. Standard auf diesem Gerät: {dienst}.", { dienst: standard });
+  };
+  zeigeNavigation();
+  navigationFeld.addEventListener("change", () => {
+    setzeDienst(navigationFeld.value);
+    zeigeNavigation();
+  });
+  container.querySelector("#navigation-zuruecksetzen").addEventListener("click", () => {
+    setzeDienst(null);
+    zeigeNavigation();
+  });
 
   const farbStatus = container.querySelector("#farbe-status");
   const eigeneFarbe = container.querySelector("#f-eigene-farbe");

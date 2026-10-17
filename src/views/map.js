@@ -11,6 +11,7 @@
 import { escapeHtml } from "../html.js";
 import { aktuellerStandort } from "../naehe.js";
 import { heuteKurzinfo } from "../gruppen.js";
+import { routenLink } from "../navigation.js";
 import { suchHoflaeden } from "../suche.js";
 import { icon } from "../icons.js";
 import { ladeKarteGeschlosseneAusblenden, speichereKarteGeschlosseneAusblenden } from "../storage.js";
@@ -74,7 +75,7 @@ export function erzeugeMarkerIcon(L, geoeffnet) {
 }
 
 function routeUrl(h) {
-  return `https://www.google.com/maps/dir/?api=1&destination=${encodeURIComponent(`${h.latitude},${h.longitude}`)}`;
+  return routenLink(h);
 }
 
 export async function renderKarte(container, app) {

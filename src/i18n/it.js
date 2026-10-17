@@ -477,4 +477,7 @@ export default {
   "{n} Treffer ohne Position werden nicht auf der Karte gezeigt.": "{n} risultato/i senza posizione non vengono mostrati sulla mappa.",
   "1 Treffer": "1 risultato",
   "{n} Treffer": "{n} risultati",
+  "Navigation": "Navigazione",
+  "Route öffnen mit": "Apri il percorso con",
+  "Gilt für den Knopf «Route» bei allen Hofläden, nur auf diesem Gerät. Standard auf diesem Gerät: {dienst}.": "Vale per il pulsante «Percorso» di tutti i negozi agricoli, solo su questo dispositivo. Predefinito su questo dispositivo: {dienst}.",
 };

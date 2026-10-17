@@ -477,4 +477,7 @@ export default {
   "{n} Treffer ohne Position werden nicht auf der Karte gezeigt.": "{n} résultat(s) sans position ne sont pas affichés sur la carte.",
   "1 Treffer": "1 résultat",
   "{n} Treffer": "{n} résultats",
+  "Navigation": "Navigation",
+  "Route öffnen mit": "Ouvrir l’itinéraire avec",
+  "Gilt für den Knopf «Route» bei allen Hofläden, nur auf diesem Gerät. Standard auf diesem Gerät: {dienst}.": "S’applique au bouton « Itinéraire » pour toutes les fermes, uniquement sur cet appareil. Par défaut sur cet appareil : {dienst}.",
 };
