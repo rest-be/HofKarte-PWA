@@ -1572,6 +1572,27 @@ export async function fuehreSmokeTestsAus(page, baseUrl) {
   await page.waitForTimeout(400);
   check("Kartensuche: ausgeblendeter Hofladen hebt «Nur geöffnet» auf und wird gezeigt", !(await page.isChecked("#filter-offen")) && (await page.textContent("#karten-sheet h2")) === "Alpweide Thun" && (await page.$$eval(".marker-aktiv", (m) => m.length)) === 1);
 
+
+  // --- 2.0.0-dev.15: Startbild (Splash) ------------------------------------------
+  const splash = await page.evaluate(async () => {
+    const html = await (await fetch("/index.html")).text();
+    const { APP_VERSION } = await import("/src/version.js");
+    const doc = new DOMParser().parseFromString(html, "text/html");
+    const s = doc.querySelector("#app .splash");
+    return {
+      vorhanden: !!s,
+      titel: s?.querySelector(".splash-titel")?.textContent,
+      icon: s?.querySelector("img.splash-icon")?.getAttribute("src"),
+      version: s?.querySelector(".splash-version")?.textContent,
+      laden: s?.querySelector(".splash-laden")?.textContent,
+      reihenfolge: [...(s?.children || [])].map((c) => c.className.split(" ")[0]).join(">"),
+      soll: `Version ${APP_VERSION}`,
+    };
+  });
+  check(`Startbild: Titel, Icon, Version und Ladetext in dieser Reihenfolge (${splash.reihenfolge})`, splash.vorhanden && splash.titel === "HofKarte" && /icons\/icon-192\.png$/.test(splash.icon) && splash.laden === "HofKarte wird geladen …" && splash.reihenfolge === "splash-titel>splash-icon>splash-version>splash-laden");
+  check(`Startbild: Versionsnummer stimmt mit src/version.js überein (${splash.version} / ${splash.soll})`, splash.version === splash.soll);
+  check("Startbild: wird von der App ersetzt (nach dem Start nicht mehr sichtbar)", (await page.$$eval(".splash", (e) => e.length)) === 0);
+
   // Grosse Schrift (Dynamic Type simuliert): nichts läuft seitlich über den Rand.
   await setzeTesthof();
   await page.evaluate(() => document.documentElement.style.setProperty("font-size", "28px", "important"));

@@ -132,6 +132,54 @@ a {
   color: var(--muted-color);
 }
 
+/* Startbild (Splash): Titel, Icon und Version in der Mitte, Ladetext unten. */
+.splash {
+  position: fixed;
+  inset: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 20px;
+  padding: env(safe-area-inset-top) 24px env(safe-area-inset-bottom);
+  background: var(--bg-color);
+  color: var(--text-color);
+  text-align: center;
+}
+
+.splash p {
+  margin: 0;
+}
+
+.splash-titel {
+  font-size: 2.1176rem;
+  font-weight: 700;
+  letter-spacing: -0.02em;
+}
+
+.splash-icon {
+  width: 96px;
+  height: 96px;
+  border-radius: 22px;
+  box-shadow: 0 6px 20px rgba(20, 40, 28, 0.22);
+}
+
+.splash-version {
+  margin-top: -8px;
+  color: var(--muted-color);
+  font-size: 0.8824rem;
+  font-variant-numeric: tabular-nums;
+}
+
+.splash-laden {
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: calc(env(safe-area-inset-bottom) + 40px);
+  padding: 0 24px;
+  font-size: 0.9412rem;
+}
+
 /* --- Navigationsleiste (oben, fix, mit Blur) --------------------------- */
 
 .kopfzeile {

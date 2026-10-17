@@ -15,10 +15,11 @@
  * `MAJOR.MINOR.PATCH`, kein strenges SemVer nötig für eine
  * Einzelhaushalt-App).
  *
- * Beim Erhöhen bitte auch im README (Abschnitt "Version") und im
- * Vorgehensplan nachziehen.
+ * Beim Erhöhen bitte auch im README (Abschnitt "Version"), im
+ * Vorgehensplan und im Startbild in index.html (`.splash-version`)
+ * nachziehen; der Smoke-Test prüft die Übereinstimmung.
  */
-export const APP_VERSION = "2.0.0-dev.14";
+export const APP_VERSION = "2.0.0-dev.15";
 
 /**
  * Release Notes (neueste zuerst), angezeigt auf dem Einrichtungsbildschirm
@@ -26,6 +27,13 @@ export const APP_VERSION = "2.0.0-dev.14";
  * ergänzen (und die Tabelle im README nachziehen).
  */
 export const RELEASE_NOTES = [
+  {
+    version: "2.0.0-dev.15",
+    datum: "2026-10-17",
+    punkte: [
+      "Neues Startbild: «HofKarte» als Titel, darunter das App-Icon und die Versionsnummer; unten bleibt «HofKarte wird geladen …» sichtbar.",
+    ],
+  },
   {
     version: "2.0.0-dev.14",
     datum: "2026-10-16",
