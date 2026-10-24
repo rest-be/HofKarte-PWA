@@ -11,6 +11,8 @@
  * - einstellungen → src/views/einstellungen.js (Token ändern, Abmelden)
  */
 
+import { fokussiere } from "./fokus.js";
+import { escapeHtml } from "./html.js";
 import {
   ladeVerbindung,
   speichereVerbindung,
@@ -33,8 +35,12 @@ import { renderKonflikt } from "./views/konflikt.js";
 import { renderEditor } from "./views/editor.js";
 import { renderEinstellungen } from "./views/einstellungen.js";
 import { renderFinden } from "./views/finden.js";
+import { renderAuslesen } from "./views/auslesen.js";
+import { renderErfassenEinstieg, renderVorOrt, renderSchnell, renderGespeichert } from "./views/erfassen.js";
 import { icon } from "./icons.js";
 import { initialisiereDesign } from "./design.js";
+import { initialisiereUpdates, zeigeUpdateHinweis } from "./update.js";
+import { t, tn, initialisiereSprache, aktuelleLocale } from "./i18n.js";
 
 const appContainer = document.getElementById("app");
 const CACHE_KEY_LISTE = "hoflaeden-liste";
@@ -67,6 +73,8 @@ const app = {
   /** Entwurf aus „Hofladen finden“ (`{daten, quellen}`), den der Editor
    * unter `#/neu` einmalig übernimmt (siehe views/finden.js). */
   entwurf: null,
+  /** Ergänzung aus „Angaben ergänzen“ (`{hofladenId, daten, quellen}`), die der Editor einmalig übernimmt. */
+  ergaenzung: null,
   state: {
     hoflaeden: [],
     zuletztAktualisiert: null,
@@ -210,7 +218,7 @@ const app = {
   _pruefeVerbindung() {
     if (!this.haClient) {
       throw new Error(
-        "Keine Verbindung zu Home Assistant. Bitte VPN/Heimnetz prüfen und erneut versuchen."
+        t("Keine Verbindung zu Home Assistant. Bitte VPN/Heimnetz prüfen und erneut versuchen.")
       );
     }
   },
@@ -331,7 +339,7 @@ const app = {
    * alte Verbindung getrennt und die neue dauerhaft gespeichert. */
   async aktualisiereToken(neuesToken) {
     if (!this.haUrl) {
-      throw new Error("Keine bestehende Verbindung - bitte die App neu einrichten.");
+      throw new Error(t("Keine bestehende Verbindung - bitte die App neu einrichten."));
     }
     const neuerClient = new HaClient(this.haUrl, neuesToken);
     await neuerClient.verbinden();
@@ -367,7 +375,7 @@ let aktuelleAnsicht = null;
 
 /** Ansichten mit Nutzereingaben: ein Hintergrund-Refresh darf sie nicht
  * neu zeichnen, sonst gehen Eingaben verloren (Review P-Befund Editor). */
-const EINGABE_ANSICHTEN = new Set(["setup", "editor", "neu", "finden", "konflikt", "einstellungen"]);
+const EINGABE_ANSICHTEN = new Set(["setup", "editor", "ergaenzen", "neu", "erfassen", "finden", "konflikt", "einstellungen"]);
 
 /** Neu zeichnen nach Datenänderung (Refresh/Wiederverbindung) - lässt
  * Eingabeansichten unangetastet und aktualisiert nur die Sync-Anzeige. */
@@ -390,8 +398,10 @@ function route() {
   const teile = parsePfad();
   aktuelleAnsicht =
     teile[0] === "hofladen" && teile[1] && teile[2] === "bearbeiten" ? "editor"
+    : teile[0] === "hofladen" && teile[1] && teile[2] === "ergaenzen" ? "ergaenzen"
     : teile[0] === "konflikt" && teile[1] ? "konflikt"
     : teile[0] === "neu" ? "neu"
+    : teile[0] === "erfassen" ? "erfassen"
     : teile[0] === "finden" ? "finden"
     : teile[0] === "hofladen" && teile[1] ? "detail"
     : teile[0] === "karte" ? "karte"
@@ -408,6 +418,14 @@ function route() {
     });
     return;
   }
+  if (teile[0] === "hofladen" && teile[1] && teile[2] === "ergaenzen") {
+    renderMitRahmen(() => renderAuslesen(appContainer.querySelector(".inhalt"), app, teile[1]), null, {
+      titel: "Angaben ergänzen",
+      tiefe: 2,
+      zurueck: detailHash(teile[1]),
+    });
+    return;
+  }
   if (teile[0] === "konflikt" && teile[1]) {
     renderMitRahmen(() => renderKonflikt(appContainer.querySelector(".inhalt"), app, teile[1]), null, {
       titel: "Konflikt",
@@ -417,17 +435,33 @@ function route() {
     return;
   }
   if (teile[0] === "finden") {
-    renderMitRahmen(() => renderFinden(appContainer.querySelector(".inhalt"), app), "neu", {
+    renderMitRahmen(() => renderFinden(appContainer.querySelector(".inhalt"), app), "erfassen", {
       titel: "Hofladen finden",
       tiefe: 1,
-      zurueck: "#/neu",
+      zurueck: "#/erfassen",
     });
     return;
   }
+  if (teile[0] === "erfassen") {
+    const inhalt = () => appContainer.querySelector(".inhalt");
+    if (teile[1] === "webseite") {
+      renderMitRahmen(() => renderAuslesen(inhalt(), app, null), "erfassen", { titel: "Von der Webseite", tiefe: 1, zurueck: "#/erfassen" });
+    } else if (teile[1] === "vorort") {
+      renderMitRahmen(() => renderVorOrt(inhalt(), app), "erfassen", { titel: "Vor Ort", tiefe: 1, zurueck: "#/erfassen" });
+    } else if (teile[1] === "schnell") {
+      renderMitRahmen(() => renderSchnell(inhalt(), app), "erfassen", { titel: "Schnellerfassung", tiefe: 2, zurueck: "#/erfassen/vorort" });
+    } else if (teile[1] === "gespeichert" && teile[2]) {
+      renderMitRahmen(() => renderGespeichert(inhalt(), app, decodeURIComponent(teile[2])), "erfassen", { titel: "Gespeichert", tiefe: 1, zurueck: "#/" });
+    } else {
+      renderMitRahmen(() => renderErfassenEinstieg(inhalt(), app), "erfassen", { titel: "Erfassen", tiefe: 0 });
+    }
+    return;
+  }
   if (teile[0] === "neu") {
-    renderMitRahmen(() => renderEditor(appContainer.querySelector(".inhalt"), app, null), "neu", {
+    renderMitRahmen(() => renderEditor(appContainer.querySelector(".inhalt"), app, null), "erfassen", {
       titel: "Neuer Hofladen",
-      tiefe: 0,
+      tiefe: 1,
+      zurueck: "#/erfassen",
     });
     return;
   }
@@ -467,17 +501,28 @@ function route() {
  * nur, wenn es etwas Nennenswertes zu zeigen gibt (offline und/oder
  * ausstehende Operationen), nicht im unauffälligen Normalzustand (siehe
  * PWA-HA-Vorgehensplan.md Abschnitt 10.3, Punkt 4). */
+/** "Stand 14:32" (heute) bzw. "Stand 15.10., 14:32" der zuletzt bekannten Daten. */
+function standText() {
+  const z = app.state.zuletztAktualisiert;
+  const d = z ? new Date(z) : null;
+  if (!d || Number.isNaN(d.getTime())) return "";
+  const heute = d.toDateString() === new Date().toDateString();
+  const zeit = d.toLocaleTimeString(aktuelleLocale(), { hour: "2-digit", minute: "2-digit" });
+  const text = heute ? zeit : `${d.toLocaleDateString(aktuelleLocale(), { day: "numeric", month: "numeric" })}, ${zeit}`;
+  return t("Stand {zeit}", { zeit: text });
+}
+
 function syncStatusHtml() {
   const anzahl = app.state.ausstehendeAnzahl || 0;
   const konflikte = app.state.konflikte || [];
   if (konflikte.length) {
-    return `<a class="sync-status konflikt" href="#/konflikt/${encodeURIComponent(konflikte[0].hofladenId)}">${icon("warnung", { klein: true })} ${konflikte.length === 1 ? "1 Konflikt" : `${konflikte.length} Konflikte`}</a>`;
+    return `<a class="sync-status konflikt" href="#/konflikt/${encodeURIComponent(konflikte[0].hofladenId)}">${icon("warnung", { klein: true })} ${tn(konflikte.length, "1 Konflikt", "{n} Konflikte")}</a>`;
   }
   if (!app.haClient) {
-    return `<span class="sync-status offline">${icon("offline", { klein: true })} Offline${anzahl ? ` (${anzahl} ausstehend)` : ""}</span>`;
+    return `<span class="sync-status offline">${icon("offline", { klein: true })} ${t("Offline")}${anzahl ? ` (${t("{n} ausstehend", { n: anzahl })})` : ""}${standText() ? ` · ${escapeHtml(standText())}` : ""}</span>`;
   }
   if (anzahl > 0) {
-    return `<span class="sync-status wird-synchronisiert">↻ Wird synchronisiert …</span>`;
+    return `<span class="sync-status wird-synchronisiert">↻ ${t("Wird synchronisiert …")}</span>`;
   }
   return "";
 }
@@ -579,21 +624,24 @@ function aktualisiereSyncLeiste() {
  * (mit Blur), dazwischen scrollt die Seite.
  * opts: { titel, gross (Large Title), tiefe (0 = Tab-Ebene), zurueck (Hash) } */
 function renderMitRahmen(viewRender, aktiverTab, opts = {}) {
-  const { titel = "HofKarte", gross = false, tiefe = 0, zurueck = null } = opts;
+  const { gross = false, tiefe = 0, zurueck = null } = opts;
+  const titel = t(opts.titel || "HofKarte");
   const richtung = tiefe > letzteTiefe ? "slide-vor" : tiefe < letzteTiefe ? "slide-zurueck" : "";
   letzteTiefe = tiefe;
 
+  const hashGeaendert = letzterHash !== null && window.location.hash !== letzterHash;
   appContainer.innerHTML = `
+    <button type="button" class="skip-link" id="skip-link">${t("Zum Inhalt")}</button>
     <header class="kopfzeile${gross ? "" : " ohne-gross"}">
       <div class="nav-zeile">
         <div class="nav-links">
-          ${zurueck ? `<button type="button" class="nav-btn zurueck" id="zurueck-btn" aria-label="Zurück">${ICON_ZURUECK}Zurück</button>` : ""}
+          ${zurueck ? `<button type="button" class="nav-btn zurueck" id="zurueck-btn" aria-label="${t("Zurück")}">${ICON_ZURUECK}${t("Zurück")}</button>` : ""}
         </div>
-        <h1 class="nav-titel">${titel}</h1>
+        ${gross ? `<div class="nav-titel" aria-hidden="true">${titel}</div>` : `<h1 class="nav-titel">${titel}</h1>`}
         <div class="nav-rechts">
           ${
             tiefe === 0 || opts.einstellungenBtn
-              ? `<button type="button" class="nav-btn" id="einstellungen-btn" title="Einstellungen" aria-label="Einstellungen">${ICON_EINSTELLUNGEN}</button>`
+              ? `<button type="button" class="nav-btn" id="einstellungen-btn" title="${t("Einstellungen")}" aria-label="${t("Einstellungen")}">${ICON_EINSTELLUNGEN}</button>`
               : ""
           }
         </div>
@@ -605,12 +653,12 @@ function renderMitRahmen(viewRender, aktiverTab, opts = {}) {
     </header>
     <div class="seite ${richtung}">
       ${gross ? `<h1 class="grosser-titel">${titel}</h1>` : ""}
-      <main class="inhalt"></main>
+      <main class="inhalt" id="inhalt" tabindex="-1"></main>
     </div>
-    <nav class="tableiste" aria-label="Hauptnavigation">
-      <button data-tab="liste"><span class="icon">${TAB_ICONS.liste}</span>Liste</button>
-      <button data-tab="karte"><span class="icon">${TAB_ICONS.karte}</span>Karte</button>
-      <button data-tab="neu"><span class="icon">${TAB_ICONS.neu}</span>Neu</button>
+    <nav class="tableiste" aria-label="${t("Hauptnavigation")}">
+      <button data-tab="liste"><span class="icon">${TAB_ICONS.liste}</span>${t("Liste")}</button>
+      <button data-tab="karte"><span class="icon">${TAB_ICONS.karte}</span>${t("Karte")}</button>
+      <button data-tab="erfassen"><span class="icon">${TAB_ICONS.neu}</span>${t("Erfassen")}</button>
     </nav>
   `;
 
@@ -625,13 +673,19 @@ function renderMitRahmen(viewRender, aktiverTab, opts = {}) {
   letzterHash = window.location.hash;
   aktualisiereKopfzeilenZustand();
 
+  document.title = `${titel} – HofKarte`;
+  appContainer.querySelector("#skip-link").addEventListener("click", () => fokussiere(appContainer.querySelector(".inhalt")));
+  // Seitenwechsel: Fokus auf die Überschrift (vor dem Rendern der View, damit
+  // deren eigener Autofokus Vorrang behält).
+  if (hashGeaendert) fokussiere(appContainer.querySelector("h1"));
+
   appContainer.querySelector("#einstellungen-btn")?.addEventListener("click", () => {
     app.navigate("#/einstellungen");
   });
   appContainer.querySelector("#zurueck-btn")?.addEventListener("click", () => app.navigate(zurueck));
   if (zurueck) aktiviereSwipeZurueck(appContainer.querySelector(".seite"), zurueck);
 
-  const tabZiele = { liste: "#/", karte: "#/karte", neu: "#/neu" };
+  const tabZiele = { liste: "#/", karte: "#/karte", erfassen: "#/erfassen" };
   appContainer.querySelectorAll(".tableiste button").forEach((btn) => {
     const tab = btn.dataset.tab;
     if (tab === aktiverTab) {
@@ -728,14 +782,11 @@ async function starteAppIntern(wiederverbindung) {
   aktualisiereAnsicht();
 }
 
+initialisiereSprache();
 initialisiereDesign();
 starteApp();
+// Sprachwechsel: aktuelle Ansicht neu zeichnen.
+app.neuZeichnen = () => route();
 
-// Service Worker (zuvor Inline-Skript in index.html - entfällt wegen CSP).
-if ("serviceWorker" in navigator) {
-  window.addEventListener("load", () => {
-    navigator.serviceWorker
-      .register("service-worker.js")
-      .catch((err) => console.error("Service Worker Registrierung fehlgeschlagen:", err));
-  });
-}
+// Service Worker und Update-Suche (src/update.js; zuvor Inline-Skript in index.html - entfällt wegen CSP).
+initialisiereUpdates(zeigeUpdateHinweis);

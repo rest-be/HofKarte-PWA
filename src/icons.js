@@ -11,6 +11,7 @@
  */
 
 const PFADE = {
+  filter: `<path d="M4 6h9M17 6h3M4 12h3M11 12h9M4 18h11M19 18h1"/><circle cx="15" cy="6" r="2"/><circle cx="9" cy="12" r="2"/><circle cx="17" cy="18" r="2"/>`,
   liste: `<path d="M8 6h13M8 12h13M8 18h13M3.5 6h.01M3.5 12h.01M3.5 18h.01"/>`,
   karte: `<path d="M9 4 3 6.5v13L9 17l6 3 6-2.5v-13L15 7 9 4zM9 4v13M15 7v13"/>`,
   plus: `<circle cx="12" cy="12" r="9"/><path d="M12 8v8M8 12h8"/>`,
@@ -35,6 +36,7 @@ const PFADE = {
   korb: `<path d="M3 9h18l-2 11H5L3 9zM8 9l3-5M16 9l-3-5"/>`,
   hof: `<path d="M3 11 12 4l9 7v9H3z"/><path d="M9 20v-6h6v6"/>`,
   verknuepfung: `<path d="M10 14a4 4 0 0 0 5.7 0l3-3a4 4 0 0 0-5.7-5.7l-1 1M14 10a4 4 0 0 0-5.7 0l-3 3a4 4 0 0 0 5.7 5.7l1-1"/>`,
+  stift: `<path d="M4 20h4L19 9l-4-4L4 16v4zM13 7l4 4"/>`,
   mehr: `<path d="M12 5h.01M12 12h.01M12 19h.01"/>`,
   funkeln:`<path d="M12 3v4M12 17v4M3 12h4M17 12h4M6 6l2 2M16 16l2 2M18 6l-2 2M8 16l-2 2"/>`,
 };

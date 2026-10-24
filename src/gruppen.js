@@ -12,6 +12,8 @@
  * - `kurzinfo(h)`: eine Zeile für den eingeklappten Zustand.
  */
 
+import { t, tn } from "./i18n.js";
+
 const gefuellt = (wert) => wert != null && String(wert).trim() !== "";
 const zahl = (wert) => wert != null && wert !== "" && Number.isFinite(Number(wert));
 
@@ -23,24 +25,32 @@ function heuteIso(jetzt) {
   return `${jetzt.getFullYear()}-${String(jetzt.getMonth() + 1).padStart(2, "0")}-${String(jetzt.getDate()).padStart(2, "0")}`;
 }
 
+/** Kein Foto vorhanden (weder Bilderliste noch Hauptbild). Abgeleitet, nichts Zusätzliches gespeichert. */
+export function fotoFehlt(h) {
+  return !((h.bilder || []).length || gefuellt(h.hauptbild_url));
+}
+
 /** Kurzinfo für die Öffnungszeiten: heutige Zeiten (Sonderzeiten haben Vorrang). */
 export function heuteKurzinfo(h, jetzt = new Date()) {
   const iso = heuteIso(jetzt);
   const sonder = (h.sonderoeffnungszeiten || []).find((x) => x.datum_von <= iso && iso <= x.datum_bis);
+  // 24h-Automat: rund um die Uhr, ausser eine Sonder-Schliessung gilt heute.
+  if (h.automat_24h === true && !(sonder && sonder.geschlossen)) return t("Rund um die Uhr (24h-Automat)");
   if (sonder) {
-    return sonder.geschlossen ? "Heute geschlossen" : `Heute ${formatZeit(sonder.beginn)}–${formatZeit(sonder.ende)}`;
+    return sonder.geschlossen ? t("Heute geschlossen") : t("Heute {zeiten}", { zeiten: `${formatZeit(sonder.beginn)}–${formatZeit(sonder.ende)}` });
   }
   const wochentag = ((jetzt.getDay() + 6) % 7) + 1; // 1 = Montag
   const zeiten = (h.oeffnungszeiten || [])
     .filter((oz) => Number(oz.wochentag) === wochentag)
     .map((oz) => `${formatZeit(oz.beginn)}–${formatZeit(oz.ende)}`);
-  if (zeiten.length) return `Heute ${zeiten.join(", ")}`;
-  return (h.oeffnungszeiten || []).length ? "Heute geschlossen" : "";
+  if (zeiten.length) return t("Heute {zeiten}", { zeiten: zeiten.join(", ") });
+  return (h.oeffnungszeiten || []).length ? t("Heute geschlossen") : "";
 }
 
+/** `anzahl(liste, "1 Angebot", "{n} Angebote")`: leer bei 0, sonst übersetzt. */
 function anzahl(liste, einzahl, mehrzahl) {
   const n = Array.isArray(liste) ? liste.length : 0;
-  return n === 0 ? "" : n === 1 ? `1 ${einzahl}` : `${n} ${mehrzahl}`;
+  return n === 0 ? "" : tn(n, einzahl, mehrzahl);
 }
 
 export const HOF_GRUPPEN = [
@@ -73,14 +83,14 @@ export const HOF_GRUPPEN = [
       const da = [h.mobilnummer, h.email, h.website].filter(gefuellt).length;
       return { da: Math.min(da, 2), von: 2 };
     },
-    kurzinfo: (h) => [h.mobilnummer, h.email, h.website].filter(gefuellt).length + " von 3",
+    kurzinfo: (h) => [h.mobilnummer, h.email, h.website].filter(gefuellt).length + " " + t("von 3"),
   },
   {
     id: "oeffnungszeiten",
     titel: "Öffnungszeiten",
     offenDetail: true,
     offenEditor: false,
-    fortschritt: (h) => ({ da: (h.oeffnungszeiten || []).length || (h.sonderoeffnungszeiten || []).length ? 1 : 0, von: 1 }),
+    fortschritt: (h) => ({ da: h.automat_24h === true || (h.oeffnungszeiten || []).length || (h.sonderoeffnungszeiten || []).length ? 1 : 0, von: 1 }),
     kurzinfo: (h) => heuteKurzinfo(h),
   },
   {
@@ -89,7 +99,7 @@ export const HOF_GRUPPEN = [
     offenDetail: true,
     offenEditor: true,
     fortschritt: (h) => ({ da: [h.angebote, h.zahlungsarten].filter((l) => Array.isArray(l) && l.length).length, von: 2 }),
-    kurzinfo: (h) => [anzahl(h.angebote, "Angebot", "Angebote"), anzahl(h.zahlungsarten, "Zahlungsart", "Zahlungsarten")].filter(Boolean).join(" · "),
+    kurzinfo: (h) => [anzahl(h.angebote, "1 Angebot", "{n} Angebote"), anzahl(h.zahlungsarten, "1 Zahlungsart", "{n} Zahlungsarten")].filter(Boolean).join(" · "),
   },
   {
     id: "bilder",
@@ -97,7 +107,7 @@ export const HOF_GRUPPEN = [
     offenDetail: false,
     offenEditor: false,
     fortschritt: (h) => ({ da: (h.bilder || []).length || gefuellt(h.hauptbild_url) ? 1 : 0, von: 1 }),
-    kurzinfo: (h) => anzahl(h.bilder, "Bild", "Bilder"),
+    kurzinfo: (h) => anzahl(h.bilder, "1 Bild", "{n} Bilder") || (fotoFehlt(h) ? t("Foto fehlt") : ""),
   },
   {
     id: "herkunft",
@@ -107,7 +117,7 @@ export const HOF_GRUPPEN = [
     // Reine Information, zählt nicht zur Vollständigkeit.
     informativ: true,
     fortschritt: (h) => ({ da: Array.isArray(h.quellen) && h.quellen.length ? 1 : 0, von: 1 }),
-    kurzinfo: (h) => anzahl(h.quellen, "Quelle", "Quellen"),
+    kurzinfo: (h) => anzahl(h.quellen, "1 Quelle", "{n} Quellen"),
   },
 ];
 
@@ -118,10 +128,17 @@ export function vollstaendigkeit(gruppe, h) {
   return da >= von ? "voll" : "halb";
 }
 
+/** Texte werden bei jedem Zugriff übersetzt (Sprache kann wechseln). */
 export const VOLLSTAENDIGKEIT_TEXT = {
-  voll: "vollständig",
-  halb: "teilweise ausgefüllt",
-  leer: "noch leer",
+  get voll() {
+    return t("vollständig");
+  },
+  get halb() {
+    return t("teilweise ausgefüllt");
+  },
+  get leer() {
+    return t("noch leer");
+  },
 };
 
 /** Gruppen (ohne rein informative), die noch nicht vollständig sind. */

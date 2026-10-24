@@ -29,6 +29,7 @@ import {
 } from "../vendor/home-assistant-js-websocket/index.js";
 
 import { ladeCache, speichereCache } from "./storage.js";
+import { t } from "./i18n.js";
 
 /**
  * Prüft die eingegebene Home-Assistant-Adresse: Das Long-Lived Token wird
@@ -41,11 +42,11 @@ export function pruefeHaAdresse(eingabe) {
   try {
     url = new URL(String(eingabe || "").trim());
   } catch {
-    throw new Error("Ungültige Adresse. Beispiel: https://hofkarte.duckdns.org:8123");
+    throw new Error(t("Ungültige Adresse. Beispiel: https://hofkarte.duckdns.org:8123"));
   }
   const lokal = ["localhost", "127.0.0.1", "[::1]"].includes(url.hostname);
   if (url.protocol !== "https:" && !(url.protocol === "http:" && lokal)) {
-    throw new Error("Aus Sicherheitsgründen ist nur eine verschlüsselte Adresse (https://) erlaubt.");
+    throw new Error(t("Aus Sicherheitsgründen ist nur eine verschlüsselte Adresse (https://) erlaubt."));
   }
   return url.origin;
 }
@@ -115,12 +116,12 @@ export class HaClient {
       this._connection = await createConnection({ auth });
     } catch (err) {
       if (err === ERR_INVALID_AUTH) {
-        const fehler = new Error("Ungültiges Long-Lived Access Token.");
+        const fehler = new Error(t("Ungültiges Long-Lived Access Token."));
         fehler.code = "invalid_auth";
         throw fehler;
       }
       const fehler = new Error(
-        "Home Assistant unter dieser Adresse nicht erreichbar."
+        t("Home Assistant unter dieser Adresse nicht erreichbar.")
       );
       fehler.code = "connection_lost";
       throw fehler;
@@ -320,7 +321,7 @@ export class HaClient {
         const fallbackCodes = ["unknown_command", "too_large"];
         if (!fallbackCodes.includes(err?.code)) {
           throw new Error(
-            err?.message ? `Upload fehlgeschlagen: ${err.message}` : "Upload fehlgeschlagen."
+            err?.message ? t("Upload fehlgeschlagen: {fehler}", { fehler: err.message }) : t("Upload fehlgeschlagen.")
           );
         }
       }
@@ -352,19 +353,16 @@ export class HaClient {
       });
     } catch (netzwerkFehler) {
       throw new Error(
-        "Upload fehlgeschlagen - Home Assistant nicht erreichbar (VPN/Heimnetz prüfen) " +
-          "oder die HA-Instanz lässt Anfragen von dieser Adresse nicht zu " +
-          "(cors_allowed_origins in configuration.yaml prüfen; alternativ HofKarte-HA aktualisieren, " +
-          "dann läuft der Upload ohne CORS)."
+        t("Upload fehlgeschlagen - Home Assistant nicht erreichbar (VPN/Heimnetz prüfen) oder die HA-Instanz lässt Anfragen von dieser Adresse nicht zu (cors_allowed_origins in configuration.yaml prüfen; alternativ HofKarte-HA aktualisieren, dann läuft der Upload ohne CORS).")
       );
     }
 
     if (response.status === 401) {
-      throw new Error("Anmeldung abgelaufen/ungültig. Bitte Token in den Einstellungen prüfen.");
+      throw new Error(t("Anmeldung abgelaufen/ungültig. Bitte Token in den Einstellungen prüfen."));
     }
     if (!response.ok) {
       throw new Error(
-        response.status === 413 ? "Datei ist zu gross (maximal 10 MB)." : `Upload fehlgeschlagen (${response.status}).`
+        response.status === 413 ? t("Datei ist zu gross (maximal 10 MB).") : t("Upload fehlgeschlagen ({status}).", { status: response.status })
       );
     }
 

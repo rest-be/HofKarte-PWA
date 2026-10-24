@@ -45,10 +45,25 @@ und ist nicht automatisierbar – siehe Vorgehensplan, Phase 8c, Punkt 10.
 
 ## Einschränkung in isolierten Sandbox-Umgebungen
 
-Die Kartenansicht lädt Leaflet weiterhin über ein CDN (bewusst, kein
-Bundler). In Umgebungen ohne Zugriff auf dieses CDN (z. B. manche
-CI-Sandboxes mit eingeschränktem Netzwerk-Egress) kann die Karte nicht
-vollständig rendern; der Test prüft in diesem Fall nur, dass das Modul
-korrekt exportiert und ladbar ist, und filtert reine CDN-Netzwerkfehler
-aus der Konsolenfehler-Prüfung heraus. In GitHub Actions (voller
-Internetzugriff) rendert die Karte normal.
+Leaflet liegt seit Phase 10 lokal unter `vendor/`; es wird kein CDN mehr
+geladen. Die Kartenkacheln stammen weiterhin von OpenStreetMap. In Umgebungen
+ohne Zugriff darauf (z. B. Sandboxes mit eingeschränktem Netzwerk) bleiben die
+Kacheln leer; Netzwerkfehler dieser Kachel-Anfragen filtert die
+Konsolenfehler-Prüfung heraus. Testbilder immer als `data:`-URI einbinden,
+sonst schlägt die Konsolenfehler-Prüfung bei einem 404 an.
+
+## Stand (2.0.0-rc.1)
+
+305 Tests. Zusätzlich zur oben genannten Abdeckung prüfen sie die
+Überarbeitung 2.0: Erfassen (Vor Ort, Schnellerfassung, Webseite), «Angaben
+ergänzen», Filter und Suche in Liste und Karte, Leerzustände, Teilen (mit
+simuliertem `navigator.share`), Navigationsdienst (Standard je Gerät, iPhone-
+Simulation, Zurücksetzen), Startbild gegen `APP_VERSION`, Überlauf bei 28 px
+Schrift auf sieben Ansichten, Kontraste in Hell und Dunkel sowie die vier
+Sprachen. Nicht automatisierbar bleiben VoiceOver, Dynamic Type, der echte
+Teilen-Dialog, der Apple-Karten-Link und die Safe Areas auf einem iPhone
+(Checkliste im README).
+
+## Sprachtests (ab 2.0.0-dev.8)
+
+`npm run test:i18n` (läuft auch zu Beginn von `test:smoke`) prüft ohne Browser, dass alle `t()`-Texte in den Wörterbüchern FR/IT/EN stehen. Die Smoke-Tests laufen mit deutscher Browsersprache (`locale: "de-CH"`) und prüfen am Ende FR/IT/EN auf deutsche Reste.
