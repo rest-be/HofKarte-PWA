@@ -106,7 +106,11 @@ self.addEventListener("activate", (event) => {
       .then((namen) =>
         Promise.all(
           namen
-            .filter((name) => name !== CACHE_VERSION)
+            .filter(
+  (name) =>
+    name.startsWith(CACHE_PREFIX) &&
+    name !== CACHE_VERSION
+)
             .map((name) => caches.delete(name))
         )
       )
