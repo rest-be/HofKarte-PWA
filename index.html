@@ -6,7 +6,7 @@
   <title>HofKarte</title>
   <meta name="description" content="Hofläden in der Nähe finden, verwalten und bewerten." />
   <meta name="theme-color" content="#f2f2f7" media="(prefers-color-scheme: light)" />
-  <meta name="theme-color" content="#000000" media="(prefers-color-scheme: dark)" />
+  <meta name="theme-color" content="#0d1210" media="(prefers-color-scheme: dark)" />
   <meta name="color-scheme" content="light dark" />
 
   <!-- Phase 10: Content-Security-Policy. Skripte/Styles nur vom eigenen
@@ -30,7 +30,14 @@
 </head>
 <body>
   <div id="app">
-    <div class="lade-hinweis">HofKarte wird geladen …</div>
+    <!-- Startbild (Splash): erscheint, bevor die App läuft; die App ersetzt den Inhalt von #app.
+         Die Versionsnummer muss mit src/version.js übereinstimmen (prüft der Smoke-Test). -->
+    <div class="splash" role="status">
+      <p class="splash-titel">HofKarte</p>
+      <img class="splash-icon" src="icons/icon-192.png" width="96" height="96" alt="" />
+      <p class="splash-version">Version 2.0.0</p>
+      <p class="splash-laden lade-hinweis">HofKarte wird geladen …</p>
+    </div>
   </div>
 
   <script type="module" src="src/app.js"></script>

@@ -8,6 +8,7 @@
  */
 
 import { APP_VERSION, RELEASE_NOTES } from "../version.js";
+import { t } from "../i18n.js";
 
 const STANDARD_HA_ADRESSE = "https://hofkarte.duckdns.org:8123";
 
@@ -23,33 +24,30 @@ export function renderSetup(container, onVerbinden) {
     <div class="einrichtung">
       <img class="carrot-logo" src="icons/icon-192.png" alt="" />
       <h1>HofKarte</h1>
-      <p class="untertitel">Verbindung zu Home Assistant einrichten</p>
+      <p class="untertitel">${t("Verbindung zu Home Assistant einrichten")}</p>
 
       <div id="setup-fehler" class="hinweis-leiste fehler" hidden></div>
 
       <form id="setup-form">
         <div class="feld-gruppe">
-          <label for="ha-url">Home-Assistant-Adresse</label>
+          <label for="ha-url">${t("Home-Assistant-Adresse")}</label>
           <input type="url" id="ha-url" required value="${STANDARD_HA_ADRESSE}" />
         </div>
         <div class="feld-gruppe">
-          <label for="ha-token">Long-Lived Access Token</label>
-          <textarea id="ha-token" required placeholder="In Home Assistant unter Profil → Long-Lived Access Tokens erzeugen"></textarea>
+          <label for="ha-token">${t("Long-Lived Access Token")}</label>
+          <textarea id="ha-token" required placeholder="${t("In Home Assistant unter Profil → Long-Lived Access Tokens erzeugen")}"></textarea>
         </div>
-        <button type="submit" class="speichern-btn" id="setup-submit">Verbinden</button>
+        <button type="submit" class="speichern-btn" id="setup-submit">${t("Verbinden")}</button>
       </form>
 
       <p class="hinweistext">
-        Das Token wird nur lokal auf diesem Gerät gespeichert (IndexedDB) –
-        nie an einen anderen Server übertragen. Für jedes Gerät sollte ein
-        eigenes Token verwendet werden, damit es bei Geräteverlust gezielt
-        widerrufen werden kann.
+        ${t("Das Token wird nur lokal auf diesem Gerät gespeichert (IndexedDB) – nie an einen anderen Server übertragen. Für jedes Gerät sollte ein eigenes Token verwendet werden, damit es bei Geräteverlust gezielt widerrufen werden kann.")}
       </p>
 
-      <p class="version-zeile-setup">Version <strong id="setup-version">${APP_VERSION}</strong></p>
+      <p class="version-zeile-setup">${t("Version")} <strong id="setup-version">${APP_VERSION}</strong></p>
 
       <details class="release-notes" id="release-notes">
-        <summary>Release Notes</summary>
+        <summary>${t("Release Notes")}</summary>
         ${RELEASE_NOTES.map(
           (r) => `<div class="release">
             <h3>${r.version} <span class="datum">${r.datum}</span></h3>
@@ -72,15 +70,15 @@ export function renderSetup(container, onVerbinden) {
     const token = container.querySelector("#ha-token").value.trim();
 
     submitBtn.disabled = true;
-    submitBtn.textContent = "Verbinde …";
+    submitBtn.textContent = t("Verbinde …");
 
     try {
       await onVerbinden(haUrl, token);
     } catch (err) {
-      fehlerBox.textContent = err?.message || "Verbindung fehlgeschlagen.";
+      fehlerBox.textContent = err?.message || t("Verbindung fehlgeschlagen.");
       fehlerBox.hidden = false;
       submitBtn.disabled = false;
-      submitBtn.textContent = "Verbinden";
+      submitBtn.textContent = t("Verbinden");
     }
   });
 }

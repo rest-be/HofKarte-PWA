@@ -21,9 +21,7 @@
  * diese liegen ausschliesslich in IndexedDB (siehe src/storage.js).
  */
 
-const APP_VARIANT = "stable";
-const CACHE_PREFIX = `hofkarte-${APP_VARIANT}-`;
-const CACHE_VERSION = `${CACHE_PREFIX}pwa-v18`;
+const CACHE_VERSION = "hofkarte-pwa-v33";
 
 const APP_SHELL_DATEIEN = [
   "./",
@@ -32,12 +30,27 @@ const APP_SHELL_DATEIEN = [
   "./src/styles.css",
   "./src/app.js",
   "./src/version.js",
+  "./src/icons.js",
+  "./src/design.js",
+  "./src/ergaenzen.js",
+  "./src/update.js",
+  "./src/gruppen.js",
+  "./src/fokus.js",
+  "./src/adresse.js",
+  "./src/i18n.js",
+  "./src/i18n/fr.js",
+  "./src/i18n/it.js",
+  "./src/i18n/en.js",
   "./src/storage.js",
   "./src/sync-worker.js",
   "./src/ha-client.js",
   "./src/naehe.js",
   "./src/finden.js",
   "./src/html.js",
+  "./src/teilen.js",
+  "./src/suche.js",
+  "./src/navigation.js",
+  "./src/leerzustand.js",
   "./src/bilder.js",
   "./src/views/setup.js",
   "./src/views/list.js",
@@ -46,6 +59,8 @@ const APP_SHELL_DATEIEN = [
   "./src/views/editor.js",
   "./src/views/einstellungen.js",
   "./src/views/finden.js",
+  "./src/views/erfassen.js",
+  "./src/views/auslesen.js",
   "./src/views/map.js",
   // Drittbibliotheken (lokal, siehe vendor/README.md)
   "./vendor/home-assistant-js-websocket/auth.js",
@@ -78,7 +93,8 @@ self.addEventListener("install", (event) => {
   event.waitUntil(
     caches
       .open(CACHE_VERSION)
-      .then((cache) => cache.addAll(APP_SHELL_DATEIEN))
+      // `reload`: Dateien am HTTP-Cache des Browsers vorbei holen, damit nie ein alter Stand in den neuen Cache gelangt.
+      .then((cache) => cache.addAll(APP_SHELL_DATEIEN.map((pfad) => new Request(pfad, { cache: "reload" }))))
       .then(() => self.skipWaiting())
   );
 });
@@ -115,6 +131,11 @@ self.addEventListener("fetch", (event) => {
   // Bilder aus image_upload) nie aus dem App-Shell-Cache bedienen –
   // das sind live Daten, keine App-Shell-Dateien.
   if (url.origin !== self.location.origin) {
+    return;
+  }
+
+  // Versionsabfrage der App (src/update.js): immer ans Netz, nie aus dem Cache.
+  if (url.searchParams.has("nocache")) {
     return;
   }
 

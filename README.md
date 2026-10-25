@@ -1,10 +1,58 @@
 # HofKarte-PWA
 
-**Version: 1.12.0** – siehe Abschnitt [Version](#version) unten für die
+**Version: 2.0.0** – siehe Abschnitt [Version](#version) unten für die
 installierte Version auf einem konkreten Gerät.
 
 Progressive Web App für HofKarte – ein reiner, zustandsloser Client für die
-[HofKarte-HA](https://github.com/rest-be/HofKarte-HA) Home-Assistant-Integration.
+[HofKarte-HA](https://github.com/rest-be/HofKarte) Home-Assistant-Integration.
+Hofläden ansehen, auf der Karte finden, vor Ort erfassen, ergänzen und
+bearbeiten – auf dem Smartphone wie eine App, in vier Sprachen
+(Deutsch, Français, Italiano, English).
+
+> **Status: Release `2.0.0`.** Funktional abgeschlossen und automatisiert
+> getestet (305 Smoke-Tests). Auf einem echten iPhone sind Dynamic Type,
+> VoiceOver, Teilen-Dialog, Apple-Karten-Link und Startbild nur automatisiert,
+> nicht von Hand geprüft (siehe «Bekannte Einschränkungen»). Voraussetzung:
+> HofKarte-HA ab 2026.10.1, für den Schalter «24h-Automat» ab 2026.10.2.
+> Die Übersicht der Änderungen steht in [`CHANGELOG.md`](CHANGELOG.md) und
+> [`RELEASE_NOTES_2.0.0.md`](RELEASE_NOTES_2.0.0.md).
+
+## Dokumentation
+
+| Dokument | Inhalt |
+|---|---|
+| [`docs/benutzerhandbuch.md`](docs/benutzerhandbuch.md) | Bedienung für Endanwender:innen (Einrichten, Ansehen, Erfassen, Einstellungen, Fehlerbehebung) |
+| [`CHANGELOG.md`](CHANGELOG.md) | Alle Änderungen je Version |
+| [`RELEASE_NOTES_2.0.0.md`](RELEASE_NOTES_2.0.0.md) | Überblick über das Release 2.0.0 |
+| [`SECURITY.md`](SECURITY.md) | Sicherheitsmodell, Datenschutz, Meldeweg |
+| [`CONTRIBUTING.md`](CONTRIBUTING.md) | Entwicklung, Tests, Versionierung, Release-Ablauf |
+| [`docs/gui-umsetzungsplan.md`](docs/gui-umsetzungsplan.md), [`docs/gui-inventar.md`](docs/gui-inventar.md) | Entscheide und Bestandsaufnahme der Überarbeitung 2.0 |
+| [`tests/README.md`](tests/README.md) | Testaufbau |
+
+## Funktionsumfang (2.0.0)
+
+- **Hofläden ansehen:** Liste mit Suche, Filter (In der Nähe, Geöffnet,
+  Unvollständig, Ohne Foto) und Sortierung; Karte mit Suche, Vorschau und
+  «Mein Standort»; Detailansicht mit Öffnungsstatus («Offen bis …»), sieben
+  Gruppen, Herkunft der Angaben, Teilen und Route.
+- **Route:** Google Maps oder Apple Karten, wählbar in den Einstellungen
+  (Standard: Apple Karten auf iPhone/iPad, sonst Google Maps). Ein einziger
+  Route-Knopf überall.
+- **Erfassen:** Tab «Erfassen» mit drei Wegen – vor Ort (Standort auf Tipp,
+  Schnellerfassung mit Foto), von der Webseite, von Hand; «Hofladen finden»
+  und «Angaben ergänzen» (Webseite, OpenStreetMap, optional KI).
+- **Bearbeiten:** sieben Gruppen wie im HA-Panel, Chips, Zahlungsarten als
+  Schalter, Wochentage-Editor, 24h-Automat, Adresse aus Koordinaten,
+  Ungespeichert-Anzeige. Gespeichert wird nur im Editor.
+- **Offline:** Änderungen werden lokal vorgemerkt und synchronisiert, sobald
+  die Verbindung wieder besteht; bei gleichzeitiger Bearbeitung durch zwei
+  Geräte entscheidet eine Konfliktansicht.
+- **Darstellung:** Hell/Dunkel, Markenfarbe wählbar, Schrift folgt der
+  Gerätegrösse, Startbild mit Version.
+- **Zugänglichkeit:** Fokusführung, Tastatur, Kontraste ≥ 4,5:1, Status nie
+  nur durch Farbe, «Bewegung reduzieren».
+- **Datenschutz:** Standort nur auf ausdrücklichen Tipp und nie gespeichert;
+  keine Drittanbieter-Skripte (alle Bibliotheken liegen unter `vendor/`).
 
 ## Architektur
 
@@ -15,7 +63,10 @@ Progressive Web App für HofKarte – ein reiner, zustandsloser Client für die
   gespeichert. Die PWA speichert lokal nur:
   - die Verbindungsdaten (HA-URL + Long-Lived Access Token) in IndexedDB,
   - einen Lesecache der zuletzt geladenen Hofladen-Liste (stale-while-
-    revalidate, für Offline-/Degraded-Anzeige).
+    revalidate, für Offline-/Degraded-Anzeige) samt Zeitpunkt («Stand HH:MM»),
+  - die Offline-Warteschlange noch nicht synchronisierter Änderungen,
+  - Geräteeinstellungen (Sprache, Navigationsdienst, Markenfarbe, Karten-
+    Filter) – nur auf diesem Gerät, nie auf dem Server.
 - **Authentifizierung** über ein pro Gerät erzeugtes Long-Lived Access
   Token eines dedizierten `hofkarte`-Admin-Benutzers in Home Assistant
   (siehe Vorgehensplan, Phase 1) – kein gemeinsames Passwort.
@@ -54,7 +105,17 @@ src/
   storage.js             IndexedDB-Wrapper (Verbindungsdaten + Lesecache)
   html.js                 escapeHtml / sichereHttpUrl (Injection-Schutz)
   bilder.js               Vorschau-URLs und Verkleinerung vor dem Upload
-  naehe.js                „Hofläden in der Nähe“ (Geolocation + HA-Action)
+  naehe.js                „Hofläden in der Nähe“ (Geolocation + HA-Action), Entfernung (Haversine)
+  navigation.js           Route/Karten-Link je Navigationsdienst (Google Maps, Apple Karten)
+  teilen.js               Teilen (Web Share, Zwischenablage als Rückfall)
+  suche.js                Suche/Normalisierung (Umlaute, Gross-/Kleinschreibung)
+  leerzustand.js          Gemeinsame Leerzustände (Keine Treffer, Noch keine Hofläden)
+  fokus.js                Fokusführung bei Seiten-/Schrittwechseln
+  i18n.js, i18n/          Sprachen (DE/FR/IT/EN): t(), tn(), Wörterbücher fr/it/en
+  adresse.js              Adresse aus Koordinaten (Nominatim, nur auf Tipp)
+  design.js, gruppen.js   Markenfarbe/Kontraste; Gruppenmodell (Vollständigkeit)
+  ergaenzen.js, update.js Vergleich „Angaben ergänzen“; Update-Funktion
+  icons.js                Icon-Satz (SVG, ohne Fremdbibliothek)
   finden.js               „Hofladen finden“: Tabellen, Entwurf, Herkunft (ohne DOM)
   styles.css              Stylesheet
   views/
@@ -63,7 +124,10 @@ src/
     detail.js              Detailansicht
     editor.js              Erstellen/Bearbeiten
     finden.js              „Hofladen finden“ (Suche, Auswahl, Prüfen)
-    map.js                 Kartenansicht
+    erfassen.js            Tab „Erfassen“: Einstieg, Vor Ort, Schnellerfassung
+    auslesen.js            „Von der Webseite“ und „Angaben ergänzen“
+    map.js                 Kartenansicht (Vorschau-Sheet, Formmarker)
+    einstellungen.js, konflikt.js  Einstellungen/Update; Versionskonflikte
 vendor/                 Drittbibliotheken lokal (home-assistant-js-websocket, Leaflet; siehe vendor/README.md)
 icons/                  App-Icons (192/512/Apple Touch/Favicon)
 tests/                  Playwright-Smoke-Tests (siehe tests/README.md)
@@ -72,12 +136,21 @@ package.json            nur für die Test-Tooling-Installation, kein Build-Schri
 
 ## Tests
 
-Playwright-Smoke-Tests laufen automatisch bei jedem Pull Request gegen
-`develop` (`.github/workflows/test.yml`) und lokal über
-`npm install && npx playwright install chromium --with-deps && npm run
-test:smoke` – Details siehe `tests/README.md`. Die PWA selbst bleibt
-davon unberührt und weiterhin bundlerfrei; `package.json` dient
-ausschliesslich der Installation von Playwright für diese Tests.
+Playwright-Smoke-Tests gegen eine Kopie der App mit einem Stub für die
+Home-Assistant-Verbindung (aktuell **305 Tests**, davon ein Sprachtest ohne
+Browser). Lokal:
+
+```bash
+npm install
+npx playwright install chromium --with-deps
+npm run test:smoke
+```
+
+Details siehe `tests/README.md`. Es gibt derzeit keinen automatischen
+CI-Lauf für Tests (im Repository liegt nur der Deploy-Workflow); die Tests
+werden vor jedem Merge und Release von Hand ausgeführt. Die PWA selbst bleibt
+bundlerfrei; `package.json` dient ausschliesslich der Installation von
+Playwright für diese Tests.
 
 ## Version
 
@@ -90,11 +163,30 @@ Die einzige Quelle der Wahrheit ist `src/version.js`
 (`export const APP_VERSION = "…"`). Bei einer für Nutzer sichtbaren,
 nennenswerten Änderung (nicht bei jedem kleinen Fix) wird diese Nummer
 erhöht – zusammen mit `CACHE_VERSION` in `service-worker.js`, falls
-gecachte Dateien betroffen sind, und mit der Version am Anfang dieses
-READMEs.
+gecachte Dateien betroffen sind, mit der Version am Anfang dieses READMEs
+und der Versionsangabe im Startbild (`index.html`, vom Test gegen
+`APP_VERSION` geprüft).
 
 | Version | Datum | Wesentliche Änderungen |
 |---|---|---|
+| 2.0.0 | 2026-10-25 | Produktiver Release: Funktionsstand von 2.0.0-rc.1, keine funktionalen Änderungen. |
+| 2.0.0-rc.1 | 2026-10-24 | Release Candidate: Funktionsstand von dev.16, Dokumentation vervollständigt (Benutzerhandbuch, Changelog, Sicherheit, Release Notes). |
+| 2.0.0-dev.16 | 2026-10-17 | Navigation wählbar: Google Maps oder Apple Karten (Standard je Gerät). |
+| 2.0.0-dev.15 | 2026-10-17 | Startbild (Splash) mit Titel, Icon und Versionsnummer. |
+| 2.0.0-dev.14 | 2026-10-16 | Karte: Suche mit Trefferliste, Hinspringen und «Alle Treffer zeigen». |
+| 2.0.0-dev.13 | 2026-10-16 | Liste: Filter und Sortierung hinter einem Filter-Knopf, aktive Filter als Chips. |
+| 2.0.0-dev.12 | 2026-10-16 | Teilen, «Foto fehlt» + Filter, Stand der Daten offline, Leerzustände, Schrift folgt der Gerätegrösse. |
+| 2.0.0-dev.11 | 2026-10-16 | Erscheinungsbild nach dem Entwurf «HofKarte PWA» (Karten, Pillen, Tableiste, Gruppen-Symbole, Dunkelmodus). |
+| 2.0.0-dev.10 | 2026-10-16 | Sprachwahl als grosses Dropdown mit «Zurücksetzen»; «Zurücksetzen» bei der Farbe als Knopf. |
+| 2.0.0-dev.9 | 2026-10-15 | Sprachwahl als eigene Gruppe mit grossen Zeilen; «Eigene Farbe» als runder Punkt. |
+| 2.0.0-dev.8 | 2026-10-15 | Vier Sprachen (DE/FR/IT/EN), 24h-Automat, Adresse aus Koordinaten (OpenStreetMap), „Angaben ergänzen“ mit OpenStreetMap, runder Farbpunkt. |
+| 2.0.0-dev.7 | 2026-10-14 | Zugänglichkeit (Fokusführung, „Zum Inhalt“, sichtbarer Tastaturfokus, Kontraste ≥ 4,5:1 hell und dunkel), „Erweiterte Suche“ fragt den Standort nur auf Tipp, Geräte-Test-Checkliste. |
+| 2.0.0-dev.6 | 2026-10-14 | Liste mit Filter-Chips und Entfernung auf Tipp; Karte mit Vorschau-Sheet, „Mein Standort“, Formmarkern und Filter „Nur geöffnet“. |
+| 2.0.0-dev.5 | 2026-10-14 | „Von der Webseite“ erfassen und „Angaben ergänzen“ für Bestehendes (Lücken vorgewählt, Abweichungen nie). |
+| 2.0.0-dev.4 | 2026-10-14 | Tab „Erfassen“ (Vor Ort, Schnellerfassung, Gespeichert), Update-Funktion („Nach Update suchen“, Hinweis bei neuer Version). |
+| 2.0.0-dev.3 | 2026-10-14 | Bearbeiten neu: sieben Gruppen, Chips, Schalter, Wochentage-Editor, Fussleiste mit Ungespeichert-Anzeige. |
+| 2.0.0-dev.2 | 2026-10-14 | Detailansicht neu: sieben Gruppen wie im HA-Panel, Schnellaktionen, Hinweis „Noch unvollständig“, ⋮-Menü. |
+| 2.0.0-dev.1 | 2026-10-14 | Entwicklungsstand der Überarbeitung 2.0.0: grüne Markenfarbe (in den Einstellungen wählbar), Symbole statt Emojis, Status mit Form. |
 | 1.12.0 | 2026-10-09 | „Hofladen finden“ (Discovery aus HofKarte-HA 2026.10.1, optional mit KI), Herkunft der Angaben in der Detailansicht. |
 | 1.11.0 | 2026-10-06 | Foto-Upload über WebSocket (ohne CORS), Karte: Geschlossene ausblenden. |
 | 1.10.0 | 2026-10-05 | Phase 10: Sicherheit (Escaping, CSP, https-Pflicht), lokale Bibliotheken statt CDN, stabiles Suchfeld, Bild-Verkleinerung. |
@@ -129,8 +221,8 @@ READMEs.
    - Danach lädt die App automatisch die Hofladen-Liste.
 
 Die Einrichtung ist pro Gerät nur einmal nötig – die Verbindungsdaten
-bleiben lokal in IndexedDB gespeichert, bis sie über „Einrichtung
-zurücksetzen“ (geplant) oder durch Löschen der App entfernt werden.
+bleiben lokal in IndexedDB gespeichert, bis sie über *Einstellungen →
+Abmelden* oder durch Löschen der App entfernt werden.
 
 ### Eigenes Token pro Gerät/Person
 
@@ -159,9 +251,12 @@ unterwegs also kurz prüfen, ob das VPN aktiv ist.
 
 ## Voraussetzungen auf HA-Seite
 
-Siehe Projekt-Dokument `PWA-HA-Vorgehensplan.md`:
+Siehe auch den Abschnitt «Mobile PWA» im README von HofKarte-HA:
 
-- HofKarte-HA-Integration installiert und konfiguriert.
+- HofKarte-HA-Integration installiert und konfiguriert. Zuordnung:
+  PWA 2.0.0 benötigt HofKarte-HA **ab 2026.10.1** (Hofladen finden,
+  Öffnungsstatus und Hauptbild vom Server) und **ab 2026.10.2** für den
+  Schalter «24h-Automat». Zuerst die Integration aktualisieren, dann die PWA.
 - Dedizierter Admin-Benutzer `hofkarte` mit Long-Lived Access Token pro
   Gerät.
 - HA extern/intern per HTTPS erreichbar (z. B. via DuckDNS-Add-on).
@@ -305,11 +400,88 @@ eine HA-Integration mit Versionsunterstützung (HofKarte-HA, Phase 8b);
 - Schriftgrössen sind durchgehend in `rem` definiert und folgen damit
   automatisch der iOS-Systemschriftgrösse (Dynamic Type).
 
-## Bekannte Einschränkungen (MVP)
+## Zugänglichkeit und Geräte-Test (ab 2.0.0-dev.7)
 
-- Sonderöffnungszeiten werden in der PWA nicht bearbeitet (nur angezeigt) –
-  dafür die native HA-Verwaltungsoberfläche verwenden.
-- Fotos hinzufügen/entfernen erfordert eine aktive Verbindung zu Home
-  Assistant (siehe Abschnitt „Offline-Betrieb“ oben).
-- Keine Konflikterkennung, falls zwei Geräte denselben Hofladen offline
-  ändern (siehe Abschnitt „Offline-Betrieb“ oben) – geplant für Phase 8b.
+Umgesetzt und per Smoke-Test abgesichert:
+
+- **Fokusführung:** Nach einem Seitenwechsel steht der Fokus auf der Überschrift
+  (genau eine `h1` pro Ansicht), bei Schrittwechseln („Hofladen finden“, „Von der
+  Webseite“) auf der Schrittüberschrift bzw. der Statusmeldung. Der Seitentitel
+  folgt der Ansicht.
+- **Tastatur:** „Zum Inhalt“ (erstes Element beim Tabben) und ein überall sichtbarer
+  Fokusrahmen (3 px). Die Karten-Vorschau schliesst mit Escape.
+- **Kontraste:** Text, Gedämpft, Links, Schrift auf Akzent, Erfolg, Fehler und
+  Warnung erreichen in Hell und Dunkel mindestens 4,5:1 (Test rechnet nach).
+  Die Markenfarbe wird bei jeder Wahl gleich geprüft.
+- **Status nie nur durch Farbe:** Badge mit Form + Text, Kartenmarker mit Form
+  (Kreis = geöffnet, Quadrat = geschlossen, Ring = unbekannt).
+- **Bewegung:** `prefers-reduced-motion` schaltet Seitenübergänge, Sheet-Animation
+  und Leaflet-Animationen ab.
+- **Standort nur auf Tipp:** Liste („In der Nähe“), Karte („Mein Standort“),
+  „Vor Ort“, „Hofladen finden“. Er wird nie gespeichert.
+
+**Checkliste für den Test auf dem Gerät** (nicht automatisierbar, bitte von Hand):
+
+1. iPhone, Home-Bildschirm-App: App einmal über den Link neu laden bzw. in den
+   Einstellungen „Nach Update suchen“; Version prüfen (Einstellungen).
+2. Standort: „Vor Ort“ → „Standort abfragen“ (iOS fragt beim ersten Mal; bei
+   Ablehnung erscheint die Anleitung). Danach Liste → „In der Nähe“.
+3. Kamera/Foto in der Schnellerfassung; ohne Netz erscheint „Foto später ergänzen“.
+4. VoiceOver: Tab „Erfassen“ → Einstieg → „Von der Webseite“ durchgehen; Schritt-
+   und Statusansagen prüfen; Karte: Marker werden mit Name und Status vorgelesen.
+5. Dunkelmodus und grosse Schrift (Einstellungen → Anzeige) ansehen.
+6. Mac (Safari/Chrome): Tastatur-Durchgang mit Tab/Enter/Escape.
+
+**Cache-Hinweis:** Die App aktualisiert sich nicht von selbst auf der
+Home-Bildschirm-Verknüpfung, wenn die installierte Version vor 2.0.0-dev.4 ist
+(sie kennt die Update-Funktion noch nicht). Einmalig den Link im Browser öffnen
+und die Verknüpfung neu anlegen; danach genügt „Nach Update suchen“ bzw. der
+Hinweis „Neue Version verfügbar“. Im Notfall „App zurücksetzen“ (die Anmeldung
+bleibt erhalten).
+
+## Sprachen, 24h-Automat und OpenStreetMap (ab 2.0.0-dev.8)
+
+- **Sprachen:** Deutsch, Français, Italiano, English. Gewählt wird unter
+  *Einstellungen → Sprache*; ohne Wahl gilt die Browsersprache (sonst Deutsch).
+  Die Wahl gilt pro Gerät (`localStorage`, nie auf dem Server). Der deutsche Text ist
+  zugleich der Schlüssel (`t("Speichern")`, `tn(n, "1 Hofladen", "{n} Hofläden")`);
+  fehlt eine Übersetzung, erscheint Deutsch. Begriffe: FR «ferme», IT «negozio agricolo»,
+  EN «farm shop». Nicht übersetzt werden Release Notes sowie Texte, die aus Home
+  Assistant kommen (Namen, Beschreibungen, Hinweise der Integration).
+  `tests/i18n-test.mjs` prüft, dass jeder `t()`-Text in allen drei Wörterbüchern steht und
+  die Platzhalter übereinstimmen; ein Smoke-Test durchläuft zwölf Ansichten in FR/IT/EN
+  und sucht nach deutschen Resten.
+- **24h-Automat:** Schalter in der Gruppe «Öffnungszeiten». Dann gilt der Hofladen
+  rund um die Uhr als geöffnet (ausser an Tagen mit Sonder-Schliessung); die
+  Wochenzeiten werden ausgeblendet und nicht verwendet. Das Feld `automat_24h` gibt es
+  ab HofKarte-HA **2026.10.2**; ältere Versionen speichern es nicht.
+- **Adresse aus Koordinaten:** Schaltfläche in der Gruppe «Adresse & Standort». Nur auf
+  Tipp werden die Koordinaten (nichts sonst) an Nominatim (OpenStreetMap, ODbL)
+  gesendet. Lücken sind vorgewählt, Abweichungen nie; übernommen wird erst nach
+  «Übernehmen», gespeichert erst im Editor.
+- **Angaben ergänzen mit OpenStreetMap:** Quelle wählbar (Webseite und/oder
+  OpenStreetMap). OpenStreetMap wird am gespeicherten Standort (300 m) durchsucht, der
+  eigene Standort wird nicht abgefragt.
+
+## Bekannte Einschränkungen (2.0.0)
+
+- **Nicht auf einem echten Gerät abgenommen:** Dynamic Type, VoiceOver,
+  Teilen-Dialog, Apple-Karten-Link und Startbild (Safe Areas) sind nur
+  automatisiert geprüft. Checkliste siehe Abschnitt «Zugänglichkeit und
+  Geräte-Test».
+- **Sonderöffnungszeiten** werden in der PWA angezeigt, aber nicht
+  bearbeitet – dafür das Panel in Home Assistant verwenden.
+- **Fotos** hinzufügen/entfernen erfordert eine aktive Verbindung zu Home
+  Assistant; offline lässt sich das Foto später ergänzen.
+- **Versionskonflikte:** Löschen prüft keine Version (ein Löschen gewinnt
+  immer); Bilder werden nicht zusammengeführt (siehe «Versionskonflikte»).
+- **Übersetzungen** (FR/IT/EN) wurden noch nicht von Muttersprachler:innen
+  geprüft. Texte aus Home Assistant (Namen, Beschreibungen, Hinweise) sind nicht
+  übersetzt.
+- **CarPlay** ist mit einer PWA nicht möglich; die Route lässt sich in Apple
+  Karten öffnen.
+- **Standort** liefert das Gerät nur über HTTPS und nach Zustimmung; bei
+  Ablehnung zeigt die App eine Anleitung.
+- Die **KI-Auswertung** ist nur verfügbar, wenn in Home Assistant eine
+  «AI Task»-Entität gewählt ist, und wurde mit lokalen Modellen noch nicht im
+  Feld gemessen.

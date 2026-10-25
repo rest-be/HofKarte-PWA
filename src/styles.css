@@ -4,25 +4,28 @@
    System-Farben (hell/dunkel), "Inset Grouped"-Listen, Large Titles,
    halbtransparente Leisten (Blur), 44-pt-Touch-Targets, Safe Areas.
    Klassennamen bleiben wie bisher, damit Views und Tests unverändert nutzbar
-   sind. Akzentfarbe: --tint (iOS-Blau); für die Karotten-Marke einfach
-   einen anderen Wert setzen (z. B. #34c759).
+   sind. Ab 2.0.0: Markenfarbe Grün (--accent/--tint); der Benutzer kann sie
+   in den Einstellungen ändern (src/design.js setzt die Werte per CSSOM).
    ========================================================================== */
 
 :root {
   color-scheme: light dark;
 
-  --tint: #007aff;
-  --tint-pressed: #0062cc;
+  --accent: #2e7d4f;              /* Füllfarbe (Schaltflächen) */
+  --accent-ink: #ffffff;          /* Schrift auf --accent */
+  --accent-soft: #e6efea;         /* dezenter Hintergrund */
+  --tint: #2e7d4f;                /* Links, Textschaltflächen */
+  --tint-pressed: #266741;
   --bg-color: #f2f2f7;            /* systemGroupedBackground */
   --card-bg: #ffffff;             /* secondarySystemGroupedBackground */
   --fill: rgba(118, 118, 128, 0.12); /* tertiarySystemFill */
   --fill-stark: rgba(118, 118, 128, 0.2);
   --text-color: #000000;
-  --muted-color: rgba(60, 60, 67, 0.6);
+  --muted-color: rgba(60, 60, 67, 0.76);
   --border-color: rgba(60, 60, 67, 0.29);
   --separator: rgba(60, 60, 67, 0.2);
-  --danger-color: #ff3b30;
-  --success-color: #248a3d;
+  --danger-color: #d70015;
+  --success-color: #1e7a34;
   --warn-bg: rgba(255, 149, 0, 0.14);
   --warn-text: #9a5b00;
   --danger-bg: rgba(255, 59, 48, 0.12);
@@ -37,17 +40,20 @@
 
 @media (prefers-color-scheme: dark) {
   :root {
-    --tint: #0a84ff;
-    --tint-pressed: #409cff;
-    --bg-color: #000000;
-    --card-bg: #1c1c1e;
+    --accent: #2e7d4f;
+    --accent-ink: #ffffff;
+    --accent-soft: #1d3426;
+    --tint: #4f926b;
+    --tint-pressed: #6fa686;
+    --bg-color: #0d1210;
+    --card-bg: #181f1b;
     --fill: rgba(118, 118, 128, 0.24);
     --fill-stark: rgba(118, 118, 128, 0.36);
     --text-color: #ffffff;
     --muted-color: rgba(235, 235, 245, 0.6);
     --border-color: rgba(84, 84, 88, 0.65);
     --separator: rgba(84, 84, 88, 0.6);
-    --danger-color: #ff453a;
+    --danger-color: #ff6b61;
     --success-color: #30d158;
     --warn-bg: rgba(255, 159, 10, 0.18);
     --warn-text: #ffb340;
@@ -61,6 +67,14 @@
   box-sizing: border-box;
 }
 
+/* Schriftgrösse folgt der Textgrösse des Geräts (iOS «Dynamic Type»):
+   17 px ist der Standard; alle Schriftgrössen sind in rem angegeben. */
+html {
+  font-size: 17px;
+  font: -apple-system-body;
+  font-family: var(--schrift);
+}
+
 html,
 body {
   margin: 0;
@@ -68,7 +82,7 @@ body {
   background: var(--bg-color);
   color: var(--text-color);
   font-family: var(--schrift);
-  font-size: 17px;
+  font-size: 1rem;
   line-height: 1.3;
   letter-spacing: -0.01em;
   -webkit-font-smoothing: antialiased;
@@ -116,6 +130,54 @@ a {
   padding: 40px 20px;
   text-align: center;
   color: var(--muted-color);
+}
+
+/* Startbild (Splash): Titel, Icon und Version in der Mitte, Ladetext unten. */
+.splash {
+  position: fixed;
+  inset: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 20px;
+  padding: env(safe-area-inset-top) 24px env(safe-area-inset-bottom);
+  background: var(--bg-color);
+  color: var(--text-color);
+  text-align: center;
+}
+
+.splash p {
+  margin: 0;
+}
+
+.splash-titel {
+  font-size: 2.1176rem;
+  font-weight: 700;
+  letter-spacing: -0.02em;
+}
+
+.splash-icon {
+  width: 96px;
+  height: 96px;
+  border-radius: 22px;
+  box-shadow: 0 6px 20px rgba(20, 40, 28, 0.22);
+}
+
+.splash-version {
+  margin-top: -8px;
+  color: var(--muted-color);
+  font-size: 0.8824rem;
+  font-variant-numeric: tabular-nums;
+}
+
+.splash-laden {
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: calc(env(safe-area-inset-bottom) + 40px);
+  padding: 0 24px;
+  font-size: 0.9412rem;
 }
 
 /* --- Navigationsleiste (oben, fix, mit Blur) --------------------------- */
@@ -169,7 +231,7 @@ a {
   right: 72px;
   margin: 0;
   text-align: center;
-  font-size: 17px;
+  font-size: 1rem;
   font-weight: 600;
   white-space: nowrap;
   overflow: hidden;
@@ -194,7 +256,7 @@ a {
   background: none;
   border: none;
   color: var(--tint);
-  font-size: 17px;
+  font-size: 1rem;
 }
 
 .nav-btn svg {
@@ -227,7 +289,7 @@ a {
 
 .sync-status {
   display: inline-block;
-  font-size: 13px;
+  font-size: 0.7647rem;
   font-weight: 500;
   padding: 3px 10px;
   border-radius: 999px;
@@ -274,7 +336,7 @@ a.sync-status.konflikt {
   background: none;
   padding: 6px 4px 4px;
   color: var(--muted-color);
-  font-size: 10px;
+  font-size: 0.5882rem;
   font-weight: 500;
   letter-spacing: 0.01em;
   display: flex;
@@ -319,7 +381,7 @@ a.sync-status.konflikt {
   max-width: 720px;
   margin: 0 auto;
   padding: 2px 20px 6px;
-  font-size: 34px;
+  font-size: 2rem;
   line-height: 1.15;
   font-weight: 700;
   letter-spacing: 0.01em;
@@ -374,7 +436,7 @@ a.sync-status.konflikt {
   border-radius: var(--radius-gross);
   background: var(--warn-bg);
   color: var(--warn-text);
-  font-size: 15px;
+  font-size: 0.8824rem;
   margin: 0 0 16px;
 }
 
@@ -408,7 +470,7 @@ a.sync-status.konflikt {
   right: 16px;
   top: -26px;
   margin: 0;
-  font-size: 13px;
+  font-size: 0.7647rem;
   font-weight: 400;
   line-height: 1.2;
   color: var(--muted-color);
@@ -423,7 +485,7 @@ a.sync-status.konflikt {
 }
 
 .naehe-karte h2 {
-  font-size: 17px;
+  font-size: 1rem;
   font-weight: 600;
   margin: 0 0 8px;
 }
@@ -433,7 +495,7 @@ a.sync-status.konflikt {
   justify-content: space-between;
   padding: 10px 0;
   border-top: 0.5px solid var(--separator);
-  font-size: 17px;
+  font-size: 1rem;
 }
 
 .naehe-eintrag:first-of-type {
@@ -447,13 +509,13 @@ button.aktualisieren {
   color: var(--tint);
   border: none;
   padding: 0;
-  font-size: 17px;
+  font-size: 1rem;
   min-height: 44px;
 }
 
 .formular-abschnitt h3 {
   margin: 12px 0 6px;
-  font-size: 13px;
+  font-size: 0.7647rem;
   font-weight: 400;
   color: var(--muted-color);
   text-transform: uppercase;
@@ -462,7 +524,7 @@ button.aktualisieren {
 .formular-abschnitt p.muted,
 p.muted {
   color: var(--muted-color);
-  font-size: 13px;
+  font-size: 0.7647rem;
   margin: 8px 0 10px;
 }
 
@@ -482,7 +544,7 @@ p.muted {
   border-radius: var(--radius);
   border: none;
   background: var(--fill);
-  font-size: 17px;
+  font-size: 1rem;
   -webkit-appearance: none;
   appearance: none;
 }
@@ -497,7 +559,7 @@ p.muted {
   border: none;
   background: var(--fill);
   min-height: 44px;
-  font-size: 15px;
+  font-size: 0.8824rem;
   color: var(--tint);
 }
 
@@ -507,7 +569,7 @@ p.muted {
 
 #sort-richtung {
   min-width: 44px;
-  font-size: 19px;
+  font-size: 1.1176rem;
 }
 
 /* --- Liste der Hofläden (Inset Grouped mit Chevron) ----------------------- */
@@ -576,7 +638,7 @@ p.muted {
 }
 
 .hofladen-karte .name {
-  font-size: 17px;
+  font-size: 1rem;
   font-weight: 600;
   margin: 0 0 1px;
   white-space: nowrap;
@@ -587,16 +649,41 @@ p.muted {
 .hofladen-karte .ort,
 p.ort {
   color: var(--muted-color);
-  font-size: 15px;
+  font-size: 0.8824rem;
   margin: 0 0 3px;
 }
 
 .status-badge {
-  display: inline-block;
-  font-size: 12px;
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  font-size: 0.7059rem;
   padding: 2px 8px;
   border-radius: 999px;
   font-weight: 600;
+}
+
+/* Status nie nur durch Farbe: zusätzlich eine Form (Punkt, Quadrat, Ring). */
+.status-badge::before {
+  content: "";
+  flex: none;
+  width: 7px;
+  height: 7px;
+  background: currentColor;
+}
+
+.status-badge.offen::before {
+  border-radius: 50%;
+}
+
+.status-badge.geschlossen::before {
+  border-radius: 1px;
+}
+
+.status-badge.unbekannt::before {
+  border-radius: 50%;
+  background: transparent;
+  box-shadow: inset 0 0 0 1.5px currentColor;
 }
 
 .status-badge.offen {
@@ -616,7 +703,7 @@ p.ort {
 
 .bewertung-sterne {
   color: var(--stern);
-  font-size: 14px;
+  font-size: 0.8235rem;
   white-space: nowrap;
 }
 
@@ -632,9 +719,10 @@ p.ort {
   background: var(--card-bg);
 }
 
-.inhalt > h2 {
+.inhalt > h2,
+.detail-kopf > h2 {
   margin: 0 0 6px;
-  font-size: 28px;
+  font-size: 1.6471rem;
   font-weight: 700;
   letter-spacing: 0.01em;
 }
@@ -670,7 +758,7 @@ p.ort {
   background: var(--fill);
   border-radius: 999px;
   padding: 5px 12px;
-  font-size: 15px;
+  font-size: 0.8824rem;
 }
 
 /* Aktionen am Ende: grosse, gefüllte iOS-Buttons. */
@@ -688,13 +776,13 @@ p.ort {
   border: none;
   background: var(--fill);
   color: var(--tint);
-  font-size: 17px;
+  font-size: 1rem;
   font-weight: 600;
 }
 
 .aktions-reihe button.primaer {
-  background: var(--tint);
-  color: #fff;
+  background: var(--accent);
+  color: var(--accent-ink);
 }
 
 .aktions-reihe button.gefahr {
@@ -721,7 +809,7 @@ p.ort {
 
 .feld-gruppe label {
   display: block;
-  font-size: 13px;
+  font-size: 0.7647rem;
   color: var(--muted-color);
   margin-bottom: 2px;
 }
@@ -739,7 +827,7 @@ p.ort {
   border: none;
   border-radius: 0;
   background: transparent;
-  font-size: 17px;
+  font-size: 1rem;
   outline: none;
   -webkit-appearance: none;
   appearance: none;
@@ -783,7 +871,7 @@ p.ort {
 .stern-btn {
   background: none;
   border: none;
-  font-size: 28px;
+  font-size: 1.6471rem;
   color: var(--fill-stark);
   padding: 0;
   line-height: 1;
@@ -814,7 +902,7 @@ p.ort {
   border-radius: 8px;
   background: var(--fill);
   padding: 0 8px;
-  font-size: 17px;
+  font-size: 1rem;
 }
 
 .liste-zeile input {
@@ -825,7 +913,7 @@ p.ort {
   background: none;
   border: none;
   color: var(--danger-color);
-  font-size: 20px;
+  font-size: 1.1765rem;
   padding: 4px 8px;
   min-width: 44px;
   min-height: 44px;
@@ -842,7 +930,7 @@ p.ort {
   padding: 0;
   width: 100%;
   color: var(--tint);
-  font-size: 17px;
+  font-size: 1rem;
   min-height: 44px;
   display: flex;
   align-items: center;
@@ -879,12 +967,12 @@ p.ort {
   border-radius: 8px;
   border: none;
   background: var(--fill);
-  font-size: 15px;
+  font-size: 0.8824rem;
 }
 
 .bild-zeile-meta {
   color: var(--muted-color);
-  font-size: 12px;
+  font-size: 0.7059rem;
   margin-top: 4px;
 }
 
@@ -898,7 +986,7 @@ p.ort {
 .sekundaer-btn {
   background: none;
   border: none;
-  font-size: 20px;
+  font-size: 1.1765rem;
   padding: 4px 6px;
   min-width: 44px;
   min-height: 44px;
@@ -922,7 +1010,7 @@ p.ort {
 .upload-status {
   display: block;
   margin: 4px 0 8px;
-  font-size: 13px;
+  font-size: 0.7647rem;
 }
 
 .upload-status.error {
@@ -936,12 +1024,12 @@ p.ort {
 /* Primäre Aktion: volle Breite, gefüllt, 14pt-Radius. */
 .speichern-btn {
   width: 100%;
-  background: var(--tint);
-  color: #fff;
+  background: var(--accent);
+  color: var(--accent-ink);
   border: none;
   border-radius: 14px;
   padding: 0 16px;
-  font-size: 17px;
+  font-size: 1rem;
   font-weight: 600;
   margin: 16px 0 8px;
   min-height: 50px;
@@ -972,7 +1060,7 @@ p.ort {
   -webkit-backdrop-filter: blur(20px);
   backdrop-filter: blur(20px);
   color: var(--text-color);
-  font-size: 15px;
+  font-size: 0.8824rem;
   box-shadow: 0 1px 6px rgba(0, 0, 0, 0.2);
 }
 
@@ -1006,7 +1094,7 @@ p.ort {
 
 .einrichtung h1 {
   margin: 0 0 4px;
-  font-size: 34px;
+  font-size: 2rem;
   letter-spacing: 0.01em;
 }
 
@@ -1028,7 +1116,7 @@ p.ort {
 }
 
 .einrichtung .hinweistext {
-  font-size: 13px;
+  font-size: 0.7647rem;
   color: var(--muted-color);
   margin-top: 16px;
   line-height: 1.4;
@@ -1055,7 +1143,7 @@ p.ort {
   display: flex;
   align-items: center;
   justify-content: center;
-  font-size: 26px;
+  font-size: 1.5294rem;
 }
 
 .hofladen-karte div.miniatur::after {
@@ -1078,7 +1166,7 @@ details.naehe-karte > summary {
   align-items: center;
   justify-content: space-between;
   min-height: 44px;
-  font-size: 17px;
+  font-size: 1rem;
   font-weight: 600;
   list-style: none;
   cursor: pointer;
@@ -1118,7 +1206,7 @@ details.naehe-karte > #naehe-ergebnis {
 /* Einrichtungsbildschirm: Version + Release Notes */
 .version-zeile-setup {
   margin: 20px 0 8px;
-  font-size: 13px;
+  font-size: 0.7647rem;
   color: var(--muted-color);
 }
 
@@ -1150,20 +1238,20 @@ details.naehe-karte > #naehe-ergebnis {
 
 .release h3 {
   margin: 10px 0 4px;
-  font-size: 15px;
+  font-size: 0.8824rem;
 }
 
 .release .datum {
   font-weight: 400;
   color: var(--muted-color);
-  font-size: 13px;
+  font-size: 0.7647rem;
   margin-left: 6px;
 }
 
 .release ul {
   margin: 0;
   padding-left: 18px;
-  font-size: 15px;
+  font-size: 0.8824rem;
 }
 
 /* Einklappbarer Detail-Abschnitt (Öffnungszeiten): eine Zeile hoch, wenn zu. */
@@ -1194,7 +1282,7 @@ details.detail-abschnitt.einklappbar > summary .kurzinfo {
   flex: 1;
   text-align: right;
   color: var(--muted-color);
-  font-size: 15px;
+  font-size: 0.8824rem;
 }
 
 details.detail-abschnitt.einklappbar > summary::after {
@@ -1302,7 +1390,7 @@ details.manuell-bild {
 }
 
 .finden-label {
-  font-size: 13px;
+  font-size: 0.7647rem;
   color: var(--muted-color);
   text-transform: uppercase;
   font-weight: 400;
@@ -1313,12 +1401,12 @@ details.manuell-bild {
   background: var(--warn-bg);
   border-radius: 6px;
   padding: 2px 6px;
-  font-size: 13px;
+  font-size: 0.7647rem;
 }
 
 .finden .muted,
 .finden-status {
-  font-size: 13px;
+  font-size: 0.7647rem;
   color: var(--muted-color);
 }
 
@@ -1335,4 +1423,1906 @@ details.manuell-bild {
 
 .finden .aktions-reihe {
   flex-wrap: wrap;
+}
+
+/* --- Symbole (ab 2.0.0, src/icons.js) ---------------------------------------- */
+
+.ic {
+  width: 24px;
+  height: 24px;
+  flex: none;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 1.8;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+  vertical-align: middle;
+}
+
+.ic-klein {
+  width: 18px;
+  height: 18px;
+}
+
+button:has(> .ic),
+a:has(> .ic) {
+  gap: 6px;
+}
+
+/* --- Einstellungen: Darstellung / Markenfarbe -------------------------------- */
+
+.farb-raster {
+  display: grid;
+  grid-template-columns: repeat(5, 1fr);
+  gap: 10px 6px;
+  padding: 6px 0;
+  margin-bottom: 12px;
+}
+
+.farb-wahl {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 6px;
+  min-height: 44px;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  color: var(--muted-color);
+  font-size: 0.7059rem;
+  font-weight: 600;
+}
+
+.farb-wahl[aria-pressed="true"] {
+  color: var(--text-color);
+}
+
+.farb-punkt {
+  display: grid;
+  place-items: center;
+  flex: none;
+  box-sizing: border-box;
+  width: 48px;
+  height: 48px;
+  min-width: 48px;
+  aspect-ratio: 1 / 1;
+  border-radius: 50%;
+  overflow: hidden;
+  color: #fff;
+  box-shadow: inset 0 0 0 1px rgba(0, 0, 0, 0.12);
+}
+
+.farb-punkt .ic {
+  stroke-width: 2.6;
+  visibility: hidden;
+}
+
+/* Ring per box-shadow statt outline: ältere iOS-Versionen zeichnen einen
+ * Outline eckig, obwohl der Punkt rund ist. */
+.farb-wahl[aria-pressed="true"] .farb-punkt {
+  overflow: visible;
+  box-shadow: 0 0 0 2px var(--card-bg), 0 0 0 5px var(--text-color);
+}
+
+.farb-wahl:focus-visible {
+  outline: none;
+}
+
+.farb-wahl:focus-visible .farb-punkt {
+  box-shadow: 0 0 0 2px var(--card-bg), 0 0 0 5px var(--tint);
+}
+
+.farb-wahl[aria-pressed="true"] .farb-punkt .ic {
+  visibility: visible;
+}
+
+.farb-eigene {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding-top: 12px;
+  border-top: 0.5px solid var(--separator);
+}
+
+/* Runder Farbpunkt auch für das native Farbfeld (iOS zeigt es sonst als Oval). */
+.farb-eigene input[type="color"] {
+  -webkit-appearance: none;
+  appearance: none;
+  flex: none;
+  box-sizing: border-box;
+  width: 48px;
+  height: 48px;
+  min-width: 48px;
+  aspect-ratio: 1 / 1;
+  padding: 0;
+  border: 0;
+  border-radius: 50%;
+  overflow: hidden;
+  background: transparent;
+  box-shadow: inset 0 0 0 1px rgba(0, 0, 0, 0.12);
+}
+
+.farb-eigene input[type="color"]::-webkit-color-swatch-wrapper {
+  padding: 0;
+}
+
+.farb-eigene input[type="color"]::-webkit-color-swatch {
+  border: 0;
+  border-radius: 50%;
+}
+
+.farb-eigene input[type="color"]::-moz-color-swatch {
+  border: 0;
+  border-radius: 50%;
+}
+
+/* Sprachwahl: grosses Auswahlfeld, leicht zu treffen. */
+.sprach-auswahl {
+  min-height: 52px;
+  font-size: 1.0588rem;
+  font-weight: 600;
+}
+
+.farb-vorschau {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 10px;
+  margin-top: 12px;
+}
+
+.farb-vorschau .vorschau-knopf {
+  display: inline-flex;
+  align-items: center;
+  min-height: 36px;
+  padding: 0 14px;
+  border-radius: 10px;
+  background: var(--accent);
+  color: var(--accent-ink);
+  font-weight: 600;
+  font-size: 0.8824rem;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  * {
+    scroll-behavior: auto !important;
+    transition-duration: 0.01ms !important;
+    animation-duration: 0.01ms !important;
+  }
+}
+
+/* --- Detail: Kopf, Schnellaktionen, Gruppen (ab 2.0.0-dev.2) ---------------- */
+
+.nur-sr {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip: rect(0 0 0 0);
+  white-space: nowrap;
+}
+
+.detail-kopf {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+}
+
+.detail-kopf > h2 {
+  flex: 1;
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+
+.kopf-aktionen {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  position: relative;
+}
+
+.kopf-btn {
+  min-height: 44px;
+  padding: 0 14px;
+  border: 0;
+  border-radius: 12px;
+  background: var(--accent);
+  color: var(--accent-ink);
+  font-size: 0.8824rem;
+  font-weight: 600;
+}
+
+.aktionsmenue > summary {
+  display: grid;
+  place-items: center;
+  width: 44px;
+  height: 44px;
+  list-style: none;
+  border-radius: 12px;
+  background: var(--fill);
+  color: var(--text-color);
+  cursor: pointer;
+}
+
+.aktionsmenue > summary::-webkit-details-marker {
+  display: none;
+}
+
+.aktionsmenue .menue-liste {
+  position: absolute;
+  right: 0;
+  top: 48px;
+  z-index: 5;
+  min-width: 160px;
+  padding: 4px;
+  border-radius: 12px;
+  background: var(--card-bg);
+  box-shadow: 0 6px 24px rgba(0, 0, 0, 0.22);
+}
+
+.aktionsmenue .menue-liste button {
+  width: 100%;
+  min-height: 44px;
+  padding: 0 12px;
+  border: 0;
+  border-radius: 8px;
+  background: transparent;
+  text-align: left;
+  font-size: 0.9412rem;
+  color: var(--text-color);
+}
+
+.aktionsmenue .menue-liste button.gefahr {
+  color: var(--danger-color);
+}
+
+.status-zeile {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin: 2px 0 12px;
+}
+
+.schnellaktionen {
+  display: grid;
+  grid-auto-flow: column;
+  grid-auto-columns: 1fr;
+  gap: 8px;
+  margin-bottom: 14px;
+}
+
+.schnellaktion {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 4px;
+  min-height: 56px;
+  border-radius: 12px;
+  background: var(--accent-soft);
+  color: var(--tint);
+  font-size: 0.7647rem;
+  font-weight: 600;
+  text-decoration: none;
+}
+
+.gruppen-leiste {
+  display: flex;
+  justify-content: flex-end;
+  margin-top: 6px;
+}
+
+.link-btn {
+  min-height: 44px;
+  padding: 0 4px;
+  border: 0;
+  background: transparent;
+  color: var(--tint);
+  font-size: 0.8824rem;
+  font-weight: 600;
+}
+
+/* Vollständigkeit: Form statt nur Farbe (voll = gefüllt, halb = halb gefüllt, leer = Ring). */
+.vollst {
+  flex: none;
+  width: 12px;
+  height: 12px;
+  border-radius: 50%;
+  box-shadow: inset 0 0 0 2px var(--tint);
+}
+
+.vollst.voll {
+  background: var(--tint);
+}
+
+.vollst.halb {
+  background: linear-gradient(90deg, var(--tint) 50%, transparent 50%);
+}
+
+.vollst.leer {
+  background: transparent;
+  box-shadow: inset 0 0 0 2px var(--muted-color);
+}
+
+details.gruppe > summary .titel {
+  flex: none;
+}
+
+details.gruppe > summary .kurzinfo {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+details.gruppe .gruppen-label {
+  margin-top: 8px;
+  color: var(--muted-color);
+  font-size: 0.7647rem;
+  text-transform: uppercase;
+}
+
+details.gruppe .tag-liste {
+  padding: 6px 0 12px;
+}
+
+details.gruppe .gruppen-text {
+  margin: 4px 0 10px;
+}
+
+.kontakt-zeile.heute {
+  background: var(--accent-soft);
+  margin: 0 -16px;
+  padding-left: 16px;
+  padding-right: 16px;
+}
+
+.heute-marke {
+  margin-left: 6px;
+  padding: 1px 7px;
+  border-radius: 999px;
+  background: var(--accent);
+  color: var(--accent-ink);
+  font-size: 0.7059rem;
+  font-weight: 600;
+}
+
+
+/* --- Editor: Gruppen, Chips, Schalter, Wochentage, Fussleiste (ab 2.0.0-dev.3) --- */
+
+.auto-leiste {
+  margin: 4px 0 6px;
+  padding: 12px 14px;
+  border-radius: var(--radius-gross);
+  background: var(--accent-soft);
+}
+
+.auto-titel {
+  font-weight: 600;
+  margin-bottom: 8px;
+}
+
+.auto-knoepfe {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.auto-leiste .muted {
+  margin: 8px 0 0;
+  font-size: 0.7647rem;
+}
+
+.chip,
+.chip-knopf {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  min-height: 44px;
+  padding: 0 14px;
+  border: 0;
+  border-radius: 999px;
+  background: var(--fill);
+  color: var(--text-color);
+  font-size: 0.8824rem;
+}
+
+.chip-knopf {
+  background: var(--card-bg);
+  color: var(--tint);
+  font-weight: 600;
+}
+
+.chip button {
+  display: inline-grid;
+  place-items: center;
+  width: 32px;
+  height: 32px;
+  margin-right: -8px;
+  border: 0;
+  border-radius: 50%;
+  background: transparent;
+  color: var(--muted-color);
+}
+
+.chip-vorschlag {
+  background: transparent;
+  box-shadow: inset 0 0 0 1px var(--border-color);
+  color: var(--tint);
+}
+
+.chip-liste {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  padding: 8px 0;
+}
+
+.schalter-liste {
+  display: flex;
+  flex-direction: column;
+}
+
+.schalter {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  min-height: 48px;
+  padding: 0;
+  border: 0;
+  border-top: 0.5px solid var(--separator);
+  background: transparent;
+  color: var(--text-color);
+  font-size: 1rem;
+  text-align: left;
+}
+
+.schalter-knopf {
+  position: relative;
+  flex: none;
+  width: 51px;
+  height: 31px;
+  border-radius: 999px;
+  background: var(--fill-stark);
+  transition: background 0.2s;
+}
+
+.schalter-knopf::after {
+  content: "";
+  position: absolute;
+  top: 2px;
+  left: 2px;
+  width: 27px;
+  height: 27px;
+  border-radius: 50%;
+  background: #fff;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.3);
+  transition: transform 0.2s;
+}
+
+.schalter[aria-checked="true"] .schalter-knopf {
+  background: var(--accent);
+}
+
+.schalter[aria-checked="true"] .schalter-knopf::after {
+  transform: translateX(20px);
+}
+
+.oz-tag {
+  padding: 4px 0;
+  border-top: 0.5px solid var(--separator);
+}
+
+.oz-tag:first-child {
+  border-top: 0;
+}
+
+.oz-tag-kopf {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-height: 44px;
+}
+
+.oz-tag-kopf .grow {
+  flex: 1;
+}
+
+.oz-tag-kopf .link-btn {
+  font-size: 0.8235rem;
+}
+
+.oz-tag .oeffnungszeit-zeile {
+  border-top: 0;
+  padding: 0 0 4px;
+}
+
+.oz-tag .oeffnungszeit-zeile input[type="time"] {
+  min-height: 44px;
+  flex: 1;
+  min-width: 0;
+}
+
+.sterne-zeile {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.feld-fehler {
+  margin: 4px 0 0;
+  color: var(--danger-color);
+  font-size: 0.8235rem;
+  font-weight: 600;
+}
+
+.feld-gruppe input[aria-invalid="true"] {
+  box-shadow: inset 0 0 0 2px var(--danger-color);
+}
+
+details.gruppe > .gruppen-inhalt {
+  padding-bottom: 6px;
+}
+
+/* Feste Fussleiste über der Tab-Leiste. */
+.fussleiste {
+  position: fixed;
+  left: 0;
+  right: 0;
+  bottom: var(--tab-h);
+  z-index: 20;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 16px;
+  background: var(--leiste-bg);
+  -webkit-backdrop-filter: blur(20px);
+  backdrop-filter: blur(20px);
+  border-top: 0.5px solid var(--separator);
+}
+
+.fussleiste .grow {
+  flex: 1;
+}
+
+.fussleiste .ungespeichert {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 0.8235rem;
+  font-weight: 600;
+  color: var(--warn-text);
+}
+
+.fussleiste button {
+  min-height: 48px;
+  padding: 0 20px;
+  border: 0;
+  border-radius: 12px;
+  background: var(--fill);
+  color: var(--tint);
+  font-size: 1rem;
+  font-weight: 600;
+}
+
+.fussleiste button.primaer {
+  background: var(--accent);
+  color: var(--accent-ink);
+}
+
+.fussleiste button:disabled {
+  opacity: 0.6;
+}
+
+.inhalt:has(.fussleiste) {
+  padding-bottom: calc(var(--tab-h) + 96px);
+}
+
+.liste-zeile input[type="text"],
+.liste-zeile input[type="url"] {
+  min-width: 0;
+  min-height: 44px;
+  padding: 0 12px;
+  border: 0;
+  border-radius: 10px;
+  background: var(--fill);
+  color: var(--text-color);
+  font-size: 1rem;
+}
+
+.liste-zeile .hinzufuegen-btn {
+  width: auto;
+  flex: none;
+  padding: 0 8px;
+  border-top: 0;
+  font-weight: 600;
+}
+
+.fussleiste {
+  gap: 8px;
+  padding: 10px 12px;
+}
+
+.fussleiste .ungespeichert {
+  font-size: 0.7647rem;
+  min-width: 0;
+}
+
+.fussleiste button {
+  padding: 0 16px;
+  font-size: 0.9412rem;
+}
+
+.fussleiste .ungespeichert[hidden] {
+  display: none;
+}
+
+/* --- Update-Hinweis (ab 2.0.0-dev.4) ------------------------------------------ */
+
+.update-hinweis {
+  position: fixed;
+  left: 12px;
+  right: 12px;
+  top: calc(env(safe-area-inset-top) + 8px);
+  z-index: 100;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 8px 8px 14px;
+  border-radius: 14px;
+  background: var(--accent);
+  color: var(--accent-ink);
+  box-shadow: 0 6px 24px rgba(0, 0, 0, 0.3);
+  font-weight: 600;
+}
+
+.update-hinweis span {
+  flex: 1;
+}
+
+.update-hinweis button {
+  min-height: 44px;
+  padding: 0 12px;
+  border: 0;
+  border-radius: 10px;
+  background: rgba(255, 255, 255, 0.2);
+  color: inherit;
+  font-size: 0.8824rem;
+  font-weight: 600;
+}
+
+/* --- Erfassen (ab 2.0.0-dev.4) -------------------------------------------------- */
+
+.erfassen-titel {
+  margin: 4px 0 2px;
+  font-size: 1.6471rem;
+}
+
+.weg-karte {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  min-height: 72px;
+  margin: 12px 0;
+  padding: 14px;
+  border-radius: var(--radius-gross);
+  background: var(--card-bg);
+  color: var(--text-color);
+  text-decoration: none;
+}
+
+.weg-karte.weg-haupt {
+  background: var(--accent);
+  color: var(--accent-ink);
+}
+
+.weg-icon {
+  display: grid;
+  place-items: center;
+  flex: none;
+  width: 44px;
+  height: 44px;
+  border-radius: 12px;
+  background: var(--accent-soft);
+  color: var(--tint);
+}
+
+.weg-haupt .weg-icon {
+  background: rgba(255, 255, 255, 0.2);
+  color: inherit;
+}
+
+.weg-text {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  gap: 2px;
+  font-size: 0.8824rem;
+}
+
+.weg-text strong {
+  font-size: 1.0588rem;
+}
+
+.weg-pfeil {
+  opacity: 0.6;
+}
+
+.erfassen-fuss {
+  text-align: center;
+}
+
+.erfassen-fuss a {
+  display: inline-block;
+  padding: 12px;
+  color: var(--tint);
+  font-weight: 600;
+}
+
+.gross-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  width: 100%;
+  min-height: 56px;
+  margin: 12px 0;
+  padding: 0 16px;
+  border: 0;
+  border-radius: 14px;
+  background: var(--accent);
+  color: var(--accent-ink);
+  font-size: 1.0588rem;
+  font-weight: 600;
+}
+
+.gross-btn.zweit {
+  background: var(--fill);
+  color: var(--tint);
+}
+
+.gross-btn:disabled {
+  opacity: 0.6;
+}
+
+.chip[aria-pressed="true"] {
+  background: var(--accent);
+  color: var(--accent-ink);
+  font-weight: 600;
+}
+
+.vorort-abschnitt {
+  margin: 16px 0;
+}
+
+.vorort-abschnitt > h3 {
+  margin: 0 0 6px;
+  font-size: 0.7647rem;
+  font-weight: 400;
+  text-transform: uppercase;
+  color: var(--muted-color);
+}
+
+.treffer-zeile {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  min-height: 56px;
+  margin-bottom: 8px;
+  padding: 10px 14px;
+  border-radius: var(--radius-gross);
+  background: var(--card-bg);
+  color: var(--text-color);
+  text-decoration: none;
+}
+
+.treffer-text {
+  display: flex;
+  flex: 1;
+  min-width: 0;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.treffer-text .muted {
+  font-size: 0.8235rem;
+  margin: 0;
+}
+
+.treffer-btn {
+  flex: none;
+  min-height: 44px;
+  padding: 0 16px;
+  border: 0;
+  border-radius: 12px;
+  background: var(--accent);
+  color: var(--accent-ink);
+  font-size: 0.9412rem;
+  font-weight: 600;
+}
+
+.schnell-abschnitt {
+  margin-top: 16px;
+}
+
+.schnell-wert {
+  margin: 4px 0 6px;
+  font-variant-numeric: tabular-nums;
+}
+
+.gespeichert-kopf {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  margin: 8px 0 12px;
+}
+
+.gespeichert-kopf h2 {
+  margin: 0;
+}
+
+.gespeichert-kopf .muted {
+  margin: 0;
+}
+
+.gespeichert-haken {
+  display: grid;
+  place-items: center;
+  width: 52px;
+  height: 52px;
+  border-radius: 50%;
+  background: var(--accent);
+  color: var(--accent-ink);
+}
+
+.aktions-stapel {
+  flex-direction: column;
+}
+
+/* --- Webseite auslesen und Angaben ergänzen (ab 2.0.0-dev.5) ------------------- */
+
+.ergaenzen-zeile {
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+  margin-bottom: 8px;
+  padding: 12px 14px;
+  border-radius: var(--radius-gross);
+  background: var(--card-bg);
+}
+
+.ergaenzen-zeile input[type="checkbox"] {
+  flex: none;
+  width: 24px;
+  height: 24px;
+  margin-top: 2px;
+  accent-color: var(--accent);
+}
+
+.ergaenzen-zeile.gleich {
+  opacity: 0.75;
+}
+
+.zeilen-kopf {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.status-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 2px 8px;
+  border-radius: 999px;
+  background: var(--fill);
+  font-size: 0.7059rem;
+  font-weight: 600;
+  white-space: nowrap;
+}
+
+.status-chip.status-luecke,
+.status-chip.status-ergaenzen {
+  background: var(--accent-soft);
+  color: var(--tint);
+}
+
+.status-chip.status-abweichung {
+  background: var(--warn-bg);
+  color: var(--warn-text);
+}
+
+.auslesen-laeuft {
+  padding: 24px 0;
+  text-align: center;
+}
+
+/* --- Phase 6: Liste und Karte ------------------------------------------------ */
+
+.filter-chips {
+  padding: 4px 0;
+}
+
+.filter-meldung:empty {
+  display: none;
+}
+
+.entfernung {
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  margin-left: 6px;
+  font-size: 0.7647rem;
+  color: var(--muted-color);
+}
+
+.karten-knoepfe {
+  position: absolute;
+  top: 10px;
+  right: 10px;
+  z-index: 1000;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 8px;
+}
+
+.karten-knoepfe .karten-filter,
+.karten-knoepfe .karten-knopf {
+  position: static;
+}
+
+.karten-knopf {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  min-height: 44px;
+  padding: 0 14px;
+  border: 0;
+  border-radius: 22px;
+  background: var(--leiste-bg);
+  -webkit-backdrop-filter: blur(20px);
+  backdrop-filter: blur(20px);
+  color: var(--text-color);
+  font-size: 0.8824rem;
+  box-shadow: 0 1px 6px rgba(0, 0, 0, 0.2);
+}
+
+.karten-meldung {
+  position: absolute;
+  left: 10px;
+  right: 10px;
+  top: 10px;
+  z-index: 1000;
+  max-width: calc(100% - 180px);
+  padding: 8px 12px;
+  border-radius: 12px;
+  background: var(--leiste-bg);
+  color: var(--text-color);
+  font-size: 0.8235rem;
+}
+
+.karten-meldung:empty {
+  display: none;
+}
+
+.karten-sheet {
+  position: absolute;
+  left: 8px;
+  right: 8px;
+  bottom: 8px;
+  z-index: 1100;
+  padding: 16px;
+  border-radius: var(--radius-gross);
+  background: var(--card-bg);
+  color: var(--text-color);
+  box-shadow: 0 4px 24px rgba(0, 0, 0, 0.3);
+}
+
+.karten-sheet[hidden] {
+  display: none;
+}
+
+.karten-sheet h2 {
+  margin: 0 0 6px;
+  font-size: 1.0588rem;
+  padding-right: 48px;
+}
+
+.karten-sheet p {
+  margin: 0 0 6px;
+}
+
+.karten-sheet .sheet-aktionen {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-top: 10px;
+}
+
+.karten-sheet .sheet-zu {
+  position: absolute;
+  top: 6px;
+  right: 6px;
+  width: 44px;
+  height: 44px;
+  border: 0;
+  border-radius: 50%;
+  background: transparent;
+  color: var(--muted-color);
+  font-size: 1.2941rem;
+}
+
+.karten-sheet a.chip-knopf {
+  text-decoration: none;
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  .karten-sheet {
+    animation: sheet-rein 0.18s ease-out;
+  }
+}
+
+@keyframes sheet-rein {
+  from {
+    transform: translateY(24px);
+    opacity: 0;
+  }
+}
+
+/* --- Phase 7: Zugänglichkeit ------------------------------------------------- */
+
+.nur-leser {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  margin: -1px;
+  padding: 0;
+  overflow: hidden;
+  clip: rect(0 0 0 0);
+  white-space: nowrap;
+  border: 0;
+}
+
+.skip-link {
+  position: fixed;
+  top: 8px;
+  left: 8px;
+  z-index: 3000;
+  min-height: 44px;
+  padding: 0 16px;
+  border: 0;
+  border-radius: 22px;
+  background: var(--accent);
+  color: var(--accent-ink);
+  font-size: 0.9412rem;
+  transform: translateY(-200%);
+}
+
+.skip-link:focus {
+  transform: none;
+}
+
+/* Sichtbarer Tastaturfokus auf allen bedienbaren Elementen. */
+button:focus-visible,
+a:focus-visible,
+summary:focus-visible,
+select:focus-visible,
+input:focus-visible,
+textarea:focus-visible,
+[role="button"]:focus-visible {
+  outline: 3px solid var(--tint);
+  outline-offset: 2px;
+}
+
+[tabindex="-1"]:focus {
+  outline: none;
+}
+
+/* --- Adresse aus Koordinaten (ab 2.0.0-dev.8) ---------------------------------- */
+
+.adresse-vorschlag:empty {
+  display: none;
+}
+
+.adresse-karte {
+  margin-top: 10px;
+  padding: 12px;
+  border-radius: var(--radius);
+  background: var(--accent-soft);
+}
+
+/* ==========================================================================
+   Entwurf-Schicht (2.0.0-dev.11): Farben, Karten, Pillen, Tableiste und
+   Knöpfe wie im Entwurf "HofKarte PWA". Überschreibt die iOS-Werte oben;
+   die Markenfarbe kommt weiterhin aus src/design.js (--accent, --tint …).
+   ========================================================================== */
+
+:root {
+  --bg-color: #f3f5f0;
+  --card-bg: #ffffff;
+  --text-color: #1a2a20;
+  --muted-color: #5b6b60;
+  --separator: #e1e6dd;
+  --border-color: #c9d1c6;
+  --fill: #e8ece4;
+  --fill-stark: #b9c3bb;
+  --leiste-bg: rgba(255, 255, 255, 0.94);
+  --warn-bg: #fcebd6;
+  --warn-text: #7a3c00;
+  --carrot: #e8750f;
+  --ok-soft: #e2f1e7;
+  --ok-ink: #1b6b3e;
+  --zu-soft: #f3e7e5;
+  --zu-ink: #8c3a33;
+  --un-soft: #eceeea;
+  --un-ink: #4b5a50;
+  --stern: #b8690a;
+  --radius: 12px;
+  --radius-gross: 16px;
+  --karte-rahmen: 1px solid var(--separator);
+  --karte-schatten: 0 1px 2px rgba(20, 40, 28, 0.05);
+}
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    --bg-color: #0d1210;
+    --card-bg: #151c17;
+    --text-color: #eef3ee;
+    --muted-color: #a4b3a8;
+    --separator: #27342b;
+    --border-color: #3a4a3f;
+    --fill: #222d25;
+    --fill-stark: #4a5a4f;
+    --leiste-bg: rgba(18, 26, 21, 0.94);
+    --warn-bg: #3a2610;
+    --warn-text: #ffc58a;
+    --ok-soft: #1d3426;
+    --ok-ink: #8fd6a9;
+    --zu-soft: #3a2220;
+    --zu-ink: #f0aaa3;
+    --un-soft: #222d25;
+    --un-ink: #b4c2b8;
+    --stern: #ffb340;
+    --karte-schatten: none;
+  }
+}
+
+.grosser-titel {
+  font-size: 1.8824rem;
+  font-weight: 700;
+  letter-spacing: -0.02em;
+}
+
+/* Suche und Filter */
+.such-leiste input[type="search"],
+.such-leiste select {
+  background: var(--fill);
+  border-radius: 12px;
+}
+
+.chip,
+.chip-knopf {
+  position: relative;
+  /* 36 pt sichtbar, 44 pt Trefferfläche (transparenter Rand). */
+  min-height: 44px;
+  padding: 0 14px;
+  border: 4px solid transparent;
+  background: var(--card-bg);
+  background-clip: padding-box;
+  box-shadow: inset 0 0 0 1px var(--separator);
+  font-size: 0.8235rem;
+  font-weight: 600;
+  white-space: nowrap;
+}
+
+.chip[aria-pressed="true"] {
+  box-shadow: inset 0 0 0 1px var(--accent);
+}
+
+/* Liste: jede Zeile eine eigene Karte */
+#hofladen-liste {
+  background: transparent;
+  border-radius: 0;
+  overflow: visible;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.hofladen-karte {
+  border-radius: var(--radius-gross);
+  border: var(--karte-rahmen);
+  box-shadow: var(--karte-schatten);
+  padding: 12px 40px 12px 12px;
+  min-height: 88px;
+}
+
+.hofladen-karte + .hofladen-karte::before {
+  display: none;
+}
+
+.hofladen-karte::after {
+  border-color: #9aa79e;
+  border-width: 2px;
+}
+
+.hofladen-karte img.miniatur,
+.hofladen-karte div.miniatur {
+  width: 64px;
+  height: 64px;
+}
+
+.hofladen-karte div.miniatur {
+  background: linear-gradient(135deg, #cfe3d3, #ebdfbf);
+}
+
+.hofladen-karte .name {
+  font-size: 1rem;
+  letter-spacing: -0.01em;
+}
+
+.hofladen-karte .ort,
+p.ort {
+  font-size: 0.8235rem;
+  margin: 1px 0 5px;
+}
+
+/* Status-Pillen */
+.status-badge {
+  min-height: 24px;
+  padding: 0 10px;
+  gap: 6px;
+  border-radius: 12px;
+  font-size: 0.7647rem;
+}
+
+.status-badge::before {
+  width: 8px;
+  height: 8px;
+}
+
+.status-badge.offen {
+  background: var(--ok-soft);
+  color: var(--ok-ink);
+}
+
+.status-badge.geschlossen {
+  background: var(--zu-soft);
+  color: var(--zu-ink);
+}
+
+.status-badge.geschlossen::before {
+  border-radius: 50%;
+  background: transparent;
+  box-shadow: inset 0 0 0 2px currentColor;
+}
+
+.status-badge.unbekannt {
+  background: var(--un-soft);
+  color: var(--un-ink);
+}
+
+.status-badge.unbekannt::before {
+  height: 2px;
+  width: 8px;
+  border-radius: 2px;
+  background: currentColor;
+  box-shadow: none;
+}
+
+.bewertung-sterne {
+  font-size: 0.7647rem;
+  letter-spacing: 1px;
+}
+
+/* Tableiste */
+.tableiste {
+  border-top: 1px solid var(--separator);
+}
+
+.tableiste button {
+  font-size: 0.6471rem;
+  font-weight: 600;
+}
+
+/* Abschnitte und Gruppen als Karten mit Rahmen */
+.detail-abschnitt,
+.formular-abschnitt {
+  border: var(--karte-rahmen);
+  box-shadow: var(--karte-schatten);
+}
+
+.detail-abschnitt > h3,
+.formular-abschnitt > h2 {
+  top: -28px;
+  left: 4px;
+  font-size: 0.7647rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+details.gruppe > summary {
+  min-height: 48px;
+  gap: 12px;
+  padding: 0;
+}
+
+.gruppen-icon {
+  flex: none;
+  width: 36px;
+  height: 36px;
+  border-radius: 10px;
+  background: var(--accent-soft);
+  color: var(--tint);
+  display: grid;
+  place-items: center;
+}
+
+.gruppen-icon svg {
+  width: 20px;
+  height: 20px;
+}
+
+.gruppen-kopf-text {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+}
+
+details.gruppe > summary .titel {
+  font-size: 0.9412rem;
+  font-weight: 600;
+}
+
+details.gruppe > summary .kurzinfo {
+  flex: none;
+  text-align: left;
+  font-size: 0.7647rem;
+  margin-top: 1px;
+}
+
+.vollst {
+  width: 14px;
+  height: 14px;
+}
+
+.vollst.halb {
+  background: conic-gradient(var(--tint) 0 50%, transparent 0 100%);
+}
+
+/* Schnellaktionen */
+.schnellaktion {
+  min-height: 68px;
+  border-radius: 14px;
+  background: var(--card-bg);
+  border: var(--karte-rahmen);
+  color: var(--tint);
+  font-size: 0.7059rem;
+}
+
+/* Hinweise */
+.hinweis-leiste {
+  border-radius: 14px;
+  font-size: 0.8235rem;
+}
+
+/* Knöpfe */
+.speichern-btn {
+  min-height: 52px;
+}
+
+.fussleiste {
+  border-top: 1px solid var(--separator);
+  padding-bottom: 12px;
+}
+
+.fussleiste button {
+  min-height: 52px;
+  border-radius: 14px;
+  background: var(--accent-soft);
+  color: var(--tint);
+}
+
+.fussleiste .ungespeichert::before {
+  content: "";
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: var(--carrot);
+}
+.fussleiste .ungespeichert svg { display: none; }
+
+details.detail-abschnitt.einklappbar > summary .gruppen-kopf-text .kurzinfo {
+  flex: none;
+  text-align: left;
+  font-size: 0.7647rem;
+}
+
+details.detail-abschnitt.einklappbar > summary .gruppen-kopf-text .titel {
+  flex: none;
+}
+
+.sprach-auswahl {
+  width: 100%;
+  border: 1px solid var(--separator);
+  border-radius: 12px;
+  background-color: var(--card-bg);
+  padding: 0 12px;
+}
+
+@media (prefers-color-scheme: dark) {
+  .hofladen-karte div.miniatur {
+    background: linear-gradient(135deg, #24382b, #3a3524);
+  }
+}
+
+.weg-karte {
+  border: var(--karte-rahmen);
+}
+
+.weg-karte.weg-haupt {
+  border-color: var(--accent);
+}
+
+.foto-fehlt {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  min-height: 24px;
+  padding: 0 8px;
+  border-radius: 12px;
+  background: var(--warn-bg);
+  color: var(--warn-text);
+  font-size: 0.7059rem;
+  font-weight: 600;
+  white-space: nowrap;
+}
+
+.entfernung {
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  font-size: 0.7647rem;
+  font-weight: 600;
+  color: var(--muted-color);
+}
+
+.teilen-status:empty {
+  display: none;
+}
+
+/* Leer- und Fehlerzustände */
+.leerzustand {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+  gap: 8px;
+  padding: 32px 24px;
+  background: var(--card-bg);
+  border: var(--karte-rahmen);
+  border-radius: var(--radius-gross);
+}
+
+.leerzustand-icon {
+  display: grid;
+  place-items: center;
+  width: 56px;
+  height: 56px;
+  border-radius: 16px;
+  background: var(--accent-soft);
+  color: var(--tint);
+}
+
+.leerzustand-icon svg {
+  width: 28px;
+  height: 28px;
+}
+
+.leerzustand-titel {
+  margin: 8px 0 0;
+  font-size: 1.1765rem;
+  font-weight: 700;
+  letter-spacing: -0.015em;
+}
+
+.leerzustand-text {
+  margin: 0;
+  max-width: 32ch;
+  color: var(--muted-color);
+  font-size: 0.8824rem;
+}
+
+.leerzustand-aktion {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 48px;
+  margin-top: 12px;
+  padding: 0 20px;
+  border: 0;
+  border-radius: 14px;
+  background: var(--accent);
+  color: var(--accent-ink);
+  font-size: 0.9412rem;
+  font-weight: 600;
+}
+
+/* Grosse Schrift: Titel und Aktionen dürfen untereinander stehen, Wörter brechen nur im Notfall. */
+.detail-kopf {
+  flex-wrap: wrap;
+}
+
+.detail-kopf > h2 {
+  flex: 1 1 11rem;
+  overflow-wrap: break-word;
+  hyphens: auto;
+}
+
+/* Grosse Schrift: Zeilen mit mehreren Bedienelementen umbrechen statt über den Rand zu laufen. */
+.sterne-zeile,
+.liste-zeile {
+  flex-wrap: wrap;
+}
+
+.liste-zeile input {
+  flex: 1 1 8rem;
+  min-width: 0;
+}
+
+.sprach-auswahl {
+  font-size: 1.1rem;
+}
+
+.farb-wahl {
+  flex-wrap: wrap;
+}
+
+textarea {
+  min-height: 6rem;
+}
+
+/* Filter: ein Knopf neben der Suche, Auswahl klappt darunter auf (2.0.0-dev.13). */
+.such-leiste {
+  margin-bottom: 8px;
+}
+
+.filter-btn {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  min-height: 44px;
+  padding: 0 14px;
+  border: var(--karte-rahmen);
+  border-radius: var(--radius);
+  background: var(--card-bg);
+  color: var(--tint);
+  font-size: 0.9412rem;
+  font-weight: 600;
+}
+
+.filter-btn[aria-expanded="true"] {
+  background: var(--accent-soft);
+}
+
+.filter-zahl {
+  display: inline-grid;
+  place-items: center;
+  min-width: 22px;
+  height: 22px;
+  padding: 0 6px;
+  border-radius: 11px;
+  background: var(--accent);
+  color: var(--accent-ink);
+  font-size: 0.75rem;
+  font-weight: 700;
+}
+
+.filter-zahl[hidden],
+.aktive-filter[hidden],
+.filter-panel[hidden] {
+  display: none;
+}
+
+.filter-panel {
+  margin-bottom: 8px;
+  background: var(--card-bg);
+  border: var(--karte-rahmen);
+  border-radius: var(--radius-gross);
+  overflow: hidden;
+}
+
+.filter-zeile {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  width: 100%;
+  min-height: 52px;
+  padding: 0 16px;
+  border: 0;
+  border-top: 1px solid var(--separator);
+  background: transparent;
+  color: var(--text-color);
+  font-size: 1rem;
+  text-align: left;
+}
+
+.filter-zeile:first-child {
+  border-top: 0;
+}
+
+.filter-zeile > svg {
+  color: var(--tint);
+}
+
+.filter-zeile > span:not(.filter-schalter) {
+  flex: 1;
+}
+
+.filter-schalter {
+  position: relative;
+  flex: none;
+  width: 51px;
+  height: 31px;
+  border-radius: 16px;
+  background: var(--fill-stark);
+  transition: background 0.2s;
+}
+
+.filter-schalter::after {
+  content: "";
+  position: absolute;
+  top: 2px;
+  left: 2px;
+  width: 27px;
+  height: 27px;
+  border-radius: 50%;
+  background: #fff;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.3);
+  transition: transform 0.2s;
+}
+
+.filter-zeile[aria-pressed="true"] .filter-schalter {
+  background: var(--accent);
+}
+
+.filter-zeile[aria-pressed="true"] .filter-schalter::after {
+  transform: translateX(20px);
+}
+
+.filter-sortierung {
+  display: flex;
+  gap: 8px;
+  padding: 10px 16px 12px;
+  border-top: 1px solid var(--separator);
+}
+
+.filter-sortierung select {
+  flex: 1;
+  min-width: 0;
+  padding: 0 12px;
+  font-size: 1rem;
+}
+
+.aktive-filter {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px 8px;
+  margin: 0 0 8px;
+}
+
+.aktiver-filter {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  min-height: 44px;
+  padding: 0 12px;
+  border: 4px solid transparent;
+  border-radius: 999px;
+  background: var(--accent-soft);
+  background-clip: padding-box;
+  color: var(--text-color);
+  font-size: 0.8235rem;
+  font-weight: 600;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .filter-schalter,
+  .filter-schalter::after {
+    transition: none;
+  }
+}
+
+.aktiver-filter svg {
+  color: var(--tint);
+}
+
+.filter-sortierung select {
+  min-height: 44px;
+  border: 1px solid var(--separator);
+  border-radius: var(--radius);
+  background-color: var(--card-bg);
+  color: var(--text-color);
+}
+
+.filter-sortierung #sort-richtung {
+  background: var(--accent-soft);
+}
+
+/* Kartensuche (2.0.0-dev.14) */
+.karten-suche {
+  position: absolute;
+  top: 10px;
+  left: 10px;
+  right: 10px;
+  z-index: 1200;
+}
+
+.karten-suchfeld {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-height: 48px;
+  padding: 0 4px 0 14px;
+  border: var(--karte-rahmen);
+  border-radius: 24px;
+  background: var(--card-bg);
+  color: var(--muted-color);
+  box-shadow: 0 2px 10px rgba(20, 40, 28, 0.2);
+}
+
+.karten-suchfeld input[type="search"] {
+  flex: 1;
+  min-width: 0;
+  min-height: 44px;
+  border: 0;
+  background: transparent;
+  color: var(--text-color);
+  font-size: 1rem;
+  -webkit-appearance: none;
+  appearance: none;
+}
+
+.karten-suchfeld input[type="search"]::-webkit-search-cancel-button {
+  display: none;
+}
+
+.karten-suchfeld input[type="search"]:focus {
+  outline: none;
+}
+
+.karten-suchfeld:focus-within {
+  outline: 2px solid var(--tint);
+}
+
+.suche-loeschen {
+  display: grid;
+  place-items: center;
+  width: 44px;
+  height: 44px;
+  border: 0;
+  border-radius: 50%;
+  background: transparent;
+  color: var(--muted-color);
+}
+
+.suche-loeschen[hidden],
+.karten-treffer[hidden],
+.karten-suchchip[hidden] {
+  display: none;
+}
+
+.karten-treffer {
+  list-style: none;
+  margin: 6px 0 0;
+  padding: 4px 0;
+  max-height: 50vh;
+  overflow-y: auto;
+  border: var(--karte-rahmen);
+  border-radius: var(--radius-gross);
+  background: var(--card-bg);
+  box-shadow: 0 6px 20px rgba(20, 40, 28, 0.25);
+}
+
+.treffer-zeile,
+.treffer-alle,
+.treffer-leer {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-height: 52px;
+  padding: 6px 14px;
+}
+
+.treffer-zeile {
+  justify-content: space-between;
+  cursor: pointer;
+}
+
+.treffer-zeile + .treffer-zeile,
+.treffer-alle {
+  border-top: 1px solid var(--separator);
+}
+
+.treffer-text {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+}
+
+.treffer-name {
+  font-weight: 600;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.treffer-ort {
+  color: var(--muted-color);
+  font-size: 0.8235rem;
+}
+
+.treffer-alle {
+  color: var(--tint);
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.treffer-leer {
+  color: var(--muted-color);
+}
+
+.karten-treffer [aria-selected="true"] {
+  background: var(--accent-soft);
+  outline: 2px solid var(--tint);
+  outline-offset: -2px;
+}
+
+.karten-suchchip {
+  min-height: 44px;
+  padding: 0 14px;
+  border: 0;
+  border-radius: 22px;
+  background: var(--accent);
+  color: var(--accent-ink);
+  font-size: 0.8824rem;
+  font-weight: 600;
+  box-shadow: 0 1px 6px rgba(0, 0, 0, 0.25);
+}
+
+/* Die Schaltflächen rutschen unter die Suchzeile. */
+.karten-knoepfe {
+  top: 68px;
+}
+
+.karten-meldung {
+  top: 68px;
+}
+
+.marker-aktiv svg {
+  filter: drop-shadow(0 0 0 #fff) drop-shadow(0 0 6px var(--accent));
+  transform: scale(1.3);
+  transform-origin: 50% 100%;
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  .marker-aktiv svg {
+    transition: transform 0.15s;
+  }
+}
+
+.treffer-zeile,
+.treffer-alle,
+.treffer-leer {
+  border-radius: 0;
+}
+
+.karte-huelle .leaflet-bottom.leaflet-right {
+  margin-bottom: 18px;
 }

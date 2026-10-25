@@ -6,20 +6,29 @@
  * Pflege der Herkunftsangaben („quellen“).
  */
 
+import { t } from "./i18n.js";
+
+/** Nachschlagetabelle, deren Texte beim Zugriff in die aktuelle Sprache übersetzt werden. */
+function uebersetzt(tabelle) {
+  return new Proxy(tabelle, {
+    get: (o, key) => (typeof o[key] === "string" ? t(o[key]) : o[key]),
+  });
+}
+
 export const FINDEN_STANDARD_RADIUS_METER = 2000;
 export const FINDEN_MIN_RADIUS_METER = 50;
 export const FINDEN_MAX_RADIUS_METER = 5000;
 
-export const FINDEN_FEHLERMELDUNGEN = {
+export const FINDEN_FEHLERMELDUNGEN = uebersetzt({
   invalid_coordinates: "Bitte gültige Latitude-/Longitude-Werte eintragen.",
   unreachable:
     "Die Overpass API (OpenStreetMap) konnte nicht erreicht werden. Bitte später erneut versuchen.",
   not_ready: "HofKarte ist noch nicht bereit.",
   invalid_format: "Es fehlen Angaben für die Anreicherung.",
   unauthorized: "Für „Hofladen finden“ sind Administratorrechte in Home Assistant nötig.",
-};
+});
 
-export const FINDEN_WEBSITE_STATUS = {
+export const FINDEN_WEBSITE_STATUS = uebersetzt({
   ok: "Website ausgewertet",
   robots_gesperrt: "Die Website verbietet automatisches Auslesen (robots.txt) – nicht abgerufen",
   robots_nicht_lesbar: "robots.txt der Website nicht lesbar – Website nicht abgerufen",
@@ -27,9 +36,9 @@ export const FINDEN_WEBSITE_STATUS = {
   keine_informationen: "Auf der Website wurde nichts Verwertbares gefunden",
   ungueltige_url: "Ungültige Website-Adresse",
   uebersprungen: "Keine Website angegeben",
-};
+});
 
-export const FINDEN_KI_STATUS = {
+export const FINDEN_KI_STATUS = uebersetzt({
   ok: "KI-Auswertung abgeschlossen",
   keine_ergebnisse: "Die KI hat nichts Belegbares gefunden",
   keine_texte: "Kein Seitentext für die KI vorhanden",
@@ -37,33 +46,33 @@ export const FINDEN_KI_STATUS = {
   fehler: "Die KI-Entität ist fehlgeschlagen – ohne KI fortgefahren",
   ungueltige_antwort: "Unbrauchbare Antwort der KI – ohne KI fortgefahren",
   nicht_konfiguriert: "Keine KI-Entität gewählt",
-};
+});
 
-export const FINDEN_QUELLEN_LABEL = {
+export const FINDEN_QUELLEN_LABEL = uebersetzt({
   openstreetmap: "OpenStreetMap",
   website: "Website",
   website_ki: "Website (KI-gestützt)",
   ki: "KI-Vermutung, nicht belegt",
   angabe: "Eigene Angabe",
-};
+});
 
 export const FINDEN_ZEILEN = [
-  { key: "name", label: "Name", felder: ["name"] },
-  { key: "adresse", label: "Adresse", felder: ["adresse", "plz", "ort"] },
-  { key: "land", label: "Land", felder: ["land"] },
-  { key: "website", label: "Webseite", felder: ["website"] },
-  { key: "mobilnummer", label: "Telefon", felder: ["mobilnummer"] },
-  { key: "email", label: "E-Mail", felder: ["email"] },
-  { key: "oeffnungszeiten", label: "Öffnungszeiten", felder: ["oeffnungszeiten"] },
-  { key: "angebote", label: "Angebote", felder: ["angebote"] },
-  { key: "zahlungsarten", label: "Zahlungsarten", felder: ["zahlungsarten"] },
-  { key: "koordinaten", label: "Koordinaten", felder: ["latitude", "longitude"] },
+  { key: "name", get label() { return t("Name"); }, felder: ["name"] },
+  { key: "adresse", get label() { return t("Adresse"); }, felder: ["adresse", "plz", "ort"] },
+  { key: "land", get label() { return t("Land"); }, felder: ["land"] },
+  { key: "website", get label() { return t("Webseite"); }, felder: ["website"] },
+  { key: "mobilnummer", get label() { return t("Telefon"); }, felder: ["mobilnummer"] },
+  { key: "email", get label() { return t("E-Mail"); }, felder: ["email"] },
+  { key: "oeffnungszeiten", get label() { return t("Öffnungszeiten"); }, felder: ["oeffnungszeiten"] },
+  { key: "angebote", get label() { return t("Angebote"); }, felder: ["angebote"] },
+  { key: "zahlungsarten", get label() { return t("Zahlungsarten"); }, felder: ["zahlungsarten"] },
+  { key: "koordinaten", get label() { return t("Koordinaten"); }, felder: ["latitude", "longitude"] },
 ];
 
 /** Zeilen für KI-Vermutungen (im Text nicht belegt, nie vorausgewählt). */
 export const FINDEN_VERMUTUNGEN = [
-  { key: "angebote", label: "Angebote" },
-  { key: "zahlungsarten", label: "Zahlungsarten" },
+  { key: "angebote", get label() { return t("Angebote"); } },
+  { key: "zahlungsarten", get label() { return t("Zahlungsarten"); } },
 ];
 
 const TAGE_KURZ = ["Mo", "Di", "Mi", "Do", "Fr", "Sa", "So"];
@@ -112,7 +121,7 @@ export function zeileWert(zeile, daten) {
     }
     return [...proTag.entries()]
       .sort((a, b) => a[0] - b[0])
-      .map(([tag, zeiten]) => `${TAGE_KURZ[tag - 1] || ""} ${zeiten.join(", ")}`)
+      .map(([tag, zeiten]) => `${t(TAGE_KURZ[tag - 1] || "")} ${zeiten.join(", ")}`)
       .join("; ");
   }
   const wert = d[zeile.key];
@@ -125,9 +134,9 @@ export function kandidatGruende(k) {
   const s = k.signale || {};
   const teile = [];
   const m = Math.round(k.entfernung_meter ?? 0);
-  teile.push(m <= 25 ? `sehr nah (${m} m)` : `${m} m entfernt`);
-  if (s.name != null) teile.push(s.name >= 0.85 ? "Name stimmt" : s.name >= 0.5 ? "Name ähnlich" : "Name weicht ab");
-  if (s.website) teile.push("Website stimmt überein");
+  teile.push(m <= 25 ? t("sehr nah ({meter} m)", { meter: m }) : t("{meter} m entfernt", { meter: m }));
+  if (s.name != null) teile.push(s.name >= 0.85 ? t("Name stimmt") : s.name >= 0.5 ? t("Name ähnlich") : t("Name weicht ab"));
+  if (s.website) teile.push(t("Website stimmt überein"));
   return teile.join(" · ");
 }
 
