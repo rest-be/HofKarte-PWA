@@ -85,6 +85,15 @@ jobs:
       - name: Pages konfigurieren
         uses: actions/configure-pages@v5
 
+      # Nur die auslieferbaren Dateien veröffentlichen (nicht tests/, docs/,
+      # node_modules/ o. Ä.). Das vermeidet auch Fehler im Schritt
+      # "Archive artifact" durch Symlinks oder unlesbare Dateien im Repo.
+      - name: Auslieferungsordner zusammenstellen
+        run: |
+          mkdir _site
+          cp index.html manifest.json service-worker.js _site/
+          cp -r src vendor icons _site/
+
       - name: Artefakt hochladen
         uses: actions/upload-pages-artifact@v4
         with:
