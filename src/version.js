@@ -19,7 +19,7 @@
  * Vorgehensplan und im Startbild in index.html (`.splash-version`)
  * nachziehen; der Smoke-Test prüft die Übereinstimmung.
  */
-export const APP_VERSION = "2.0.0-rc.1";
+export const APP_VERSION = "2.0.0";
 
 /**
  * Release Notes (neueste zuerst), angezeigt auf dem Einrichtungsbildschirm
@@ -28,12 +28,19 @@ export const APP_VERSION = "2.0.0-rc.1";
  */
 export const RELEASE_NOTES = [
   {
+    version: "2.0.0",
+    datum: "2026-10-25",
+    punkte: [
+      "Version 2.0.0: überarbeitete Oberfläche, Erfassen vor Ort, Webseite und OpenStreetMap, vier Sprachen, Route mit Wahl von Google Maps oder Apple Karten, Teilen, Suche in Liste und Karte, bessere Zugänglichkeit.",
+      "Neu in der Dokumentation: Benutzerhandbuch, Changelog, Sicherheit und Release Notes (im Repository).",
+      "Voraussetzung: HofKarte-HA ab 2026.10.1; für den Schalter «24h-Automat» ab 2026.10.2.",
+    ],
+  },
+  {
     version: "2.0.0-rc.1",
     datum: "2026-10-24",
     punkte: [
-      "Release Candidate für 2.0.0: Funktionsstand wie 2.0.0-dev.16, noch nicht auf einem echten iPhone abgenommen.",
-      "Neu in der Dokumentation: Benutzerhandbuch, Changelog, Sicherheit und Release Notes (im Repository).",
-      "Voraussetzung: HofKarte-HA ab 2026.10.1; für den Schalter «24h-Automat» ab 2026.10.2.",
+      "Release Candidate für 2.0.0: Funktionsstand wie 2.0.0-dev.16, Dokumentation vervollständigt.",
     ],
   },
   {

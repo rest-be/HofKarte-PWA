@@ -1,6 +1,6 @@
 # HofKarte-PWA – Benutzerhandbuch
 
-Für Version **2.0.0** (Release Candidate `2.0.0-rc.1`). Die App zeigt und
+Für Version **2.0.0**. Die App zeigt und
 bearbeitet die Hofläden aus deiner Home-Assistant-Integration
 [HofKarte](https://github.com/rest-be/HofKarte). Sie hat keinen eigenen
 Datenspeicher: Alle Hofläden liegen in Home Assistant.

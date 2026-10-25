@@ -1,8 +1,4 @@
-# HofKarte-PWA 2.0.0 (Release Candidate `2.0.0-rc.1`)
-
-> **Release Candidate.** Funktional abgeschlossen und automatisiert getestet,
-> aber noch nicht auf einem echten iPhone abgenommen. Beim produktiven Release
-> `2.0.0` ändert sich nur die Versionsnummer.
+# HofKarte-PWA 2.0.0
 
 Eine grundlegend überarbeitete Oberfläche, schnelleres Erfassen vor Ort und vier
 Sprachen. Voraussetzung: **HofKarte-HA ab 2026.10.1**; für den Schalter

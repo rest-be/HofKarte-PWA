@@ -1,6 +1,6 @@
 # HofKarte-PWA
 
-**Version: 2.0.0-rc.1** (Release Candidate) – siehe Abschnitt [Version](#version) unten für die
+**Version: 2.0.0** – siehe Abschnitt [Version](#version) unten für die
 installierte Version auf einem konkreten Gerät.
 
 Progressive Web App für HofKarte – ein reiner, zustandsloser Client für die
@@ -9,11 +9,11 @@ Hofläden ansehen, auf der Karte finden, vor Ort erfassen, ergänzen und
 bearbeiten – auf dem Smartphone wie eine App, in vier Sprachen
 (Deutsch, Français, Italiano, English).
 
-> **Status: Release Candidate `2.0.0-rc.1`.** Funktional abgeschlossen und
-> automatisiert getestet (305 Smoke-Tests), aber noch nicht auf einem echten
-> iPhone abgenommen (Dynamic Type, VoiceOver, Teilen-Dialog, Apple-Karten-Link,
-> Startbild). Der produktive Release `2.0.0` folgt nach dieser Abnahme; dabei
-> ändert sich nur die Versionsnummer. Fehler bitte als GitHub-Issue melden.
+> **Status: Release `2.0.0`.** Funktional abgeschlossen und automatisiert
+> getestet (305 Smoke-Tests). Auf einem echten iPhone sind Dynamic Type,
+> VoiceOver, Teilen-Dialog, Apple-Karten-Link und Startbild nur automatisiert,
+> nicht von Hand geprüft (siehe «Bekannte Einschränkungen»). Voraussetzung:
+> HofKarte-HA ab 2026.10.1, für den Schalter «24h-Automat» ab 2026.10.2.
 > Die Übersicht der Änderungen steht in [`CHANGELOG.md`](CHANGELOG.md) und
 > [`RELEASE_NOTES_2.0.0.md`](RELEASE_NOTES_2.0.0.md).
 
@@ -169,6 +169,7 @@ und der Versionsangabe im Startbild (`index.html`, vom Test gegen
 
 | Version | Datum | Wesentliche Änderungen |
 |---|---|---|
+| 2.0.0 | 2026-10-25 | Produktiver Release: Funktionsstand von 2.0.0-rc.1, keine funktionalen Änderungen. |
 | 2.0.0-rc.1 | 2026-10-24 | Release Candidate: Funktionsstand von dev.16, Dokumentation vervollständigt (Benutzerhandbuch, Changelog, Sicherheit, Release Notes). |
 | 2.0.0-dev.16 | 2026-10-17 | Navigation wählbar: Google Maps oder Apple Karten (Standard je Gerät). |
 | 2.0.0-dev.15 | 2026-10-17 | Startbild (Splash) mit Titel, Icon und Versionsnummer. |
@@ -462,7 +463,7 @@ bleibt erhalten).
   OpenStreetMap). OpenStreetMap wird am gespeicherten Standort (300 m) durchsucht, der
   eigene Standort wird nicht abgefragt.
 
-## Bekannte Einschränkungen (2.0.0-rc.1)
+## Bekannte Einschränkungen (2.0.0)
 
 - **Nicht auf einem echten Gerät abgenommen:** Dynamic Type, VoiceOver,
   Teilen-Dialog, Apple-Karten-Link und Startbild (Safe Areas) sind nur

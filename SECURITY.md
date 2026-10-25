@@ -9,7 +9,7 @@ Es gibt kein Support-Team und keine zugesicherte Reaktionszeit.
 ## Unterstützte Versionen
 
 Sicherheitskorrekturen gibt es nur für die **jeweils neueste veröffentlichte
-Version** (aktuell der Release Candidate `2.0.0-rc.1`, danach `2.0.0`). Die App
+Version** (aktuell `2.0.0`). Die App
 aktualisiert sich über «Nach Update suchen» bzw. den Hinweis «Neue Version
 verfügbar».
 

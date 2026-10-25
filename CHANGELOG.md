@@ -11,14 +11,23 @@ Zuordnung zur Integration HofKarte-HA steht im README.
 
 ## [Unreleased]
 
-Noch keine Änderungen seit `2.0.0-rc.1`.
+Noch keine Änderungen seit `2.0.0`.
+
+## [2.0.0] - 2026-10-25
+
+Produktiver Release. Gegenüber `2.0.0-rc.1` ändert sich nur die Versionsnummer
+(Startbild, `version.js`, Service Worker); es gibt keine funktionalen
+Änderungen. Der Deploy-Workflow veröffentlicht seit `rc.1` nur noch die
+auslieferbaren Dateien (`index.html`, `manifest.json`, `service-worker.js`,
+`src/`, `vendor/`, `icons/`). Der Inhalt ist der von `2.0.0-rc.1` (unten).
+
+**Voraussetzung:** HofKarte-HA ab `2026.10.1`; für den Schalter «24h-Automat»
+ab `2026.10.2`.
 
 ## [2.0.0-rc.1] - 2026-10-24
 
-> **Release Candidate – kein produktiver Release.** Funktional abgeschlossen
-> (Stand `2.0.0-dev.16`), automatisiert getestet (305 Smoke-Tests), noch nicht
-> auf einem echten iPhone abgenommen. Beim produktiven Release `2.0.0`
-> ändert sich nur die Versionsnummer.
+> Release Candidate, Stand `2.0.0-dev.16`, automatisiert getestet (305
+> Smoke-Tests). Wurde unverändert zu `2.0.0`.
 >
 > **Voraussetzung:** HofKarte-HA ab `2026.10.1`; für den Schalter «24h-Automat»
 > ab `2026.10.2`.

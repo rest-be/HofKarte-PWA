@@ -52,7 +52,7 @@ Kacheln leer; Netzwerkfehler dieser Kachel-Anfragen filtert die
 Konsolenfehler-Prüfung heraus. Testbilder immer als `data:`-URI einbinden,
 sonst schlägt die Konsolenfehler-Prüfung bei einem 404 an.
 
-## Stand (2.0.0-rc.1)
+## Stand (2.0.0)
 
 305 Tests. Zusätzlich zur oben genannten Abdeckung prüfen sie die
 Überarbeitung 2.0: Erfassen (Vor Ort, Schnellerfassung, Webseite), «Angaben
