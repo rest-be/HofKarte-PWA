@@ -27,6 +27,7 @@ import {
   fuerSpeichern as sonderzeitenFuerSpeichern,
 } from "../sonderzeiten.js";
 import { icon, setzeSchaltflaeche } from "../icons.js";
+import { parseZeittext, VORLAGEN, zeitenAusVorlage } from "../zeittext.js";
 
 const GRUPPEN_ICON = { grunddaten: "hof", adresse: "standort", kontakt: "telefon", oeffnungszeiten: "uhr", angebote: "korb", bilder: "bild", herkunft: "verknuepfung" };
 import { HOF_GRUPPEN, VOLLSTAENDIGKEIT_TEXT, vollstaendigkeit } from "../gruppen.js";
@@ -49,6 +50,13 @@ const WOCHENTAGE = [
   { wert: 6, get label() { return t("Samstag"); } },
   { wert: 7, get label() { return t("Sonntag"); } },
 ];
+
+/** Beschriftung einer Vorlage (übersetzt). */
+function vorlageLabel(v) {
+  if (v.id === "mo-fr-geteilt") return t("Mo–Fr 8–12 / 14–18");
+  if (v.id === "mo-sa-durchgehend") return t("Mo–Sa 8–18");
+  return t("Täglich 7–20");
+}
 
 function leererHofladen() {
   return {
@@ -219,15 +227,21 @@ export function renderEditor(container, app, hofladenId) {
         .join("");
       const hatZeiten = zeilen !== "";
       const kopierbar = hatZeiten && w.wert <= 5;
+      const vortagMoeglich =
+        !hatZeiten && w.wert > 1 && oeffnungszeiten.some((o) => o.wochentag === w.wert - 1 && o.beginn && o.ende);
       return `<div class="oz-tag" data-tag="${w.wert}">
         <div class="oz-tag-kopf">
           <strong>${escapeHtml(w.label)}</strong>
           ${hatZeiten ? "" : `<span class="muted">${escapeHtml(t("geschlossen"))}</span>`}
           <span class="grow"></span>
-          ${kopierbar ? `<button type="button" class="link-btn oz-kopieren" data-kopieren="${w.wert}">${escapeHtml(t("Auf Mo–Fr kopieren"))}</button>` : ""}
           <button type="button" class="link-btn oz-plus" data-plus="${w.wert}" aria-label="${escapeHtml(t("Zeit für {tag} hinzufügen", { tag: w.label }))}">${escapeHtml(t("+ Zeit"))}</button>
         </div>
         ${zeilen}
+        ${vortagMoeglich || hatZeiten ? `<div class="oz-aktionen">
+          ${vortagMoeglich ? `<button type="button" class="link-btn oz-vortag" data-vortag="${w.wert}">${escapeHtml(t("Wie Vortag"))}</button>` : ""}
+          ${kopierbar ? `<button type="button" class="link-btn oz-kopieren" data-kopieren="${w.wert}">${escapeHtml(t("Auf Mo–Fr kopieren"))}</button>` : ""}
+          ${hatZeiten ? `<button type="button" class="link-btn oz-alle" data-alle="${w.wert}">${escapeHtml(t("Auf alle Tage kopieren"))}</button>` : ""}
+        </div>` : ""}
       </div>`;
     }).join("");
 
@@ -268,17 +282,102 @@ export function renderEditor(container, app, hofladenId) {
     box.querySelectorAll("[data-kopieren]").forEach((btn) => {
       btn.addEventListener("click", () => {
         const quelle = Number(btn.dataset.kopieren);
-        const vorlage = oeffnungszeiten.filter((o) => o.wochentag === quelle && o.beginn && o.ende);
-        const ziele = [1, 2, 3, 4, 5].filter((d) => d !== quelle);
-        const ueberschreibt = oeffnungszeiten.some((o) => ziele.includes(o.wochentag) && (o.beginn || o.ende));
-        if (ueberschreibt && !confirm(t("Die Zeiten der anderen Tage von Montag bis Freitag werden ersetzt. Fortfahren?"))) return;
-        for (let i = oeffnungszeiten.length - 1; i >= 0; i--) {
-          if (ziele.includes(oeffnungszeiten[i].wochentag)) oeffnungszeiten.splice(i, 1);
-        }
-        for (const tg of ziele) vorlage.forEach((o) => oeffnungszeiten.push({ wochentag: tg, beginn: o.beginn, ende: o.ende }));
-        zeichneTage();
-        aktualisiere();
+        kopiereTag(quelle, [1, 2, 3, 4, 5].filter((d) => d !== quelle), "Die Zeiten der anderen Tage von Montag bis Freitag werden ersetzt. Fortfahren?");
+        container.querySelector(`.oz-kopieren[data-kopieren="${quelle}"]`)?.focus();
       });
+    });
+    box.querySelectorAll("[data-alle]").forEach((btn) => {
+      btn.addEventListener("click", () => {
+        const quelle = Number(btn.dataset.alle);
+        kopiereTag(quelle, [1, 2, 3, 4, 5, 6, 7].filter((d) => d !== quelle), "Die Zeiten aller anderen Wochentage werden ersetzt. Fortfahren?");
+        container.querySelector(`.oz-alle[data-alle="${quelle}"]`)?.focus();
+      });
+    });
+    box.querySelectorAll("[data-vortag]").forEach((btn) => {
+      btn.addEventListener("click", () => {
+        const tag = Number(btn.dataset.vortag);
+        kopiereTag(tag - 1, [tag], null);
+        container.querySelector(`.oz-tag[data-tag="${tag}"] .oz-beginn`)?.focus();
+      });
+    });
+  }
+
+  /** Kopiert die Zeiten eines Tages auf andere Tage (fragt vor dem Ersetzen nach). */
+  function kopiereTag(quelle, ziele, frage) {
+    const vorlage = oeffnungszeiten.filter((o) => o.wochentag === quelle && o.beginn && o.ende);
+    const ueberschreibt = oeffnungszeiten.some((o) => ziele.includes(o.wochentag) && (o.beginn || o.ende));
+    if (frage && ueberschreibt && !confirm(t(frage))) return;
+    for (let i = oeffnungszeiten.length - 1; i >= 0; i--) {
+      if (ziele.includes(oeffnungszeiten[i].wochentag)) oeffnungszeiten.splice(i, 1);
+    }
+    for (const tg of ziele) vorlage.forEach((o) => oeffnungszeiten.push({ wochentag: tg, beginn: o.beginn, ende: o.ende }));
+    zeichneTage();
+    aktualisiere();
+  }
+
+  /** Ersetzt alle Wochenzeiten (nach Rückfrage, wenn schon welche erfasst sind). */
+  function ersetzeWochenzeiten(neu, meldung) {
+    if (oeffnungszeiten.some((o) => o.beginn || o.ende) && !confirm(t("Die bisherigen Wochenzeiten werden ersetzt. Fortfahren?"))) return false;
+    oeffnungszeiten.splice(0, oeffnungszeiten.length, ...neu.map((z) => ({ wochentag: z.wochentag, beginn: z.beginn, ende: z.ende })));
+    zeichneTage();
+    aktualisiere();
+    const status = container.querySelector("#zeiten-status");
+    if (status) status.textContent = meldung;
+    return true;
+  }
+
+  /** Vorschau des gelesenen Texts: ein Satz je Wochentag. */
+  function textVorschau(erg) {
+    const zeilen = [];
+    for (const w of WOCHENTAGE) {
+      const z = erg.zeiten.filter((x) => x.wochentag === w.wert);
+      if (z.length) zeilen.push(`${w.label}: ${z.map((x) => `${x.beginn}–${x.ende}`).join(", ")}`);
+      else if (erg.geschlossen.includes(w.wert)) zeilen.push(`${w.label}: ${t("geschlossen")}`);
+    }
+    return zeilen;
+  }
+
+  function richteSchnellerfassungEin() {
+    const box = container.querySelector("#zeiten-schnell");
+    box.querySelectorAll("[data-vorlage]").forEach((btn) => {
+      btn.addEventListener("click", () => {
+        const v = VORLAGEN.find((x) => x.id === btn.dataset.vorlage);
+        ersetzeWochenzeiten(zeitenAusVorlage(v), t("Vorlage übernommen: {name}", { name: vorlageLabel(v) }));
+        btn.focus();
+      });
+    });
+    const auf = box.querySelector("#zeittext-auf");
+    const feld = box.querySelector("#zeittext");
+    const vorschau = box.querySelector("#zeittext-vorschau");
+    const ok = box.querySelector("#zeittext-ok");
+    let gelesen = null;
+    auf.addEventListener("click", () => {
+      const zu = box.querySelector("#zeittext-box");
+      zu.hidden = !zu.hidden;
+      auf.setAttribute("aria-expanded", String(!zu.hidden));
+      if (!zu.hidden) feld.focus();
+    });
+    feld.addEventListener("input", () => {
+      gelesen = parseZeittext(feld.value, aktuelleSprache());
+      const zeilen = textVorschau(gelesen);
+      const lesbar = gelesen.zeiten.length > 0 || gelesen.geschlossen.length > 0;
+      let html = zeilen.length ? `<ul class="zeittext-liste">${zeilen.map((z) => `<li>${escapeHtml(z)}</li>`).join("")}</ul>` : "";
+      if (feld.value.trim() && gelesen.ungelesen.length) {
+        html += `<p class="muted">${escapeHtml(t("Nicht eindeutig gelesen: bitte prüfen."))}</p>`;
+      } else if (feld.value.trim() && !lesbar) {
+        html += `<p class="muted">${escapeHtml(t("Keine Zeiten erkannt."))}</p>`;
+      }
+      vorschau.innerHTML = html;
+      ok.disabled = !lesbar;
+    });
+    ok.addEventListener("click", () => {
+      if (!gelesen) return;
+      if (ersetzeWochenzeiten(gelesen.zeiten, t("Zeiten aus dem Text übernommen."))) {
+        feld.value = "";
+        vorschau.innerHTML = "";
+        ok.disabled = true;
+        gelesen = null;
+      }
     });
   }
 
@@ -593,6 +692,23 @@ export function renderEditor(container, app, hofladenId) {
           <button type="button" class="schalter" role="switch" id="automat-schalter" aria-checked="${automat24h}" aria-describedby="automat-hinweis"><span class="schalter-name">${escapeHtml(t("24h-Automat"))}</span><span class="schalter-knopf" aria-hidden="true"></span><span class="nur-sr">${automat24h ? t("an") : t("aus")}</span></button>
         </div>
         <p class="muted" id="automat-hinweis">${escapeHtml(t("Rund um die Uhr zugänglich. Dann gilt der Hofladen immer als geöffnet, ausser an Tagen mit einer Sonder-Schliessung; die Wochenzeiten werden nicht verwendet."))}</p>
+        <section id="zeiten-schnell" aria-labelledby="zeiten-schnell-titel"${automat24h ? " hidden" : ""}>
+          <h3 class="gruppen-label" id="zeiten-schnell-titel">${escapeHtml(t("Schnell erfassen"))}</h3>
+          <div class="chip-liste">
+            ${VORLAGEN.map((v) => `<button type="button" class="chip-knopf" data-vorlage="${v.id}">${escapeHtml(vorlageLabel(v))}</button>`).join("")}
+            <button type="button" class="chip-knopf" id="zeittext-auf" aria-expanded="false" aria-controls="zeittext-box">${escapeHtml(t("Als Text eingeben"))}</button>
+          </div>
+          <div id="zeittext-box" hidden>
+            <label for="zeittext">${escapeHtml(t("Öffnungszeiten als Text"))}</label>
+            <textarea id="zeittext" rows="3" autocomplete="off" autocapitalize="off" spellcheck="false" aria-describedby="zeittext-hinweis" placeholder="${escapeHtml(t("Mo-Fr 8-12, 14-18; Sa 8-12"))}"></textarea>
+            <p class="muted" id="zeittext-hinweis">${escapeHtml(t("Wochentage und Zeiten, z. B. «Mo-Fr 8-12, 14-18; Sa 8-12; So geschlossen». Es ersetzt die bisherigen Wochenzeiten."))}</p>
+            <div id="zeittext-vorschau" aria-live="polite"></div>
+            <div class="zeittext-aktionen">
+              <button type="button" class="zeittext-ok" id="zeittext-ok" disabled>${escapeHtml(t("Zeiten übernehmen"))}</button>
+            </div>
+          </div>
+          <p class="nur-sr" role="status" id="zeiten-status"></p>
+        </section>
         <div id="oeffnungszeiten-liste"${automat24h ? " hidden" : ""}></div>
         <section class="sonderzeiten" aria-labelledby="sonderzeiten-titel">
           <h3 class="gruppen-label" id="sonderzeiten-titel">${escapeHtml(t("Sonderöffnungszeiten"))}</h3>
@@ -738,6 +854,7 @@ export function renderEditor(container, app, hofladenId) {
   `;
 
   zeichneTage();
+  richteSchnellerfassungEin();
   zeichneSonderzeiten();
   container.querySelector("#sonder-plus").addEventListener("click", () => {
     sonderzeiten.push(neueSonderzeit(heuteIso()));
@@ -854,6 +971,7 @@ export function renderEditor(container, app, hofladenId) {
     e.currentTarget.setAttribute("aria-checked", String(automat24h));
     e.currentTarget.querySelector(".nur-sr").textContent = automat24h ? t("an") : t("aus");
     container.querySelector("#oeffnungszeiten-liste").hidden = automat24h;
+    container.querySelector("#zeiten-schnell").hidden = automat24h;
     aktualisiere();
   });
 

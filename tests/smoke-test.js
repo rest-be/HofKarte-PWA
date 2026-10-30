@@ -1725,6 +1725,87 @@ export async function fuehreSmokeTestsAus(page, baseUrl) {
   await page.waitForTimeout(250);
   check("Sonderzeiten: Überschneidung blockiert das Speichern nicht", (await page.evaluate(() => window.__gespeichertSz))?.sonderoeffnungszeiten?.length === 2);
 
+  // --- 2.1.0-dev.2: Öffnungszeiten schneller erfassen ---------------------------------
+  const zt = await page.evaluate(async () => {
+    const m = await import("/src/zeittext.js");
+    const kurz = (t, l) => { const r = m.parseZeittext(t, l); return r.zeiten.map((z) => `${z.wochentag}${z.beginn}-${z.ende}`).join(" ") + "|" + r.geschlossen.join(",") + "|" + r.ungelesen.join(","); };
+    const moFr = [1, 2, 3, 4, 5].map((d) => `${d}08:00-12:00 ${d}14:00-18:00`).join(" ");
+    return {
+      de: kurz("Mo-Fr 8-12, 14-18") === moFr + "||",
+      de2: kurz("Mo–Fr: 08:00–12:00 / 14:00–18:00 Uhr") === moFr + "||",
+      fr: kurz("lun au ven 8h-12h 14h-18h", "fr") === moFr + "||",
+      it: kurz("lun-ven 8.00-12.00 e 14.00-18.00", "it") === moFr + "||",
+      en: kurz("Mon-Fri 8-12, 14-18", "en") === moFr + "||",
+      zu: kurz("Sa 9-12, So geschlossen") === "609:00-12:00|7|",
+      liste: kurz("Mo, Mi, Fr 8:30 bis 11:30") === "108:30-11:30 308:30-11:30 508:30-11:30||",
+      umlauf: kurz("Sa-Mo 8-12") === "108:00-12:00 608:00-12:00 708:00-12:00||",
+      taeglich: m.parseZeittext("täglich 7-20").zeiten.length === 7,
+      zweiZeilen: kurz("Montag Ruhetag\nDienstag - Freitag 9-18 Uhr") === "209:00-18:00 309:00-18:00 409:00-18:00 509:00-18:00|1|",
+      zweideutigDo: kurz("Do 8-12", "de") === "408:00-12:00||" && kurz("Do 8-12", "it") === "708:00-12:00||",
+      unvollstaendig: m.parseZeittext("Mo 8-").ungelesen.length > 0 && m.parseZeittext("Mo 8-").zeiten.length === 0,
+      unsinn: m.parseZeittext("Hofladen").zeiten.length === 0 && m.parseZeittext("").zeiten.length === 0,
+      nacht: kurz("Mo 22-02") === "122:00-02:00||",
+      ungueltig: m.parseZeittext("Mo 25-30").zeiten.length === 0,
+      uhr: m.liesUhrzeit("8h30") === "08:30" && m.liesUhrzeit("24") === "00:00" && m.liesUhrzeit("8:75") === null,
+      vorlagen: m.VORLAGEN.map((v) => m.zeitenAusVorlage(v).length).join(","),
+    };
+  });
+  check(`Zeittext: Parser DE/FR/IT/EN, geschlossen, Liste, Umlauf, Nachtzeit (${JSON.stringify(Object.entries(zt).filter(([, v]) => v === false).map(([k]) => k))})`, Object.entries(zt).every(([k, v]) => k === "vorlagen" || v === true));
+  check("Zeittext: Vorlagen ergeben 10, 6 und 7 Zeilen", zt.vorlagen === "10,6,7");
+
+  await setzeTesthof();
+  await page.evaluate(() => {
+    const a = window.hofkarteApp;
+    a.state.hoflaeden = [{ id: "zt1", version: 1, name: "Zeitenhof", oeffnungszeiten: [{ wochentag: 1, beginn: "08:00", ende: "12:00" }], sonderoeffnungszeiten: [], bilder: [], angebote: [], zahlungsarten: [] }];
+  });
+  await gehe("#/hofladen/zt1/bearbeiten");
+  await page.waitForTimeout(250);
+  await page.evaluate(() => { document.querySelector("#gruppe-oeffnungszeiten").open = true; });
+  const anzahlZeilen = () => page.$$eval(".oeffnungszeit-zeile", (z) => z.length);
+  check("Zeiten: «Wie Vortag» nur bei leerem Tag nach einem Tag mit Zeiten", (await page.$$(".oz-vortag")).length === 1 && (await page.getAttribute(".oz-vortag", "data-vortag")) === "2");
+  await page.click(".oz-vortag[data-vortag='2']");
+  check("Zeiten: «Wie Vortag» übernimmt die Zeiten, Fokus auf dem neuen Beginn-Feld, kein Rückfragedialog", (await anzahlZeilen()) === 2 && (await page.inputValue(".oz-tag[data-tag='2'] .oz-beginn")) === "08:00" && (await page.evaluate(() => document.activeElement?.className)) === "oz-beginn");
+  page.once("dialog", (d) => d.accept());
+  await page.click(".oz-alle[data-alle='1']");
+  await page.waitForTimeout(150);
+  check("Zeiten: «Auf alle Tage kopieren» füllt alle 7 Tage", (await anzahlZeilen()) === 7);
+  const alleBtn = await page.$eval(".oz-alle", (el) => el.getBoundingClientRect().height);
+  check("Zeiten: Kopier-Schaltflächen mindestens 44px hoch", alleBtn >= 44);
+
+  await page.click("[data-vorlage='mo-fr-geteilt']").catch(() => {});
+  page.once("dialog", (d) => d.accept());
+  await page.click("[data-vorlage='mo-fr-geteilt']");
+  await page.waitForTimeout(150);
+  check("Zeiten: Vorlage «Mo–Fr 8–12 / 14–18» ersetzt alles (10 Zeilen, Sa/So geschlossen) und meldet das (role=status)", (await anzahlZeilen()) === 10 && (await page.$$eval(".oz-tag[data-tag='6'] .oeffnungszeit-zeile", (z) => z.length)) === 0 && /Vorlage/.test(await page.textContent("#zeiten-status")));
+  let frage = 0;
+  page.once("dialog", (d) => { frage++; d.dismiss(); });
+  await page.click("[data-vorlage='taeglich']");
+  await page.waitForTimeout(100);
+  check("Zeiten: Abbrechen der Rückfrage lässt die Zeiten unverändert", frage === 1 && (await anzahlZeilen()) === 10);
+
+  check("Zeiten: Textfeld ist zu Beginn zugeklappt (aria-expanded=false)", (await page.getAttribute("#zeittext-auf", "aria-expanded")) === "false" && !(await page.isVisible("#zeittext")));
+  await page.click("#zeittext-auf");
+  check("Zeiten: Textfeld klappt auf und erhält den Fokus", (await page.getAttribute("#zeittext-auf", "aria-expanded")) === "true" && (await page.evaluate(() => document.activeElement?.id)) === "zeittext" && (await page.isDisabled("#zeittext-ok")));
+  await page.fill("#zeittext", "Mo-Fr 9-12, 14-17; Sa 9-12; So zu");
+  await page.dispatchEvent("#zeittext", "input");
+  const vorschau = await page.$$eval("#zeittext-vorschau li", (l) => l.map((x) => x.textContent));
+  check(`Zeiten: Vorschau zeigt je Wochentag die gelesenen Zeiten (${vorschau.length} Zeilen)`, vorschau.length === 7 && vorschau[0] === "Montag: 09:00–12:00, 14:00–17:00" && vorschau[6] === "Sonntag: geschlossen" && !(await page.isDisabled("#zeittext-ok")));
+  page.once("dialog", (d) => d.accept());
+  await page.click("#zeittext-ok");
+  await page.waitForTimeout(150);
+  check("Zeiten: «Zeiten übernehmen» ersetzt die Wochenzeiten (11 Zeilen), leert das Feld", (await anzahlZeilen()) === 11 && (await page.inputValue("#zeittext")) === "" && (await page.isDisabled("#zeittext-ok")) && (await page.inputValue(".oz-tag[data-tag='1'] .oz-beginn")) === "09:00");
+  await page.fill("#zeittext", "Hofladen");
+  await page.dispatchEvent("#zeittext", "input");
+  check("Zeiten: Text ohne Zeiten zeigt Hinweis und lässt nicht übernehmen", /Keine Zeiten/.test(await page.textContent("#zeittext-vorschau")) && (await page.isDisabled("#zeittext-ok")));
+  await page.fill("#zeittext", "<img src=x onerror=window.__xss=1> Mo 8-12");
+  await page.dispatchEvent("#zeittext", "input");
+  check("Zeiten: Text wird nicht als HTML ausgewertet", !(await page.evaluate(() => window.__xss)) && (await page.$$("#zeittext-vorschau img")).length === 0);
+  // 24h-Automat blendet die Schnellerfassung aus.
+  await page.click("#automat-schalter");
+  check("Zeiten: 24h-Automat blendet die Schnellerfassung aus", !(await page.isVisible("#zeiten-schnell")));
+  await page.click("#automat-schalter");
+  check("Zeiten: Schnellerfassung erscheint wieder, wenn der Automat aus ist", await page.isVisible("#zeiten-schnell"));
+
   // Grosse Schrift (Dynamic Type simuliert): nichts läuft seitlich über den Rand.
   await setzeTesthof();
   await page.evaluate(() => document.documentElement.style.setProperty("font-size", "28px", "important"));

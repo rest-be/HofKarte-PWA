@@ -14,6 +14,15 @@ Zuordnung zur Integration HofKarte-HA steht im README.
 Geplant für 2.1.0: Foto vom Hofladen-Schild auslesen, Öffnungszeiten schneller
 erfassen, Sonderöffnungszeiten bearbeiten (siehe `docs/umsetzungsplan-2.1.md`).
 
+### 2.1.0-dev.2 - 2026-10-30
+
+- Neu: Öffnungszeiten schneller erfassen («Schnell erfassen» im Editor):
+  drei Vorlagen, «Wie Vortag» bei leeren Tagen, «Auf alle Tage kopieren» und
+  Eingabe als Text mit Vorschau. Der Text wird in Deutsch, Französisch,
+  Italienisch und Englisch gelesen (`src/zeittext.js`); Unklares wird
+  gemeldet, nichts wird geraten. Vor dem Ersetzen bestehender Zeiten fragt
+  die App nach; gespeichert wird erst mit «Speichern».
+
 ### 2.1.0-dev.1 - 2026-10-30
 
 - Neu: Sonderöffnungszeiten (Ferien, Feiertage) im Editor hinzufügen, ändern

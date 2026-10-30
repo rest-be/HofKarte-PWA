@@ -19,7 +19,7 @@
  * Vorgehensplan und im Startbild in index.html (`.splash-version`)
  * nachziehen; der Smoke-Test prüft die Übereinstimmung.
  */
-export const APP_VERSION = "2.1.0-dev.1";
+export const APP_VERSION = "2.1.0-dev.2";
 
 /**
  * Release Notes (neueste zuerst), angezeigt auf dem Einrichtungsbildschirm
@@ -27,6 +27,13 @@ export const APP_VERSION = "2.1.0-dev.1";
  * ergänzen (und die Tabelle im README nachziehen).
  */
 export const RELEASE_NOTES = [
+  {
+    version: "2.1.0-dev.2",
+    datum: "2026-10-30",
+    punkte: [
+      "Öffnungszeiten schneller erfassen: Vorlagen (Mo–Fr 8–12 / 14–18, Mo–Sa 8–18, Täglich 7–20), «Wie Vortag», «Auf alle Tage kopieren» und Eingabe als Text, z. B. «Mo-Fr 8-12, 14-18; Sa 8-12; So geschlossen» (Deutsch, Französisch, Italienisch, Englisch).",
+    ],
+  },
   {
     version: "2.1.0-dev.1",
     datum: "2026-10-30",

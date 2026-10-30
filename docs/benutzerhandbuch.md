@@ -206,6 +206,12 @@ Detail → ⋮ → **Bearbeiten**, oder **Von Hand** im Tab Erfassen.
 - Die feste Fussleiste zeigt **Ungespeichert**. «Abbrechen» fragt bei
   Änderungen zurück. Fehlende oder ungültige Angaben öffnen die Gruppe und
   markieren das Feld.
+- **Öffnungszeiten schneller erfassen:** Unter «Schnell erfassen» findest Du
+  drei Vorlagen und «Als Text eingeben» (z. B. «Mo-Fr 8-12, 14-18; Sa 8-12;
+  So geschlossen»; Kürzel in Deutsch, Französisch, Italienisch, Englisch). Die
+  Vorschau zeigt, was gelesen wurde; erst «Zeiten übernehmen» ersetzt die
+  Wochenzeiten (mit Rückfrage). Bei jedem Tag gibt es «Wie Vortag», «Auf Mo–Fr
+  kopieren» und «Auf alle Tage kopieren».
 - **Sonderöffnungszeiten** (Ferien, Feiertage) bearbeitest Du unter
   «Öffnungszeiten» mit «+ Sonderzeit hinzufügen»: Von- und Bis-Datum wählen,
   entweder «Geschlossen» lassen oder den Schalter ausschalten und Beginn/Ende
