@@ -1635,6 +1635,96 @@ export async function fuehreSmokeTestsAus(page, baseUrl) {
   await page.click("#navigation-zuruecksetzen");
   check("Navigation: Zurücksetzen löscht die Wahl und zeigt wieder den Standard", (await page.evaluate(() => localStorage.getItem("hofkarte-navigation"))) === null && (await page.inputValue("#f-navigation")) === "google");
 
+  // --- 2.1.0-dev.1: Sonderöffnungszeiten bearbeiten ---------------------------------
+  const sz = await page.evaluate(async () => {
+    const m = await import("/src/sonderzeiten.js");
+    return {
+      neu: m.neueSonderzeit("2026-07-01"),
+      leer: m.neueSonderzeit(""),
+      norm: m.normalisiereSonderzeit({ datum_von: "2026-07-01", datum_bis: "2026-07-05", geschlossen: false, beginn: "08:00:00", ende: "12:00:00", x: 1 }),
+      sort: m.sortiereSonderzeiten([{ datum_von: "2026-08-01" }, { datum_von: "2026-07-01" }]).map((x) => x.datum_von),
+      fehler: m.pruefeSonderzeiten([
+        { datum_von: "2026-07-10", datum_bis: "2026-07-01", geschlossen: true },
+        { datum_von: "", datum_bis: "2026-07-01", geschlossen: true },
+        { datum_von: "2026-12-24", datum_bis: "2026-12-24", geschlossen: false, beginn: "08:00", ende: "08:00" },
+        { datum_von: "2026-12-25", datum_bis: "2026-12-25", geschlossen: false, beginn: "", ende: "25:00" },
+        { datum_von: "2026-12-26", datum_bis: "2026-12-26", geschlossen: false, beginn: "22:00", ende: "02:00" },
+      ]).map((f) => `${f.index}:${f.feld}:${f.code}`),
+      ueber: m.ueberschneidungen([{ datum_von: "2026-07-01", datum_bis: "2026-07-10" }, { datum_von: "2026-07-10", datum_bis: "2026-07-20" }, { datum_von: "2026-08-01", datum_bis: "2026-08-02" }]),
+      speichern: m.fuerSpeichern([{ datum_von: "2026-08-01", datum_bis: "2026-08-02", geschlossen: false, beginn: "09:00", ende: "11:00" }, { datum_von: "2026-07-01", datum_bis: "2026-07-05", geschlossen: true, beginn: "08:00", ende: "09:00" }]),
+    };
+  });
+  check("Sonderzeiten: Standard ist «Geschlossen» mit heutigem Datum, ohne Zeiten", sz.neu.geschlossen === true && sz.neu.datum_von === "2026-07-01" && sz.neu.datum_bis === "2026-07-01" && sz.neu.beginn === null && sz.leer.datum_von === "");
+  check("Sonderzeiten: Übernahme kürzt Sekunden und verwirft Fremdfelder", JSON.stringify(sz.norm) === JSON.stringify({ datum_von: "2026-07-01", datum_bis: "2026-07-05", geschlossen: false, beginn: "08:00", ende: "12:00" }));
+  check("Sonderzeiten: nach Datum sortiert", sz.sort.join() === "2026-07-01,2026-08-01");
+  check(`Sonderzeiten: Prüfung erkennt Fehler, Nachtzeit 22–02 ist erlaubt (${sz.fehler.join(" | ")})`, sz.fehler.join(" | ") === "0:datum_bis:bis_vor_von | 1:datum_von:fehlt | 2:ende:ende_gleich_beginn | 3:beginn:fehlt | 3:ende:ungueltig");
+  check("Sonderzeiten: Überschneidung nur bei gemeinsamem Tag", JSON.stringify(sz.ueber) === JSON.stringify([[0, 1]]));
+  check("Sonderzeiten: Speicherformat sortiert und lässt Zeiten bei «Geschlossen» weg", JSON.stringify(sz.speichern) === JSON.stringify([{ datum_von: "2026-07-01", datum_bis: "2026-07-05", geschlossen: true }, { datum_von: "2026-08-01", datum_bis: "2026-08-02", geschlossen: false, beginn: "09:00", ende: "11:00" }]));
+
+  await page.evaluate(() => {
+    const a = window.hofkarteApp;
+    a.state.hoflaeden = [{ id: "sz1", version: 3, name: "Sonderhof", oeffnungszeiten: [{ wochentag: 1, beginn: "08:00", ende: "12:00" }], sonderoeffnungszeiten: [{ datum_von: "2026-07-10", datum_bis: "2026-07-20", geschlossen: true }], bilder: [], angebote: [], zahlungsarten: [] }];
+    window.__gespeichertSz = null;
+    a.speichereHofladen = async (d) => { window.__gespeichertSz = d; return { ...d }; };
+  });
+  await gehe("#/hofladen/sz1/bearbeiten");
+  await page.waitForTimeout(250);
+  await page.evaluate(() => { document.querySelector("#gruppe-oeffnungszeiten").open = true; });
+  check("Sonderzeiten: bestehende Sonderzeit erscheint im Editor, «Geschlossen» an, Zeiten verborgen", (await page.$$eval(".sonder-zeile", (z) => z.length)) === 1 && (await page.inputValue(".sz-von")) === "2026-07-10" && (await page.inputValue(".sz-bis")) === "2026-07-20" && (await page.getAttribute(".sz-zu", "aria-checked")) === "true" && (await page.$eval(".sonder-zeiten", (el) => el.hidden)));
+  const zuKlein = await page.$$eval(".sonder-zeile .sz-zu, .sonder-zeile input, #sonder-plus, [data-sz-remove]", (els) => els.filter((el) => { const r = el.getBoundingClientRect(); return r.width > 0 && (r.height < 43.5 || r.width < 43.5); }).map((el) => `${el.className || el.id} ${Math.round(el.getBoundingClientRect().width)}x${Math.round(el.getBoundingClientRect().height)}`));
+  check(`Sonderzeiten: Knöpfe und Felder sind mindestens 44px gross (${zuKlein.join(", ")})`, zuKlein.length === 0);
+  check("Sonderzeiten: Speichern ohne Änderung meldet nichts als geändert", !(await page.isVisible("#ungespeichert")));
+  await page.click("#sonder-plus");
+  check("Sonderzeiten: «+ Sonderzeit hinzufügen» legt eine geschlossene Zeile an, meldet Änderung und fokussiert «Von»", (await page.$$eval(".sonder-zeile", (z) => z.length)) === 2 && (await page.isVisible("#ungespeichert")) && (await page.evaluate(() => document.activeElement?.classList.contains("sz-von"))));
+  // Die neue Zeile hat das heutige Datum; auf einen Zeitraum nach der ersten setzen.
+  await page.fill(".sonder-zeile[data-index='1'] .sz-von", "2026-12-24");
+  await page.fill(".sonder-zeile[data-index='1'] .sz-bis", "2026-12-24");
+  await page.click(".sonder-zeile[data-index='1'] .sz-zu");
+  check("Sonderzeiten: «Geschlossen» aus zeigt Beginn/Ende mit Vorgabe 08:00–18:00 und behält den Fokus", (await page.getAttribute(".sonder-zeile[data-index='1'] .sz-zu", "aria-checked")) === "false" && (await page.inputValue(".sonder-zeile[data-index='1'] .sz-beginn")) === "08:00" && (await page.inputValue(".sonder-zeile[data-index='1'] .sz-ende")) === "18:00" && (await page.evaluate(() => document.activeElement?.classList.contains("sz-zu"))));
+  await page.fill(".sonder-zeile[data-index='1'] .sz-beginn", "09:00");
+  await page.fill(".sonder-zeile[data-index='1'] .sz-ende", "09:00");
+  await page.click("#speichern-btn");
+  await page.waitForTimeout(250);
+  check("Sonderzeiten: ungültig (Ende = Beginn) blockiert das Speichern, zeigt Meldung (role=alert) und markiert das Feld", (await page.evaluate(() => window.__gespeichertSz)) === null && /nicht gleich/.test(await page.textContent(".sz-fehler")) && (await page.getAttribute(".sonder-zeile[data-index='1'] .sz-ende", "aria-invalid")) === "true" && (await page.getAttribute(".sz-fehler", "role")) === "alert");
+  await page.fill(".sonder-zeile[data-index='1'] .sz-ende", "11:30");
+  await page.fill(".sonder-zeile[data-index='1'] .sz-bis", "2026-12-23");
+  await page.click("#speichern-btn");
+  await page.waitForTimeout(250);
+  check("Sonderzeiten: Enddatum vor Startdatum blockiert das Speichern", (await page.evaluate(() => window.__gespeichertSz)) === null && /Enddatum/.test(await page.textContent(".sz-fehler")));
+  await page.fill(".sonder-zeile[data-index='1'] .sz-bis", "2026-12-24");
+  await page.fill(".sonder-zeile[data-index='0'] .sz-bis", "2026-12-24");
+  await page.fill(".sonder-zeile[data-index='0'] .sz-bis", "2026-07-20");
+  await page.click("#speichern-btn");
+  await page.waitForTimeout(250);
+  const gespSz = await page.evaluate(() => window.__gespeichertSz);
+  check(`Sonderzeiten: Speichern sendet die sortierte Liste samt Wochenzeiten (${JSON.stringify(gespSz?.sonderoeffnungszeiten)})`, JSON.stringify(gespSz?.sonderoeffnungszeiten) === JSON.stringify([{ datum_von: "2026-07-10", datum_bis: "2026-07-20", geschlossen: true }, { datum_von: "2026-12-24", datum_bis: "2026-12-24", geschlossen: false, beginn: "09:00", ende: "11:30" }]) && gespSz?.oeffnungszeiten?.length === 1);
+
+  // Löschen bis die Liste leer ist: es wird eine leere Liste gesendet (sonst bliebe die letzte Sonderzeit bestehen).
+  await page.evaluate(() => { window.__gespeichertSz = null; });
+  await gehe("#/hofladen/sz1/bearbeiten");
+  await page.waitForTimeout(250);
+  await page.evaluate(() => { document.querySelector("#gruppe-oeffnungszeiten").open = true; });
+  await page.click("[data-sz-remove='0']");
+  check("Sonderzeiten: Entfernen der letzten Zeile zeigt «Keine Sonderöffnungszeiten», Fokus wandert auf «+ Sonderzeit hinzufügen»", /Keine Sonderöffnungszeiten/.test(await page.textContent("#sonderzeiten-liste")) && (await page.evaluate(() => document.activeElement?.id)) === "sonder-plus" && (await page.isVisible("#ungespeichert")));
+  await page.click("#speichern-btn");
+  await page.waitForTimeout(250);
+  check("Sonderzeiten: leere Liste wird mitgesendet", JSON.stringify((await page.evaluate(() => window.__gespeichertSz))?.sonderoeffnungszeiten) === "[]");
+
+  // Mit Überschneidung: Hinweis sichtbar, Speichern trotzdem möglich.
+  await page.evaluate(() => {
+    const a = window.hofkarteApp;
+    a.state.hoflaeden = [{ id: "sz2", version: 1, name: "Doppelhof", oeffnungszeiten: [], sonderoeffnungszeiten: [{ datum_von: "2026-07-01", datum_bis: "2026-07-10", geschlossen: true }, { datum_von: "2026-07-05", datum_bis: "2026-07-06", geschlossen: false, beginn: "09:00", ende: "10:00" }], bilder: [], angebote: [], zahlungsarten: [] }];
+    window.__gespeichertSz = null;
+  });
+  await gehe("#/hofladen/sz2/bearbeiten");
+  await page.waitForTimeout(250);
+  await page.evaluate(() => { document.querySelector("#gruppe-oeffnungszeiten").open = true; });
+  check("Sonderzeiten: Überschneidung zeigt Hinweis an beiden Zeilen", (await page.$$eval(".sz-warnung", (w) => w.length)) === 2);
+  await page.fill("#f-name", "Doppelhof 2");
+  await page.click("#speichern-btn");
+  await page.waitForTimeout(250);
+  check("Sonderzeiten: Überschneidung blockiert das Speichern nicht", (await page.evaluate(() => window.__gespeichertSz))?.sonderoeffnungszeiten?.length === 2);
+
   // Grosse Schrift (Dynamic Type simuliert): nichts läuft seitlich über den Rand.
   await setzeTesthof();
   await page.evaluate(() => document.documentElement.style.setProperty("font-size", "28px", "important"));

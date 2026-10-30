@@ -206,8 +206,12 @@ Detail → ⋮ → **Bearbeiten**, oder **Von Hand** im Tab Erfassen.
 - Die feste Fussleiste zeigt **Ungespeichert**. «Abbrechen» fragt bei
   Änderungen zurück. Fehlende oder ungültige Angaben öffnen die Gruppe und
   markieren das Feld.
-- **Sonderöffnungszeiten** (Ferien, Feiertage) zeigt die App an, bearbeitet sie
-  aber nicht. Dafür das Panel in Home Assistant verwenden.
+- **Sonderöffnungszeiten** (Ferien, Feiertage) bearbeitest Du unter
+  «Öffnungszeiten» mit «+ Sonderzeit hinzufügen»: Von- und Bis-Datum wählen,
+  entweder «Geschlossen» lassen oder den Schalter ausschalten und Beginn/Ende
+  eintragen. Mit dem ✕ entfernst Du einen Eintrag. Ein Enddatum vor dem
+  Startdatum oder gleiche Beginn- und Endzeit werden beim Speichern
+  beanstandet; Überschneidungen sind erlaubt und nur mit einem Hinweis markiert.
 
 ### Angaben ergänzen
 

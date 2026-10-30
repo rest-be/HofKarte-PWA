@@ -21,7 +21,7 @@
  * diese liegen ausschliesslich in IndexedDB (siehe src/storage.js).
  */
 
-const CACHE_VERSION = "hofkarte-pwa-v33";
+const CACHE_VERSION = "hofkarte-pwa-v34";
 
 const APP_SHELL_DATEIEN = [
   "./",
@@ -51,6 +51,7 @@ const APP_SHELL_DATEIEN = [
   "./src/suche.js",
   "./src/navigation.js",
   "./src/leerzustand.js",
+  "./src/sonderzeiten.js",
   "./src/bilder.js",
   "./src/views/setup.js",
   "./src/views/list.js",
@@ -106,11 +107,7 @@ self.addEventListener("activate", (event) => {
       .then((namen) =>
         Promise.all(
           namen
-            .filter(
-  (name) =>
-    name.startsWith(CACHE_PREFIX) &&
-    name !== CACHE_VERSION
-)
+            .filter((name) => name !== CACHE_VERSION)
             .map((name) => caches.delete(name))
         )
       )

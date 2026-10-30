@@ -19,7 +19,7 @@
  * Vorgehensplan und im Startbild in index.html (`.splash-version`)
  * nachziehen; der Smoke-Test prüft die Übereinstimmung.
  */
-export const APP_VERSION = "2.0.0";
+export const APP_VERSION = "2.1.0-dev.1";
 
 /**
  * Release Notes (neueste zuerst), angezeigt auf dem Einrichtungsbildschirm
@@ -27,6 +27,13 @@ export const APP_VERSION = "2.0.0";
  * ergänzen (und die Tabelle im README nachziehen).
  */
 export const RELEASE_NOTES = [
+  {
+    version: "2.1.0-dev.1",
+    datum: "2026-10-30",
+    punkte: [
+      "Sonderöffnungszeiten (Ferien, Feiertage) lassen sich im Editor erfassen, ändern und löschen; mit Prüfung der Eingaben und Hinweis bei Überschneidungen.",
+    ],
+  },
   {
     version: "2.0.0",
     datum: "2026-10-25",

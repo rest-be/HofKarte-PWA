@@ -3326,3 +3326,75 @@ textarea {
 .karte-huelle .leaflet-bottom.leaflet-right {
   margin-bottom: 18px;
 }
+
+/* --- 2.1.0: Sonderöffnungszeiten im Editor ------------------------------ */
+.sonderzeiten {
+  margin-top: 16px;
+  padding-top: 8px;
+  border-top: 0.5px solid var(--separator);
+}
+
+.sonder-zeile {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin: 8px 0;
+  padding: 12px;
+  border: 1px solid var(--karte-rahmen, var(--separator));
+  border-radius: 12px;
+  background: var(--card-bg, var(--bg-color));
+}
+
+.sonder-kopf {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.sonder-datum,
+.sonder-zeiten {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-end;
+  gap: 8px;
+}
+
+.sonder-datum label,
+.sonder-zeiten label {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 130px;
+  font-size: 0.8235rem;
+  color: var(--muted-color);
+}
+
+.sonder-datum input,
+.sonder-zeiten input {
+  min-height: 44px;
+  width: 100%;
+  border: none;
+  border-radius: 8px;
+  background: var(--fill);
+  padding: 0 6px;
+  font-size: 0.94rem;
+  color: inherit;
+}
+
+.sonder-zeiten[hidden] {
+  display: none;
+}
+
+.sonder-zeile input[aria-invalid="true"] {
+  outline: 2px solid var(--danger-color);
+}
+
+.sz-warnung {
+  margin: 0;
+}
+
+.sz-fehler {
+  margin: 0;
+}

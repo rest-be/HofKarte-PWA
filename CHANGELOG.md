@@ -11,7 +11,16 @@ Zuordnung zur Integration HofKarte-HA steht im README.
 
 ## [Unreleased]
 
-Noch keine Änderungen seit `2.0.0`.
+Geplant für 2.1.0: Foto vom Hofladen-Schild auslesen, Öffnungszeiten schneller
+erfassen, Sonderöffnungszeiten bearbeiten (siehe `docs/umsetzungsplan-2.1.md`).
+
+### 2.1.0-dev.1 - 2026-10-30
+
+- Neu: Sonderöffnungszeiten (Ferien, Feiertage) im Editor hinzufügen, ändern
+  und entfernen. Zeilen mit Von/Bis, Schalter «Geschlossen» und optionalen
+  Zeiten; Prüfung vor dem Speichern, Warnhinweis bei Überschneidungen.
+- Der Editor sendet die Liste immer mit, damit auch der letzte Eintrag
+  gelöscht werden kann. Datenmodell und HA-Schnittstelle unverändert.
 
 ## [2.0.0] - 2026-10-25
 
