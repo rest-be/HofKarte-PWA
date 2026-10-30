@@ -14,6 +14,17 @@ Zuordnung zur Integration HofKarte-HA steht im README.
 Geplant für 2.1.0: Foto vom Hofladen-Schild auslesen, Öffnungszeiten schneller
 erfassen, Sonderöffnungszeiten bearbeiten (siehe `docs/umsetzungsplan-2.1.md`).
 
+### 2.1.0-dev.3 - 2026-10-30
+
+- Neu (intern): Texterkennung im Browser (`src/ocr.js`) mit tesseract.js 7.0.0,
+  lokal unter `vendor/` (Rechenkern, Sprachdaten Deutsch/Französisch/Italienisch/
+  Englisch). Läuft in einem Web Worker, mit Fortschritt und Abbruch; das Foto
+  verlässt das Gerät nie. Der Service Worker lädt die Dateien erst bei der
+  ersten Nutzung in einen eigenen Cache (`hofkarte-ocr-v1`), danach auch offline.
+- `script-src` der CSP enthält zusätzlich `'wasm-unsafe-eval'` (nur WebAssembly),
+  siehe `SECURITY.md`.
+- Noch keine Bedienoberfläche; sie folgt in dev.4.
+
 ### 2.1.0-dev.2 - 2026-10-30
 
 - Neu: Öffnungszeiten schneller erfassen («Schnell erfassen» im Editor):

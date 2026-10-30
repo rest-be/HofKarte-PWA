@@ -1,6 +1,6 @@
 # HofKarte-PWA
 
-**Version: 2.1.0-dev.2** – siehe Abschnitt [Version](#version) unten für die
+**Version: 2.1.0-dev.3** – siehe Abschnitt [Version](#version) unten für die
 installierte Version auf einem konkreten Gerät.
 
 Progressive Web App für HofKarte – ein reiner, zustandsloser Client für die
@@ -169,6 +169,7 @@ und der Versionsangabe im Startbild (`index.html`, vom Test gegen
 
 | Version | Datum | Wesentliche Änderungen |
 |---|---|---|
+| 2.1.0-dev.3 | 2026-10-30 | OCR-Grundlage: Texterkennung im Browser (tesseract.js lokal, Offline-Cache), noch ohne Oberfläche (Phase 3 von 2.1.0). |
 | 2.1.0-dev.2 | 2026-10-30 | Öffnungszeiten schneller erfassen: Vorlagen, «Wie Vortag», auf alle Tage kopieren, Texteingabe (Phase 2 von 2.1.0). |
 | 2.1.0-dev.1 | 2026-10-30 | Sonderöffnungszeiten im Editor bearbeiten (Phase 1 von 2.1.0). |
 | 2.0.0 | 2026-10-25 | Produktiver Release: Funktionsstand von 2.0.0-rc.1, keine funktionalen Änderungen. |

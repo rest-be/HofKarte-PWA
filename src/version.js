@@ -19,7 +19,7 @@
  * Vorgehensplan und im Startbild in index.html (`.splash-version`)
  * nachziehen; der Smoke-Test prüft die Übereinstimmung.
  */
-export const APP_VERSION = "2.1.0-dev.2";
+export const APP_VERSION = "2.1.0-dev.3";
 
 /**
  * Release Notes (neueste zuerst), angezeigt auf dem Einrichtungsbildschirm
@@ -27,6 +27,13 @@ export const APP_VERSION = "2.1.0-dev.2";
  * ergänzen (und die Tabelle im README nachziehen).
  */
 export const RELEASE_NOTES = [
+  {
+    version: "2.1.0-dev.3",
+    datum: "2026-10-30",
+    punkte: [
+      "Grundlage für das Lesen von Hofladen-Schildern: Texterkennung (OCR) direkt im Browser, ohne KI und ohne Upload. Die Dateien liegen lokal und werden erst bei der ersten Nutzung geladen; danach funktioniert die Erkennung auch offline. Noch ohne Bedienoberfläche (folgt in dev.4).",
+    ],
+  },
   {
     version: "2.1.0-dev.2",
     datum: "2026-10-30",

@@ -1806,6 +1806,59 @@ export async function fuehreSmokeTestsAus(page, baseUrl) {
   await page.click("#automat-schalter");
   check("Zeiten: Schnellerfassung erscheint wieder, wenn der Automat aus ist", await page.isVisible("#zeiten-schnell"));
 
+  // --- 2.1.0-dev.3: OCR-Grundlage (Texterkennung im Browser) ---------------------------
+  const ausserhalb = [];
+  const merkeAnfrage = (r) => { if (!/^(http:\/\/127\.0\.0\.1|http:\/\/localhost|data:|blob:)/.test(r.url())) ausserhalb.push(r.url()); };
+  page.on("request", merkeAnfrage);
+  const ocr = await page.evaluate(async () => {
+    const m = await import("/src/ocr.js");
+    const c = document.createElement("canvas");
+    c.width = 900; c.height = 420;
+    const g = c.getContext("2d");
+    g.fillStyle = "#fff"; g.fillRect(0, 0, 900, 420);
+    g.fillStyle = "#000";
+    g.font = "bold 54px sans-serif"; g.fillText("Hofladen Müller", 40, 80);
+    g.font = "44px sans-serif";
+    g.fillText("Öffnungszeiten", 40, 170);
+    g.fillText("Mo-Fr 8.00-12.00 / 14.00-18.00", 40, 240);
+    g.fillText("Sa 8.00-12.00   So geschlossen", 40, 310);
+    g.fillText("Tel. 031 123 45 67", 40, 380);
+    const schritte = [];
+    const erg = await m.erkenneText(c, { sprachen: ["deu"], onFortschritt: (f) => schritte.push(f.status) });
+    const zeiten = (await import("/src/zeittext.js")).parseZeittext(erg.text, "de");
+    // Abbruch: sofort abgebrochen ergibt AbortError und lässt keinen Worker zurück.
+    const ac = new AbortController();
+    const abgebrochen = m.erkenneText(c, { signal: ac.signal }).then(() => "ok", (e) => e.name);
+    setTimeout(() => ac.abort(), 30);
+    const vorher = new AbortController(); vorher.abort();
+    return {
+      verfuegbar: m.ocrVerfuegbar(),
+      text: erg.text,
+      vertrauen: erg.vertrauen,
+      schritte: [...new Set(schritte)],
+      zeitenAnzahl: zeiten.zeiten.length,
+      zu: zeiten.geschlossen,
+      sa: zeiten.zeiten.filter((z) => z.wochentag === 6).map((z) => `${z.beginn}-${z.ende}`),
+      abgebrochen: await abgebrochen,
+      sofort: await m.erkenneText(c, { signal: vorher.signal }).then(() => "ok", (e) => e.name),
+      ohneSprache: await m.erkenneText(c, { sprachen: ["xx"] }).then(() => "ok", (e) => e.message),
+      sprachen: m.OCR_SPRACHEN.join(","),
+    };
+  });
+  page.off("request", merkeAnfrage);
+  check("OCR: im Browser verfügbar (Worker und WebAssembly)", ocr.verfuegbar === true);
+  check(`OCR: liest den Text eines Schildes (${JSON.stringify(ocr.text.slice(0, 60))})`, /Hofladen/.test(ocr.text) && /Mo.?Fr/.test(ocr.text) && /geschlossen/.test(ocr.text) && ocr.vertrauen > 60);
+  check("OCR: meldet den Fortschritt (Kern, Sprachdaten, Erkennung)", ["loading tesseract core", "loading language traineddata", "recognizing text"].every((s) => ocr.schritte.includes(s)));
+  check(`OCR → Zeittext: Mo–Fr zweimal, Samstag, Sonntag geschlossen (${ocr.zeitenAnzahl} Zeiten)`, ocr.zeitenAnzahl === 11 && JSON.stringify(ocr.zu) === "[7]" && JSON.stringify(ocr.sa) === JSON.stringify(["08:00-12:00"]));
+  check("OCR: Abbruch ergibt AbortError, auch wenn schon abgebrochen", ocr.abgebrochen === "AbortError" && ocr.sofort === "AbortError");
+  check("OCR: ungültige Sprache wird abgelehnt", /Sprache/.test(ocr.ohneSprache) && ocr.sprachen === "deu,fra,ita,eng");
+  check(`OCR: keine Anfrage an fremde Server (CDN) (${ausserhalb.join(", ")})`, ausserhalb.length === 0);
+  check("OCR: Bibliothek, Kern und Sprachdaten liegen lokal (vendor/)", await page.evaluate(async () => {
+    const dateien = ["tesseract/tesseract.min.js", "tesseract/worker.min.js", "tesseract-core/tesseract-core-lstm.wasm.js", "tesseract-core/tesseract-core-simd-lstm.wasm.js", "tesseract-core/tesseract-core-relaxedsimd-lstm.wasm.js", "tesseract-lang/deu.traineddata.gz", "tesseract-lang/fra.traineddata.gz", "tesseract-lang/ita.traineddata.gz", "tesseract-lang/eng.traineddata.gz"];
+    const antworten = await Promise.all(dateien.map((d) => fetch(`/vendor/${d}`, { method: "HEAD" }).then((r) => r.ok)));
+    return antworten.every(Boolean);
+  }));
+
   // Grosse Schrift (Dynamic Type simuliert): nichts läuft seitlich über den Rand.
   await setzeTesthof();
   await page.evaluate(() => document.documentElement.style.setProperty("font-size", "28px", "important"));

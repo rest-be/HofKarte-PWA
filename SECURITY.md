@@ -48,6 +48,12 @@ ausschliesslich mit deiner eigenen Instanz.
 - **Content-Security-Policy** in `index.html`: `default-src 'none'`,
   Skripte und Stile nur vom eigenen Ursprung (keine Inline-Skripte, keine
   Inline-Stile), keine Formularübermittlung, `base-uri 'none'`.
+  Seit 2.1.0-dev.3 steht in `script-src` zusätzlich `'wasm-unsafe-eval'`: Es
+  erlaubt ausschliesslich das Ausführen von WebAssembly (Texterkennung), kein
+  `eval` und keine Inline-Skripte. In Chromium wäre es nicht nötig (der Worker
+  unterliegt der Seiten-CSP nicht); es steht als Vorsicht für Safari/iOS da und
+  wird nach der Abnahme auf dem iPhone überprüft. Der OCR-Worker startet aus
+  einer Datei (`worker-src 'self'`), nicht aus einem `blob:`-URL.
 - Texte, die von Webseiten oder von einer KI stammen, gelten als unvertrauenswürdig:
   Sie werden maskiert, nur als Vorschlag angezeigt und nie ohne ausdrückliche
   Auswahl übernommen. KI-Vermutungen sind nie vorausgewählt.
@@ -55,7 +61,10 @@ ausschliesslich mit deiner eigenen Instanz.
 **Lieferkette.**
 - Keine Drittanbieter-Skripte zur Laufzeit und kein CDN. `home-assistant-js-websocket`
   (Apache-2.0) und Leaflet (BSD-2-Clause) liegen unverändert unter `vendor/`
-  (Herkunft und Update-Ablauf: `vendor/README.md`).
+  (Herkunft und Update-Ablauf: `vendor/README.md`). Seit 2.1.0 kommen
+  tesseract.js und tesseract.js-core (Apache-2.0) sowie die Sprachdaten
+  (tessdata_best, Apache-2.0) hinzu, ebenfalls lokal und ohne Netzzugriff.
+- Texterkennung: Das Foto wird nur im Browser ausgewertet und nicht hochgeladen.
 - Kein Build-Schritt: Das Repository wird 1:1 über GitHub Pages ausgeliefert.
 - Die App enthält keine Werbung, keine Statistik und keine Fremd-Tracker.
 
