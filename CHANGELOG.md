@@ -14,6 +14,23 @@ Zuordnung zur Integration HofKarte-HA steht im README.
 Geplant für 2.1.0: Foto vom Hofladen-Schild auslesen, Öffnungszeiten schneller
 erfassen, Sonderöffnungszeiten bearbeiten (siehe `docs/umsetzungsplan-2.1.md`).
 
+### 2.1.0-dev.4 - 2026-10-30
+
+- Neu: «Schild lesen» (`src/views/schild.js`). Foto aufnehmen oder aus der
+  Mediathek wählen, Sprache(n) des Schildes wählen, Auswertung im Browser mit
+  Fortschritt und Abbruch. Einstiege: «Erfassen» → «Schild lesen» (neuer
+  Hofladen), Menü ⋯ eines Hofladens und «Vom Schild ergänzen» nach dem
+  Erfassen.
+- Vergleich wie bei «Angaben ergänzen»: Aktuell · Gefunden · Status, Lücken
+  vorgewählt, Abweichungen nie; die Übernahme öffnet den Editor, gespeichert
+  wird dort. Herkunft der Angaben: «Schild (Foto)» (`quelle: schild`, ohne
+  Änderung an Home Assistant).
+- Der erkannte Text bleibt sichtbar und ist korrigierbar («Neu auswerten»).
+- Gelesen werden Name, Adresse mit PLZ, Telefon (Schweizer Formate), E-Mail,
+  Webadresse, Öffnungszeiten, bekannte Angebote und Zahlungsarten
+  (`src/schildtext.js`).
+- Behoben: `src/ocr.js` fehlte in der Dateiliste des Service Workers.
+
 ### 2.1.0-dev.3 - 2026-10-30
 
 - Neu (intern): Texterkennung im Browser (`src/ocr.js`) mit tesseract.js 7.0.0,

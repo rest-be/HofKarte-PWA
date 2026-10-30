@@ -206,6 +206,16 @@ Detail → ⋮ → **Bearbeiten**, oder **Von Hand** im Tab Erfassen.
 - Die feste Fussleiste zeigt **Ungespeichert**. «Abbrechen» fragt bei
   Änderungen zurück. Fehlende oder ungültige Angaben öffnen die Gruppe und
   markieren das Feld.
+- **Schild lesen:** Mit einem Foto vom Hofladen-Schild füllst Du Angaben
+  automatisch vor. Neuer Hofladen: «Erfassen» → «Schild lesen». Bestehender
+  Hofladen: Menü ⋯ → «Schild lesen». Sprache des Schildes wählen, Foto
+  aufnehmen oder aus der Mediathek wählen. Das Foto wird nur auf Deinem Gerät
+  ausgewertet (ohne KI, ohne Upload); beim ersten Mal werden rund 6 MB geladen,
+  danach geht es auch offline. Im Vergleich siehst Du «Aktuell · Gefunden ·
+  Status»: Lücken sind vorgewählt, Abweichungen nie. Der erkannte Text steht
+  darunter und lässt sich korrigieren («Neu auswerten»). Die Erkennung kann sich
+  irren, vergleiche jede Angabe mit dem Schild. Gespeichert wird erst im Editor.
+  Das Foto selbst wird nicht als Bild des Hofladens übernommen.
 - **Öffnungszeiten schneller erfassen:** Unter «Schnell erfassen» findest Du
   drei Vorlagen und «Als Text eingeben» (z. B. «Mo-Fr 8-12, 14-18; Sa 8-12;
   So geschlossen»; Kürzel in Deutsch, Französisch, Italienisch, Englisch). Die

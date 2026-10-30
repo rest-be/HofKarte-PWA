@@ -36,6 +36,7 @@ import { renderEditor } from "./views/editor.js";
 import { renderEinstellungen } from "./views/einstellungen.js";
 import { renderFinden } from "./views/finden.js";
 import { renderAuslesen } from "./views/auslesen.js";
+import { renderSchild } from "./views/schild.js";
 import { renderErfassenEinstieg, renderVorOrt, renderSchnell, renderGespeichert } from "./views/erfassen.js";
 import { icon } from "./icons.js";
 import { initialisiereDesign } from "./design.js";
@@ -399,6 +400,7 @@ function route() {
   aktuelleAnsicht =
     teile[0] === "hofladen" && teile[1] && teile[2] === "bearbeiten" ? "editor"
     : teile[0] === "hofladen" && teile[1] && teile[2] === "ergaenzen" ? "ergaenzen"
+    : teile[0] === "hofladen" && teile[1] && teile[2] === "schild" ? "ergaenzen"
     : teile[0] === "konflikt" && teile[1] ? "konflikt"
     : teile[0] === "neu" ? "neu"
     : teile[0] === "erfassen" ? "erfassen"
@@ -426,6 +428,14 @@ function route() {
     });
     return;
   }
+  if (teile[0] === "hofladen" && teile[1] && teile[2] === "schild") {
+    renderMitRahmen(() => renderSchild(appContainer.querySelector(".inhalt"), app, teile[1]), null, {
+      titel: "Schild lesen",
+      tiefe: 2,
+      zurueck: detailHash(teile[1]),
+    });
+    return;
+  }
   if (teile[0] === "konflikt" && teile[1]) {
     renderMitRahmen(() => renderKonflikt(appContainer.querySelector(".inhalt"), app, teile[1]), null, {
       titel: "Konflikt",
@@ -444,7 +454,9 @@ function route() {
   }
   if (teile[0] === "erfassen") {
     const inhalt = () => appContainer.querySelector(".inhalt");
-    if (teile[1] === "webseite") {
+    if (teile[1] === "schild") {
+      renderMitRahmen(() => renderSchild(inhalt(), app, null), "erfassen", { titel: "Schild lesen", tiefe: 1, zurueck: "#/erfassen" });
+    } else if (teile[1] === "webseite") {
       renderMitRahmen(() => renderAuslesen(inhalt(), app, null), "erfassen", { titel: "Von der Webseite", tiefe: 1, zurueck: "#/erfassen" });
     } else if (teile[1] === "vorort") {
       renderMitRahmen(() => renderVorOrt(inhalt(), app), "erfassen", { titel: "Vor Ort", tiefe: 1, zurueck: "#/erfassen" });

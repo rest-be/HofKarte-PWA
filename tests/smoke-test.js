@@ -977,7 +977,7 @@ export async function fuehreSmokeTestsAus(page, baseUrl) {
     };
   });
   await gehe("#/erfassen");
-  check("Erfassen: Einstieg zeigt drei Wege", (await page.$$(".weg-karte")).length === 3 && !!(await page.$("#weg-vorort")) && !!(await page.$("#weg-webseite")) && !!(await page.$("#weg-hand")));
+  check("Erfassen: Einstieg zeigt vier Wege", (await page.$$(".weg-karte")).length === 4 && !!(await page.$("#weg-vorort")) && !!(await page.$("#weg-webseite")) && !!(await page.$("#weg-schild")) && !!(await page.$("#weg-hand")));
   check("Erfassen: Tab heisst «Erfassen» und ist aktiv", (await page.$eval("[data-tab='erfassen']", (el) => el.textContent.trim() === "Erfassen" && el.getAttribute("aria-current") === "page")));
   if (process.env.SCREENSHOT_DIR) { await page.setViewportSize({ width: 390, height: 844 }); await page.screenshot({ path: `${process.env.SCREENSHOT_DIR}/e1.png`, fullPage: true }); await page.setViewportSize({ width: 1280, height: 720 }); }
   check("Erfassen: «Erweiterte Suche» bleibt erreichbar", (await page.$eval("#erweiterte-suche-link", (el) => el.getAttribute("href"))) === "#/finden");
@@ -1858,6 +1858,108 @@ export async function fuehreSmokeTestsAus(page, baseUrl) {
     const antworten = await Promise.all(dateien.map((d) => fetch(`/vendor/${d}`, { method: "HEAD" }).then((r) => r.ok)));
     return antworten.every(Boolean);
   }));
+
+  // --- 2.1.0-dev.4: Schild lesen ----------------------------------------------------------
+  const st = await page.evaluate(async () => {
+    const m = await import("/src/schildtext.js");
+    const a = m.leseSchildtext("Hofladen Müller\nÖffnungszeiten\nMo-Fr 8.00-12.00 / 14.00-18.00\nSa 8.00-12.00 So geschlossen\nDorfstrasse 12\n3000 Bern\nTel. 031 123 45 67\ninfo@hof-mueller.ch www.hof-mueller.ch\nEier, Käse, Honig · TWINT und Bargeld", ["de"]);
+    const f = m.leseSchildtext("Ferme Dupont\nlun-ven 8h-12h 14h-18h\nRoute de Lausanne 5, 1700 Fribourg\n+41 79 123 45 67\nOeufs, fromage, miel", ["fr"]);
+    const leer = m.leseSchildtext("", ["de"]);
+    return {
+      de: { ...a.daten, oeffnungszeiten: a.daten.oeffnungszeiten.length, ge: a.hinweise.geschlossen, q: [...new Set(a.quellen.map((x) => x.quelle))].join() },
+      fr: { name: f.daten.name, adresse: f.daten.adresse, ort: f.daten.ort, tel: f.daten.mobilnummer, z: f.daten.oeffnungszeiten.length, ang: f.daten.angebote },
+      leer: Object.keys(leer.daten).length,
+      tel: [m.normalisiereTelefon("031 123 45 67"), m.normalisiereTelefon("+41 (0)31 123 45 67"), m.normalisiereTelefon("0041 79 123 45 67"), m.normalisiereTelefon("12345"), m.normalisiereTelefon("+49 30 123456")],
+      keinHtml: m.leseSchildtext("<b>Hof</b> Mo 8-12", ["de"]).daten.name,
+    };
+  });
+  check(`Schildtext: Deutsch (Name, Adresse, Telefon, E-Mail, Web, Zeiten, Angebote, Zahlung) (${JSON.stringify(st.de).slice(0, 80)}…)`, st.de.name === "Hofladen Müller" && st.de.adresse === "Dorfstrasse 12" && st.de.plz === "3000" && st.de.ort === "Bern" && st.de.mobilnummer === "031 123 45 67" && st.de.email === "info@hof-mueller.ch" && st.de.website === "https://www.hof-mueller.ch" && st.de.oeffnungszeiten === 11 && JSON.stringify(st.de.ge) === "[7]" && JSON.stringify(st.de.angebote) === JSON.stringify(["Eier", "Käse", "Honig"].sort((x, y) => ["Eier", "Kartoffeln", "Käse", "Honig"].indexOf(x) - ["Eier", "Kartoffeln", "Käse", "Honig"].indexOf(y))) && JSON.stringify(st.de.zahlungsarten) === JSON.stringify(["TWINT", "Bargeld"]) && st.de.q === "schild");
+  check("Schildtext: Französisch (Name, Adresse, Telefon +41, Zeiten, Angebote)", st.fr.name === "Ferme Dupont" && st.fr.adresse === "Route de Lausanne 5" && st.fr.ort === "Fribourg" && st.fr.tel === "+41 79 123 45 67" && st.fr.z === 10 && st.fr.ang.length === 3);
+  check("Schildtext: leerer Text ergibt nichts; Telefonnummern nur im Schweizer Format", st.leer === 0 && JSON.stringify(st.tel) === JSON.stringify(["031 123 45 67", "+41 31 123 45 67", "+41 79 123 45 67", null, null]));
+
+  const schildBild = await page.evaluate(() => {
+    const c = document.createElement("canvas");
+    c.width = 900; c.height = 520;
+    const g = c.getContext("2d");
+    g.fillStyle = "#fff"; g.fillRect(0, 0, 900, 520);
+    g.fillStyle = "#000";
+    g.font = "bold 54px sans-serif"; g.fillText("Hofladen Müller", 40, 70);
+    g.font = "44px sans-serif";
+    g.fillText("Öffnungszeiten", 40, 150);
+    g.fillText("Mo-Fr 8.00-12.00 / 14.00-18.00", 40, 220);
+    g.fillText("Sa 8.00-12.00   So geschlossen", 40, 290);
+    g.fillText("Dorfstrasse 12, 3000 Bern", 40, 360);
+    g.fillText("Tel. 031 123 45 67", 40, 430);
+    return c.toDataURL("image/png").split(",")[1];
+  });
+  const schildDatei = { name: "schild.png", mimeType: "image/png", buffer: Buffer.from(schildBild, "base64") };
+
+  await setzeTesthof();
+  await page.evaluate(() => {
+    const a = window.hofkarteApp;
+    a.state.hoflaeden = [{ id: "sc1", version: 1, name: "Schildhof", mobilnummer: "079 999 88 77", oeffnungszeiten: [], sonderoeffnungszeiten: [], bilder: [], angebote: [], zahlungsarten: [] }];
+  });
+  await gehe("#/hofladen/sc1");
+  await page.click("#aktionsmenue summary");
+  check("Schild: Menü des Hofladens hat «Schild lesen»", (await page.textContent("#schild-btn")).trim() === "Schild lesen");
+  await page.click("#schild-btn");
+  await page.waitForTimeout(300);
+  check("Schild: Startseite mit Kamera- und Mediathek-Knopf (≥44px), Sprachwahl, Datenschutzhinweis", (await page.$eval("#s-kamera-btn", (e) => e.getBoundingClientRect().height)) >= 44 && (await page.$$("[data-s-sprache]")).length === 4 && /nicht hochgeladen/.test(await page.textContent(".auslesen")) && (await page.getAttribute("#s-kamera", "capture")) === "environment");
+  check("Schild: genau eine Sprache vorgewählt (die der Oberfläche) und die letzte lässt sich nicht abwählen", await page.evaluate(() => {
+    const an = () => [...document.querySelectorAll("[data-s-sprache][aria-pressed='true']")].length;
+    const vorher = an();
+    document.querySelector("[data-s-sprache][aria-pressed='true']").click();
+    return vorher === 1 && an() === 1;
+  }));
+  await page.setInputFiles("#s-datei", schildDatei);
+  await page.waitForSelector("#s-uebernehmen-btn, .hinweis-leiste.fehler", { timeout: 60000 });
+  const zeilen = await page.$$eval(".ergaenzen-zeile", (z) => z.map((x) => x.dataset.zeile));
+  check(`Schild: Vergleich zeigt gelesene Angaben (${zeilen.join(", ")})`, ["adresse", "mobilnummer", "oeffnungszeiten"].every((k) => zeilen.includes(k)) && /Mo.?Fr/.test(await page.inputValue("#s-text")));
+  check("Schild: Lücken vorgewählt, Abweichung (andere Telefonnummer) nicht", (await page.isChecked("[data-feldwahl='oeffnungszeiten']")) && (await page.isChecked("[data-feldwahl='adresse']")) && !(await page.isChecked("[data-feldwahl='mobilnummer']")) && /Weicht ab/.test(await page.textContent("[data-zeile='mobilnummer']")));
+  check("Schild: Herkunft «Schild (Foto)» und Hinweis zur Fehlerquote sichtbar, Foto als Vorschau (data:)", /Schild \(Foto\)/.test(await page.textContent("[data-zeile='oeffnungszeiten']")) && /irren/.test(await page.textContent(".auslesen")) && (await page.getAttribute(".schild-vorschau", "src")).startsWith("data:image/"));
+  check("Schild: als geschlossen erkannter Sonntag wird gemeldet", /Sonntag/.test(await page.textContent("#s-geschlossen")));
+
+  // Text korrigieren und neu auswerten.
+  await page.fill("#s-text", "Mo-Fr 9-12\nTel. 031 123 45 67");
+  await page.click("#s-neu-btn");
+  check("Schild: «Neu auswerten» liest den korrigierten Text (5 Zeiten, Telefon)", (await page.textContent("[data-zeile='oeffnungszeiten']")).includes("Mo 09:00–12:00") && !!(await page.$("[data-zeile='mobilnummer']")));
+  await page.click("[data-feldwahl='mobilnummer']");
+
+  await page.click("#s-uebernehmen-btn");
+  await page.waitForTimeout(400);
+  check("Schild: Übernahme öffnet den Editor mit den gewählten Angaben, gespeichert wird nichts", /bearbeiten/.test(await page.evaluate(() => location.hash)) && (await page.$$eval(".oeffnungszeit-zeile", (z) => z.length)) === 5 && (await page.inputValue("#f-mobilnummer")) === "031 123 45 67" && (await page.isVisible("#ungespeichert")));
+
+  // Neuer Hofladen aus dem Schild; Abbruch; Fehlerfall.
+  await gehe("#/erfassen");
+  check("Schild: Einstieg «Schild lesen» unter «Erfassen»", !!(await page.$("#weg-schild")));
+  await page.click("#weg-schild");
+  await page.waitForTimeout(200);
+  check("Schild: neue Erfassung ohne bestehenden Hofladen (kein «Aktuell»)", /erfassen\/schild/.test(await page.evaluate(() => location.hash)));
+  await page.setInputFiles("#s-datei", schildDatei);
+  await page.click("#s-abbruch-btn").catch(() => {});
+  await page.waitForTimeout(300);
+  check("Schild: Abbrechen führt zurück zur Fotowahl", !!(await page.$("#s-datei-btn")) || !!(await page.$("#s-uebernehmen-btn")));
+  await page.setInputFiles("#s-datei", schildDatei).catch(() => {});
+  await page.waitForSelector("#s-uebernehmen-btn", { timeout: 60000 });
+  check("Schild: neuer Hofladen zeigt keine «Aktuell»-Spalte und erkennt den Namen", !/Aktuell:/.test(await page.textContent(".auslesen")) && !!(await page.$("[data-zeile='name']")));
+  await page.click("#s-uebernehmen-btn");
+  await page.waitForTimeout(400);
+  check("Schild: neuer Hofladen übernimmt Name und Zeiten ins Formular", /#\/neu/.test(await page.evaluate(() => location.hash)) && (await page.inputValue("#f-name")) === "Hofladen Müller" && (await page.$$eval(".oeffnungszeit-zeile", (z) => z.length)) === 11);
+
+  await gehe("#/hofladen/sc1/schild");
+  const leeresBild = await page.evaluate(() => {
+    const c = document.createElement("canvas");
+    c.width = 600; c.height = 300;
+    const g = c.getContext("2d");
+    g.fillStyle = "#fff"; g.fillRect(0, 0, 600, 300);
+    return c.toDataURL("image/png").split(",")[1];
+  });
+  await page.setInputFiles("#s-datei", { name: "leer.png", mimeType: "image/png", buffer: Buffer.from(leeresBild, "base64") });
+  await page.waitForSelector("#s-leer, .hinweis-leiste.fehler", { timeout: 60000 });
+  check("Schild: Foto ohne Text zeigt Hinweis und deaktiviert die Übernahme", /kein Text erkannt/.test(await page.textContent("#s-leer")) && (await page.isDisabled("#s-uebernehmen-btn")));
+  await page.fill("#s-text", "<img src=x onerror=window.__xss2=1> Mo 8-12");
+  await page.click("#s-neu-btn");
+  check("Schild: Text wird nicht als HTML ausgewertet", !(await page.evaluate(() => window.__xss2)) && (await page.$$(".auslesen img[src='x']")).length === 0);
 
   // Grosse Schrift (Dynamic Type simuliert): nichts läuft seitlich über den Rand.
   await setzeTesthof();

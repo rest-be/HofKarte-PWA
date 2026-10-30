@@ -19,7 +19,7 @@
  * Vorgehensplan und im Startbild in index.html (`.splash-version`)
  * nachziehen; der Smoke-Test prüft die Übereinstimmung.
  */
-export const APP_VERSION = "2.1.0-dev.3";
+export const APP_VERSION = "2.1.0-dev.4";
 
 /**
  * Release Notes (neueste zuerst), angezeigt auf dem Einrichtungsbildschirm
@@ -27,6 +27,14 @@ export const APP_VERSION = "2.1.0-dev.3";
  * ergänzen (und die Tabelle im README nachziehen).
  */
 export const RELEASE_NOTES = [
+  {
+    version: "2.1.0-dev.4",
+    datum: "2026-10-30",
+    punkte: [
+      "Neu: «Schild lesen». Ein Foto vom Hofladen-Schild wird direkt auf dem Gerät ausgewertet (ohne KI, ohne Upload). Zu finden unter «Erfassen» → «Schild lesen» (neuer Hofladen) und im Menü (⋯) eines Hofladens (ergänzen).",
+      "Der Vergleich funktioniert wie bei «Angaben ergänzen»: Lücken sind vorgewählt, Abweichungen nie; Herkunft «Schild (Foto)». Der erkannte Text ist sichtbar und lässt sich korrigieren.",
+    ],
+  },
   {
     version: "2.1.0-dev.3",
     datum: "2026-10-30",

@@ -21,7 +21,7 @@
  * diese liegen ausschliesslich in IndexedDB (siehe src/storage.js).
  */
 
-const CACHE_VERSION = "hofkarte-pwa-v36";
+const CACHE_VERSION = "hofkarte-pwa-v37";
 
 /**
  * Eigener Cache für die Texterkennung (OCR, vendor/tesseract*): rund 10 MB,
@@ -62,6 +62,8 @@ const APP_SHELL_DATEIEN = [
   "./src/leerzustand.js",
   "./src/sonderzeiten.js",
   "./src/zeittext.js",
+  "./src/schildtext.js",
+  "./src/ocr.js",
   "./src/bilder.js",
   "./src/views/setup.js",
   "./src/views/list.js",
@@ -72,6 +74,7 @@ const APP_SHELL_DATEIEN = [
   "./src/views/finden.js",
   "./src/views/erfassen.js",
   "./src/views/auslesen.js",
+  "./src/views/schild.js",
   "./src/views/map.js",
   // Drittbibliotheken (lokal, siehe vendor/README.md)
   "./vendor/home-assistant-js-websocket/auth.js",
