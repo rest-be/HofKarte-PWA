@@ -19,7 +19,7 @@
  * Vorgehensplan und im Startbild in index.html (`.splash-version`)
  * nachziehen; der Smoke-Test prüft die Übereinstimmung.
  */
-export const APP_VERSION = "2.1.0-dev.4";
+export const APP_VERSION = "2.1.0-rc.1";
 
 /**
  * Release Notes (neueste zuerst), angezeigt auf dem Einrichtungsbildschirm
@@ -27,6 +27,14 @@ export const APP_VERSION = "2.1.0-dev.4";
  * ergänzen (und die Tabelle im README nachziehen).
  */
 export const RELEASE_NOTES = [
+  {
+    version: "2.1.0-rc.1",
+    datum: "2026-10-30",
+    punkte: [
+      "Release Candidate für 2.1.0: «Schild lesen» (Foto auswerten, ohne KI und ohne Upload), Öffnungszeiten schneller erfassen (Vorlagen, Kopieren, Texteingabe) und Sonderöffnungszeiten bearbeiten.",
+      "Neu in der Dokumentation: Release Notes 2.1.0, Benutzerhandbuch und Changelog ergänzt.",
+    ],
+  },
   {
     version: "2.1.0-dev.4",
     datum: "2026-10-30",

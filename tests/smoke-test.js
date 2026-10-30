@@ -1865,16 +1865,21 @@ export async function fuehreSmokeTestsAus(page, baseUrl) {
     const a = m.leseSchildtext("Hofladen Müller\nÖffnungszeiten\nMo-Fr 8.00-12.00 / 14.00-18.00\nSa 8.00-12.00 So geschlossen\nDorfstrasse 12\n3000 Bern\nTel. 031 123 45 67\ninfo@hof-mueller.ch www.hof-mueller.ch\nEier, Käse, Honig · TWINT und Bargeld", ["de"]);
     const f = m.leseSchildtext("Ferme Dupont\nlun-ven 8h-12h 14h-18h\nRoute de Lausanne 5, 1700 Fribourg\n+41 79 123 45 67\nOeufs, fromage, miel", ["fr"]);
     const leer = m.leseSchildtext("", ["de"]);
+    const fremd = m.leseSchildtext("Mo-Fr 8-12", ["fr"]).daten.oeffnungszeiten.length;
+    const gleich = m.leseSchildtext("Di 8-12", ["fr"]).daten.oeffnungszeiten[0].wochentag;
     return {
       de: { ...a.daten, oeffnungszeiten: a.daten.oeffnungszeiten.length, ge: a.hinweise.geschlossen, q: [...new Set(a.quellen.map((x) => x.quelle))].join() },
       fr: { name: f.daten.name, adresse: f.daten.adresse, ort: f.daten.ort, tel: f.daten.mobilnummer, z: f.daten.oeffnungszeiten.length, ang: f.daten.angebote },
       leer: Object.keys(leer.daten).length,
+      fremd,
+      gleich,
       tel: [m.normalisiereTelefon("031 123 45 67"), m.normalisiereTelefon("+41 (0)31 123 45 67"), m.normalisiereTelefon("0041 79 123 45 67"), m.normalisiereTelefon("12345"), m.normalisiereTelefon("+49 30 123456")],
       keinHtml: m.leseSchildtext("<b>Hof</b> Mo 8-12", ["de"]).daten.name,
     };
   });
   check(`Schildtext: Deutsch (Name, Adresse, Telefon, E-Mail, Web, Zeiten, Angebote, Zahlung) (${JSON.stringify(st.de).slice(0, 80)}…)`, st.de.name === "Hofladen Müller" && st.de.adresse === "Dorfstrasse 12" && st.de.plz === "3000" && st.de.ort === "Bern" && st.de.mobilnummer === "031 123 45 67" && st.de.email === "info@hof-mueller.ch" && st.de.website === "https://www.hof-mueller.ch" && st.de.oeffnungszeiten === 11 && JSON.stringify(st.de.ge) === "[7]" && JSON.stringify(st.de.angebote) === JSON.stringify(["Eier", "Käse", "Honig"].sort((x, y) => ["Eier", "Kartoffeln", "Käse", "Honig"].indexOf(x) - ["Eier", "Kartoffeln", "Käse", "Honig"].indexOf(y))) && JSON.stringify(st.de.zahlungsarten) === JSON.stringify(["TWINT", "Bargeld"]) && st.de.q === "schild");
   check("Schildtext: Französisch (Name, Adresse, Telefon +41, Zeiten, Angebote)", st.fr.name === "Ferme Dupont" && st.fr.adresse === "Route de Lausanne 5" && st.fr.ort === "Fribourg" && st.fr.tel === "+41 79 123 45 67" && st.fr.z === 10 && st.fr.ang.length === 3);
+  check("Schildtext: deutsches Schild bei gewählter Sprache Französisch wird trotzdem gelesen; bei Gleichstand gilt die gewählte Sprache", st.fremd === 5 && st.gleich === 7);
   check("Schildtext: leerer Text ergibt nichts; Telefonnummern nur im Schweizer Format", st.leer === 0 && JSON.stringify(st.tel) === JSON.stringify(["031 123 45 67", "+41 31 123 45 67", "+41 79 123 45 67", null, null]));
 
   const schildBild = await page.evaluate(() => {
@@ -1965,7 +1970,7 @@ export async function fuehreSmokeTestsAus(page, baseUrl) {
   await setzeTesthof();
   await page.evaluate(() => document.documentElement.style.setProperty("font-size", "28px", "important"));
   const ueberlaeufe = [];
-  for (const route of ["#/", "#/hofladen/i1", "#/hofladen/i1/bearbeiten", "#/einstellungen", "#/erfassen", "#/erfassen/vorort", "#/erfassen/webseite"]) {
+  for (const route of ["#/", "#/hofladen/i1", "#/hofladen/i1/bearbeiten", "#/einstellungen", "#/erfassen", "#/erfassen/vorort", "#/erfassen/webseite", "#/erfassen/schild", "#/hofladen/i1/schild"]) {
     await gehe(route);
     const ueber = await page.evaluate(() => document.documentElement.scrollWidth > document.documentElement.clientWidth + 1);
     if (ueber) ueberlaeufe.push(route);

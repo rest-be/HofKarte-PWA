@@ -21,7 +21,7 @@ Leitplanken unverändert (siehe `CONTRIBUTING.md`): bundlerfrei, keine CDN-Aufru
 | 2 | dev.2 | **Zeiten schneller:** Vorlagen («Mo–Fr 8–12 / 14–18», «Mo–Sa 8–18», «Täglich 7–20»), «Wie Vortag», «Auf alle Wochentage kopieren», Zeittext-Parser (`src/zeittext.js`, DE/FR/IT/EN, ohne DOM, testbar). Der Parser dient auch der OCR. |
 | 3 | dev.3 | **OCR-Grundlage:** Tesseract.js lokal unter `vendor/tesseract*/` (Modul `src/ocr.js`) (Worker, Kern, Sprachdaten DE/FR/IT/EN), Laden erst bei der ersten Nutzung, Cache für Offline, Vorverarbeitung des Fotos (Verkleinern, Graustufen), Fortschrittsanzeige, Abbruch, Test mit einem erzeugten Schild-Bild. |
 | 4 | dev.4 (umgesetzt) | **Schild lesen:** «Schild fotografieren» in «Angaben ergänzen» und in «Erfassen» (Quelle neben Webseite und OpenStreetMap). Textanalyse (`src/schildtext.js`): Name, Telefon, E-Mail, Webseite, Öffnungszeiten, Adresse/PLZ/Ort, Zahlungsarten und Angebote aus bekannten Wörtern. Vergleichstabelle, Herkunft «Schild (Foto)» pro Feld. |
-| 5 | dev.5 → rc.1 | Texte FR/IT/EN, Zugänglichkeit, Tests, Benutzerhandbuch, CHANGELOG, Release Notes, SECURITY (Datenschutzaussage OCR), Version. Danach `2.1.0-rc.1`, nach Abnahme `2.1.0`. |
+| 5 (umgesetzt) | dev.5 → rc.1 | Texte FR/IT/EN, Zugänglichkeit, Tests, Benutzerhandbuch, CHANGELOG, Release Notes, SECURITY (Datenschutzaussage OCR), Version. Danach `2.1.0-rc.1`, nach Abnahme `2.1.0`. |
 
 ## 3. Technische Entscheide und Risiken
 

@@ -1,6 +1,6 @@
 # HofKarte-PWA
 
-**Version: 2.1.0-dev.4** – siehe Abschnitt [Version](#version) unten für die
+**Version: 2.1.0-rc.1** – siehe Abschnitt [Version](#version) unten für die
 installierte Version auf einem konkreten Gerät.
 
 Progressive Web App für HofKarte – ein reiner, zustandsloser Client für die
@@ -9,13 +9,16 @@ Hofläden ansehen, auf der Karte finden, vor Ort erfassen, ergänzen und
 bearbeiten – auf dem Smartphone wie eine App, in vier Sprachen
 (Deutsch, Français, Italiano, English).
 
-> **Status: Release `2.0.0`.** Funktional abgeschlossen und automatisiert
-> getestet (305 Smoke-Tests). Auf einem echten iPhone sind Dynamic Type,
-> VoiceOver, Teilen-Dialog, Apple-Karten-Link und Startbild nur automatisiert,
-> nicht von Hand geprüft (siehe «Bekannte Einschränkungen»). Voraussetzung:
-> HofKarte-HA ab 2026.10.1, für den Schalter «24h-Automat» ab 2026.10.2.
-> Die Übersicht der Änderungen steht in [`CHANGELOG.md`](CHANGELOG.md) und
-> [`RELEASE_NOTES_2.0.0.md`](RELEASE_NOTES_2.0.0.md).
+> **Status: Release Candidate `2.1.0-rc.1`** (aufbauend auf dem Release
+> `2.0.0`). Neu: Sonderöffnungszeiten bearbeiten, Öffnungszeiten schneller
+> erfassen und «Schild lesen» (Texterkennung im Browser, ohne KI). Automatisiert
+> getestet (367 Smoke-Tests); «Schild lesen» wurde auf einem iPhone
+> ausprobiert. Dynamic Type, VoiceOver, Teilen-Dialog, Apple-Karten-Link und
+> Startbild sind nur automatisiert, nicht von Hand geprüft (siehe «Bekannte
+> Einschränkungen»). Voraussetzung unverändert: HofKarte-HA ab 2026.10.1, für
+> den Schalter «24h-Automat» ab 2026.10.2. Die Übersicht der Änderungen steht
+> in [`CHANGELOG.md`](CHANGELOG.md) und
+> [`RELEASE_NOTES_2.1.0.md`](RELEASE_NOTES_2.1.0.md).
 
 ## Dokumentation
 
@@ -23,13 +26,14 @@ bearbeiten – auf dem Smartphone wie eine App, in vier Sprachen
 |---|---|
 | [`docs/benutzerhandbuch.md`](docs/benutzerhandbuch.md) | Bedienung für Endanwender:innen (Einrichten, Ansehen, Erfassen, Einstellungen, Fehlerbehebung) |
 | [`CHANGELOG.md`](CHANGELOG.md) | Alle Änderungen je Version |
-| [`RELEASE_NOTES_2.0.0.md`](RELEASE_NOTES_2.0.0.md) | Überblick über das Release 2.0.0 |
+| [`RELEASE_NOTES_2.1.0.md`](RELEASE_NOTES_2.1.0.md), [`RELEASE_NOTES_2.0.0.md`](RELEASE_NOTES_2.0.0.md) | Überblick über die Releases 2.1.0 und 2.0.0 |
+| [`docs/umsetzungsplan-2.1.md`](docs/umsetzungsplan-2.1.md) | Entscheide und Phasen von 2.1.0 |
 | [`SECURITY.md`](SECURITY.md) | Sicherheitsmodell, Datenschutz, Meldeweg |
 | [`CONTRIBUTING.md`](CONTRIBUTING.md) | Entwicklung, Tests, Versionierung, Release-Ablauf |
 | [`docs/gui-umsetzungsplan.md`](docs/gui-umsetzungsplan.md), [`docs/gui-inventar.md`](docs/gui-inventar.md) | Entscheide und Bestandsaufnahme der Überarbeitung 2.0 |
 | [`tests/README.md`](tests/README.md) | Testaufbau |
 
-## Funktionsumfang (2.0.0)
+## Funktionsumfang (2.1.0)
 
 - **Hofläden ansehen:** Liste mit Suche, Filter (In der Nähe, Geöffnet,
   Unvollständig, Ohne Foto) und Sortierung; Karte mit Suche, Vorschau und
@@ -38,12 +42,21 @@ bearbeiten – auf dem Smartphone wie eine App, in vier Sprachen
 - **Route:** Google Maps oder Apple Karten, wählbar in den Einstellungen
   (Standard: Apple Karten auf iPhone/iPad, sonst Google Maps). Ein einziger
   Route-Knopf überall.
-- **Erfassen:** Tab «Erfassen» mit drei Wegen – vor Ort (Standort auf Tipp,
-  Schnellerfassung mit Foto), von der Webseite, von Hand; «Hofladen finden»
+- **Erfassen:** Tab «Erfassen» mit vier Wegen – vor Ort (Standort auf Tipp,
+  Schnellerfassung mit Foto), von der Webseite, vom Schild, von Hand; «Hofladen finden»
   und «Angaben ergänzen» (Webseite, OpenStreetMap, optional KI).
+- **Schild lesen (2.1):** Foto vom Hofladen-Schild aufnehmen oder wählen; der
+  Text wird im Browser erkannt (tesseract.js, ohne KI, ohne Upload, nach dem
+  ersten Laden auch offline) und wie bei «Angaben ergänzen» verglichen
+  (Aktuell · Gefunden · Status, Lücken vorgewählt, Abweichungen nie, Herkunft
+  «Schild (Foto)»). Der erkannte Text ist korrigierbar.
 - **Bearbeiten:** sieben Gruppen wie im HA-Panel, Chips, Zahlungsarten als
   Schalter, Wochentage-Editor, 24h-Automat, Adresse aus Koordinaten,
   Ungespeichert-Anzeige. Gespeichert wird nur im Editor.
+- **Zeiten schneller erfassen (2.1):** Vorlagen, «Wie Vortag», «Auf alle Tage
+  kopieren» und Eingabe als Text («Mo-Fr 8-12, 14-18; Sa 8-12») in vier
+  Sprachen; **Sonderöffnungszeiten** (Ferien, Feiertage) lassen sich im Editor
+  hinzufügen, ändern und löschen.
 - **Offline:** Änderungen werden lokal vorgemerkt und synchronisiert, sobald
   die Verbindung wieder besteht; bei gleichzeitiger Bearbeitung durch zwei
   Geräte entscheidet eine Konfliktansicht.
@@ -137,7 +150,7 @@ package.json            nur für die Test-Tooling-Installation, kein Build-Schri
 ## Tests
 
 Playwright-Smoke-Tests gegen eine Kopie der App mit einem Stub für die
-Home-Assistant-Verbindung (aktuell **305 Tests**, davon ein Sprachtest ohne
+Home-Assistant-Verbindung (aktuell **367 Tests**, davon ein Sprachtest ohne
 Browser). Lokal:
 
 ```bash
@@ -169,6 +182,7 @@ und der Versionsangabe im Startbild (`index.html`, vom Test gegen
 
 | Version | Datum | Wesentliche Änderungen |
 |---|---|---|
+| 2.1.0-rc.1 | 2026-10-30 | Release Candidate: Funktionsstand wie dev.4, Dokumentation und Tests vervollständigt. |
 | 2.1.0-dev.4 | 2026-10-30 | Schild lesen: Foto auswerten, Vergleich, Übernahme (Phase 4 von 2.1.0). |
 | 2.1.0-dev.3 | 2026-10-30 | OCR-Grundlage: Texterkennung im Browser (tesseract.js lokal, Offline-Cache), noch ohne Oberfläche (Phase 3 von 2.1.0). |
 | 2.1.0-dev.2 | 2026-10-30 | Öffnungszeiten schneller erfassen: Vorlagen, «Wie Vortag», auf alle Tage kopieren, Texteingabe (Phase 2 von 2.1.0). |
@@ -467,14 +481,17 @@ bleibt erhalten).
   OpenStreetMap). OpenStreetMap wird am gespeicherten Standort (300 m) durchsucht, der
   eigene Standort wird nicht abgefragt.
 
-## Bekannte Einschränkungen (2.0.0)
+## Bekannte Einschränkungen (2.1.0)
 
 - **Nicht auf einem echten Gerät abgenommen:** Dynamic Type, VoiceOver,
   Teilen-Dialog, Apple-Karten-Link und Startbild (Safe Areas) sind nur
   automatisiert geprüft. Checkliste siehe Abschnitt «Zugänglichkeit und
   Geräte-Test».
-- **Sonderöffnungszeiten** werden in der PWA angezeigt, aber nicht
-  bearbeitet – dafür das Panel in Home Assistant verwenden.
+- **Schild lesen** ist Texterkennung, keine Gewähr: Handschrift, stark
+  gestaltete Schilder, Spiegelungen und schräge Aufnahmen werden schlecht
+  gelesen. Deshalb nichts ohne Prüfung übernehmen; der erkannte Text ist
+  korrigierbar. Beim ersten Gebrauch werden rund 6 MB geladen (Internet nötig).
+  Das Foto wird nicht als Bild des Hofladens übernommen.
 - **Fotos** hinzufügen/entfernen erfordert eine aktive Verbindung zu Home
   Assistant; offline lässt sich das Foto später ergänzen.
 - **Versionskonflikte:** Löschen prüft keine Version (ein Löschen gewinnt

@@ -11,8 +11,19 @@ Zuordnung zur Integration HofKarte-HA steht im README.
 
 ## [Unreleased]
 
-Geplant für 2.1.0: Foto vom Hofladen-Schild auslesen, Öffnungszeiten schneller
-erfassen, Sonderöffnungszeiten bearbeiten (siehe `docs/umsetzungsplan-2.1.md`).
+Für 2.1.0 (Release Candidate `rc.1`): Foto vom Hofladen-Schild auslesen,
+Öffnungszeiten schneller erfassen, Sonderöffnungszeiten bearbeiten (siehe
+`docs/umsetzungsplan-2.1.md`, `RELEASE_NOTES_2.1.0.md`).
+
+### 2.1.0-rc.1 - 2026-10-30
+
+Release Candidate. Funktionsstand wie `2.1.0-dev.4` (Sonderöffnungszeiten
+bearbeiten, Öffnungszeiten schneller erfassen, Schild lesen); Dokumentation
+(README, Benutzerhandbuch, Release Notes 2.1.0, Sicherheit, Tests) und
+Plan abgeschlossen. «Schild lesen» wurde auf einem iPhone ausprobiert.
+Zusätzlich: Ein deutsches Schild wird auch gelesen, wenn eine andere Sprache
+gewählt ist (Wochentage werden in allen vier Sprachen versucht; bei
+Gleichstand gilt die gewählte Sprache).
 
 ### 2.1.0-dev.4 - 2026-10-30
 

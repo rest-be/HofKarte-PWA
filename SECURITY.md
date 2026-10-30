@@ -52,7 +52,7 @@ ausschliesslich mit deiner eigenen Instanz.
   erlaubt ausschliesslich das Ausführen von WebAssembly (Texterkennung), kein
   `eval` und keine Inline-Skripte. In Chromium wäre es nicht nötig (der Worker
   unterliegt der Seiten-CSP nicht); es steht als Vorsicht für Safari/iOS da und
-  wird nach der Abnahme auf dem iPhone überprüft. Der OCR-Worker startet aus
+  wird nach der Abnahme auf dem iPhone überprüft. Auf einem iPhone läuft «Schild lesen» (mit dieser Einstellung); ob es auch ohne `wasm-unsafe-eval` liefe, ist nicht geprüft, deshalb bleibt es. Der OCR-Worker startet aus
   einer Datei (`worker-src 'self'`), nicht aus einem `blob:`-URL.
 - Texte, die von Webseiten oder von einer KI stammen, gelten als unvertrauenswürdig:
   Sie werden maskiert, nur als Vorschlag angezeigt und nie ohne ausdrückliche

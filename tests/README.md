@@ -28,6 +28,13 @@ Verbindungsversuch bewusst immer einen `connection_lost`-Fehler.
 
 ## Abdeckung
 
+- **2.1.0:** Sonderöffnungszeiten im Editor (Einheiten- und Oberflächentests,
+  Validierung, leere Liste wird gesendet), Zeittext-Parser (DE/FR/IT/EN) und
+  Schnellerfassung (Vorlagen, «Wie Vortag», Kopieren, Texteingabe, XSS),
+  OCR-Grundlage (liest ein im Test gezeichnetes Schild in Chromium, Abbruch,
+  keine Anfrage an fremde Server) und «Schild lesen» (Vergleich, Vorauswahl,
+  Neu auswerten, Übernahme in Editor und neues Formular).
+
 - Grundrendering/Routing (Einrichtungsbildschirm beim ersten Start).
 - **Phase 8a** (Offline-Schreib-Outbox): Hofladen offline anlegen/
   ändern/löschen, Sync-Status-Anzeige, erfolgreicher Sync inkl.
@@ -54,7 +61,7 @@ sonst schlägt die Konsolenfehler-Prüfung bei einem 404 an.
 
 ## Stand (2.0.0)
 
-305 Tests. Zusätzlich zur oben genannten Abdeckung prüfen sie die
+367 Tests. Zusätzlich zur oben genannten Abdeckung prüfen sie die
 Überarbeitung 2.0: Erfassen (Vor Ort, Schnellerfassung, Webseite), «Angaben
 ergänzen», Filter und Suche in Liste und Karte, Leerzustände, Teilen (mit
 simuliertem `navigator.share`), Navigationsdienst (Standard je Gerät, iPhone-

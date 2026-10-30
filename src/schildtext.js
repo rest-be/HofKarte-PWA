@@ -118,8 +118,10 @@ export function leseSchildtext(text, sprachen = ["de"]) {
     }
   }
 
-  // Öffnungszeiten: je Sprache lesen, das ergiebigste Ergebnis gilt.
-  const codes = (sprachen && sprachen.length ? sprachen : ["de"]).map((s) => String(s).slice(0, 2));
+  // Öffnungszeiten: gewählte Sprachen zuerst, dann die übrigen (ein deutsches Schild bei
+  // französischer Oberfläche); das ergiebigste Ergebnis gilt, bei Gleichstand die gewählte Sprache.
+  const gewaehlt = (sprachen && sprachen.length ? sprachen : ["de"]).map((s) => String(s).slice(0, 2));
+  const codes = [...new Set([...gewaehlt, "de", "fr", "it", "en"])];
   let beste = null;
   for (const c of codes) {
     const r = parseZeittext(rest, c);
