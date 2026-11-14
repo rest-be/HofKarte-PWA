@@ -1,6 +1,6 @@
 # HofKarte-PWA
 
-**Version: 2.1.0-rc.1** – siehe Abschnitt [Version](#version) unten für die
+**Version: 2.1.0** – siehe Abschnitt [Version](#version) unten für die
 installierte Version auf einem konkreten Gerät.
 
 Progressive Web App für HofKarte – ein reiner, zustandsloser Client für die
@@ -9,8 +9,7 @@ Hofläden ansehen, auf der Karte finden, vor Ort erfassen, ergänzen und
 bearbeiten – auf dem Smartphone wie eine App, in vier Sprachen
 (Deutsch, Français, Italiano, English).
 
-> **Status: Release Candidate `2.1.0-rc.1`** (aufbauend auf dem Release
-> `2.0.0`). Neu: Sonderöffnungszeiten bearbeiten, Öffnungszeiten schneller
+> **Status: Release `2.1.0`** (aufbauend auf `2.0.0`). Neu: Sonderöffnungszeiten bearbeiten, Öffnungszeiten schneller
 > erfassen und «Schild lesen» (Texterkennung im Browser, ohne KI). Automatisiert
 > getestet (367 Smoke-Tests); «Schild lesen» wurde auf einem iPhone
 > ausprobiert. Dynamic Type, VoiceOver, Teilen-Dialog, Apple-Karten-Link und
@@ -182,6 +181,7 @@ und der Versionsangabe im Startbild (`index.html`, vom Test gegen
 
 | Version | Datum | Wesentliche Änderungen |
 |---|---|---|
+| 2.1.0 | 2026-11-14 | Produktiver Release: Funktionsstand von 2.1.0-rc.1, keine funktionalen Änderungen. |
 | 2.1.0-rc.1 | 2026-10-30 | Release Candidate: Funktionsstand wie dev.4, Dokumentation und Tests vervollständigt. |
 | 2.1.0-dev.4 | 2026-10-30 | Schild lesen: Foto auswerten, Vergleich, Übernahme (Phase 4 von 2.1.0). |
 | 2.1.0-dev.3 | 2026-10-30 | OCR-Grundlage: Texterkennung im Browser (tesseract.js lokal, Offline-Cache), noch ohne Oberfläche (Phase 3 von 2.1.0). |

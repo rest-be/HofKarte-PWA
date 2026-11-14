@@ -1,4 +1,4 @@
-# HofKarte-PWA 2.1.0 (Release Candidate)
+# HofKarte-PWA 2.1.0
 
 Drei Neuerungen für schnelleres und vollständigeres Erfassen. Voraussetzung
 unverändert: **HofKarte-HA ab 2026.10.1**, für den Schalter «24h-Automat» ab

@@ -21,7 +21,7 @@
  * diese liegen ausschliesslich in IndexedDB (siehe src/storage.js).
  */
 
-const CACHE_VERSION = "hofkarte-pwa-v38";
+const CACHE_VERSION = "hofkarte-pwa-v39";
 
 /**
  * Eigener Cache für die Texterkennung (OCR, vendor/tesseract*): rund 10 MB,

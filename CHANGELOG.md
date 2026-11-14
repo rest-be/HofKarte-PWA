@@ -11,9 +11,18 @@ Zuordnung zur Integration HofKarte-HA steht im README.
 
 ## [Unreleased]
 
-Für 2.1.0 (Release Candidate `rc.1`): Foto vom Hofladen-Schild auslesen,
-Öffnungszeiten schneller erfassen, Sonderöffnungszeiten bearbeiten (siehe
-`docs/umsetzungsplan-2.1.md`, `RELEASE_NOTES_2.1.0.md`).
+Noch keine Änderungen seit `2.1.0`.
+
+## [2.1.0] - 2026-11-14
+
+Produktiver Release. Gegenüber `2.1.0-rc.1` ändert sich nur die Versionsnummer
+(Startbild, `version.js`, Service Worker, Dokumentation). Neu in 2.1.0 gegenüber
+2.0.0: **Schild lesen** (Texterkennung im Browser, ohne KI und ohne Upload),
+**Öffnungszeiten schneller erfassen** (Vorlagen, «Wie Vortag», Kopieren,
+Texteingabe in vier Sprachen) und **Sonderöffnungszeiten bearbeiten**. Voraussetzung
+unverändert: HofKarte-HA ab 2026.10.1 (24h-Automat ab 2026.10.2). Überblick:
+`RELEASE_NOTES_2.1.0.md`; Entscheide und Phasen: `docs/umsetzungsplan-2.1.md`.
+Die Zwischenstände stehen unten.
 
 ### 2.1.0-rc.1 - 2026-10-30
 

@@ -19,7 +19,7 @@
  * Vorgehensplan und im Startbild in index.html (`.splash-version`)
  * nachziehen; der Smoke-Test prüft die Übereinstimmung.
  */
-export const APP_VERSION = "2.1.0-rc.1";
+export const APP_VERSION = "2.1.0";
 
 /**
  * Release Notes (neueste zuerst), angezeigt auf dem Einrichtungsbildschirm
@@ -27,6 +27,15 @@ export const APP_VERSION = "2.1.0-rc.1";
  * ergänzen (und die Tabelle im README nachziehen).
  */
 export const RELEASE_NOTES = [
+  {
+    version: "2.1.0",
+    datum: "2026-11-14",
+    punkte: [
+      "Neu: «Schild lesen». Foto vom Hofladen-Schild auswerten, direkt auf dem Gerät, ohne KI und ohne Upload; Vergleich wie bei «Angaben ergänzen».",
+      "Öffnungszeiten schneller erfassen: Vorlagen, «Wie Vortag», auf alle Tage kopieren und Eingabe als Text.",
+      "Sonderöffnungszeiten (Ferien, Feiertage) lassen sich jetzt im Editor bearbeiten.",
+    ],
+  },
   {
     version: "2.1.0-rc.1",
     datum: "2026-10-30",
