@@ -977,7 +977,7 @@ export async function fuehreSmokeTestsAus(page, baseUrl) {
     };
   });
   await gehe("#/erfassen");
-  check("Erfassen: Einstieg zeigt drei Wege", (await page.$$(".weg-karte")).length === 3 && !!(await page.$("#weg-vorort")) && !!(await page.$("#weg-webseite")) && !!(await page.$("#weg-hand")));
+  check("Erfassen: Einstieg zeigt vier Wege", (await page.$$(".weg-karte")).length === 4 && !!(await page.$("#weg-vorort")) && !!(await page.$("#weg-webseite")) && !!(await page.$("#weg-schild")) && !!(await page.$("#weg-hand")));
   check("Erfassen: Tab heisst «Erfassen» und ist aktiv", (await page.$eval("[data-tab='erfassen']", (el) => el.textContent.trim() === "Erfassen" && el.getAttribute("aria-current") === "page")));
   if (process.env.SCREENSHOT_DIR) { await page.setViewportSize({ width: 390, height: 844 }); await page.screenshot({ path: `${process.env.SCREENSHOT_DIR}/e1.png`, fullPage: true }); await page.setViewportSize({ width: 1280, height: 720 }); }
   check("Erfassen: «Erweiterte Suche» bleibt erreichbar", (await page.$eval("#erweiterte-suche-link", (el) => el.getAttribute("href"))) === "#/finden");
@@ -1635,11 +1635,342 @@ export async function fuehreSmokeTestsAus(page, baseUrl) {
   await page.click("#navigation-zuruecksetzen");
   check("Navigation: Zurücksetzen löscht die Wahl und zeigt wieder den Standard", (await page.evaluate(() => localStorage.getItem("hofkarte-navigation"))) === null && (await page.inputValue("#f-navigation")) === "google");
 
+  // --- 2.1.0-dev.1: Sonderöffnungszeiten bearbeiten ---------------------------------
+  const sz = await page.evaluate(async () => {
+    const m = await import("/src/sonderzeiten.js");
+    return {
+      neu: m.neueSonderzeit("2026-07-01"),
+      leer: m.neueSonderzeit(""),
+      norm: m.normalisiereSonderzeit({ datum_von: "2026-07-01", datum_bis: "2026-07-05", geschlossen: false, beginn: "08:00:00", ende: "12:00:00", x: 1 }),
+      sort: m.sortiereSonderzeiten([{ datum_von: "2026-08-01" }, { datum_von: "2026-07-01" }]).map((x) => x.datum_von),
+      fehler: m.pruefeSonderzeiten([
+        { datum_von: "2026-07-10", datum_bis: "2026-07-01", geschlossen: true },
+        { datum_von: "", datum_bis: "2026-07-01", geschlossen: true },
+        { datum_von: "2026-12-24", datum_bis: "2026-12-24", geschlossen: false, beginn: "08:00", ende: "08:00" },
+        { datum_von: "2026-12-25", datum_bis: "2026-12-25", geschlossen: false, beginn: "", ende: "25:00" },
+        { datum_von: "2026-12-26", datum_bis: "2026-12-26", geschlossen: false, beginn: "22:00", ende: "02:00" },
+      ]).map((f) => `${f.index}:${f.feld}:${f.code}`),
+      ueber: m.ueberschneidungen([{ datum_von: "2026-07-01", datum_bis: "2026-07-10" }, { datum_von: "2026-07-10", datum_bis: "2026-07-20" }, { datum_von: "2026-08-01", datum_bis: "2026-08-02" }]),
+      speichern: m.fuerSpeichern([{ datum_von: "2026-08-01", datum_bis: "2026-08-02", geschlossen: false, beginn: "09:00", ende: "11:00" }, { datum_von: "2026-07-01", datum_bis: "2026-07-05", geschlossen: true, beginn: "08:00", ende: "09:00" }]),
+    };
+  });
+  check("Sonderzeiten: Standard ist «Geschlossen» mit heutigem Datum, ohne Zeiten", sz.neu.geschlossen === true && sz.neu.datum_von === "2026-07-01" && sz.neu.datum_bis === "2026-07-01" && sz.neu.beginn === null && sz.leer.datum_von === "");
+  check("Sonderzeiten: Übernahme kürzt Sekunden und verwirft Fremdfelder", JSON.stringify(sz.norm) === JSON.stringify({ datum_von: "2026-07-01", datum_bis: "2026-07-05", geschlossen: false, beginn: "08:00", ende: "12:00" }));
+  check("Sonderzeiten: nach Datum sortiert", sz.sort.join() === "2026-07-01,2026-08-01");
+  check(`Sonderzeiten: Prüfung erkennt Fehler, Nachtzeit 22–02 ist erlaubt (${sz.fehler.join(" | ")})`, sz.fehler.join(" | ") === "0:datum_bis:bis_vor_von | 1:datum_von:fehlt | 2:ende:ende_gleich_beginn | 3:beginn:fehlt | 3:ende:ungueltig");
+  check("Sonderzeiten: Überschneidung nur bei gemeinsamem Tag", JSON.stringify(sz.ueber) === JSON.stringify([[0, 1]]));
+  check("Sonderzeiten: Speicherformat sortiert und lässt Zeiten bei «Geschlossen» weg", JSON.stringify(sz.speichern) === JSON.stringify([{ datum_von: "2026-07-01", datum_bis: "2026-07-05", geschlossen: true }, { datum_von: "2026-08-01", datum_bis: "2026-08-02", geschlossen: false, beginn: "09:00", ende: "11:00" }]));
+
+  await page.evaluate(() => {
+    const a = window.hofkarteApp;
+    a.state.hoflaeden = [{ id: "sz1", version: 3, name: "Sonderhof", oeffnungszeiten: [{ wochentag: 1, beginn: "08:00", ende: "12:00" }], sonderoeffnungszeiten: [{ datum_von: "2026-07-10", datum_bis: "2026-07-20", geschlossen: true }], bilder: [], angebote: [], zahlungsarten: [] }];
+    window.__gespeichertSz = null;
+    a.speichereHofladen = async (d) => { window.__gespeichertSz = d; return { ...d }; };
+  });
+  await gehe("#/hofladen/sz1/bearbeiten");
+  await page.waitForTimeout(250);
+  await page.evaluate(() => { document.querySelector("#gruppe-oeffnungszeiten").open = true; });
+  check("Sonderzeiten: bestehende Sonderzeit erscheint im Editor, «Geschlossen» an, Zeiten verborgen", (await page.$$eval(".sonder-zeile", (z) => z.length)) === 1 && (await page.inputValue(".sz-von")) === "2026-07-10" && (await page.inputValue(".sz-bis")) === "2026-07-20" && (await page.getAttribute(".sz-zu", "aria-checked")) === "true" && (await page.$eval(".sonder-zeiten", (el) => el.hidden)));
+  const zuKlein = await page.$$eval(".sonder-zeile .sz-zu, .sonder-zeile input, #sonder-plus, [data-sz-remove]", (els) => els.filter((el) => { const r = el.getBoundingClientRect(); return r.width > 0 && (r.height < 43.5 || r.width < 43.5); }).map((el) => `${el.className || el.id} ${Math.round(el.getBoundingClientRect().width)}x${Math.round(el.getBoundingClientRect().height)}`));
+  check(`Sonderzeiten: Knöpfe und Felder sind mindestens 44px gross (${zuKlein.join(", ")})`, zuKlein.length === 0);
+  check("Sonderzeiten: Speichern ohne Änderung meldet nichts als geändert", !(await page.isVisible("#ungespeichert")));
+  await page.click("#sonder-plus");
+  check("Sonderzeiten: «+ Sonderzeit hinzufügen» legt eine geschlossene Zeile an, meldet Änderung und fokussiert «Von»", (await page.$$eval(".sonder-zeile", (z) => z.length)) === 2 && (await page.isVisible("#ungespeichert")) && (await page.evaluate(() => document.activeElement?.classList.contains("sz-von"))));
+  // Die neue Zeile hat das heutige Datum; auf einen Zeitraum nach der ersten setzen.
+  await page.fill(".sonder-zeile[data-index='1'] .sz-von", "2026-12-24");
+  await page.fill(".sonder-zeile[data-index='1'] .sz-bis", "2026-12-24");
+  await page.click(".sonder-zeile[data-index='1'] .sz-zu");
+  check("Sonderzeiten: «Geschlossen» aus zeigt Beginn/Ende mit Vorgabe 08:00–18:00 und behält den Fokus", (await page.getAttribute(".sonder-zeile[data-index='1'] .sz-zu", "aria-checked")) === "false" && (await page.inputValue(".sonder-zeile[data-index='1'] .sz-beginn")) === "08:00" && (await page.inputValue(".sonder-zeile[data-index='1'] .sz-ende")) === "18:00" && (await page.evaluate(() => document.activeElement?.classList.contains("sz-zu"))));
+  await page.fill(".sonder-zeile[data-index='1'] .sz-beginn", "09:00");
+  await page.fill(".sonder-zeile[data-index='1'] .sz-ende", "09:00");
+  await page.click("#speichern-btn");
+  await page.waitForTimeout(250);
+  check("Sonderzeiten: ungültig (Ende = Beginn) blockiert das Speichern, zeigt Meldung (role=alert) und markiert das Feld", (await page.evaluate(() => window.__gespeichertSz)) === null && /nicht gleich/.test(await page.textContent(".sz-fehler")) && (await page.getAttribute(".sonder-zeile[data-index='1'] .sz-ende", "aria-invalid")) === "true" && (await page.getAttribute(".sz-fehler", "role")) === "alert");
+  await page.fill(".sonder-zeile[data-index='1'] .sz-ende", "11:30");
+  await page.fill(".sonder-zeile[data-index='1'] .sz-bis", "2026-12-23");
+  await page.click("#speichern-btn");
+  await page.waitForTimeout(250);
+  check("Sonderzeiten: Enddatum vor Startdatum blockiert das Speichern", (await page.evaluate(() => window.__gespeichertSz)) === null && /Enddatum/.test(await page.textContent(".sz-fehler")));
+  await page.fill(".sonder-zeile[data-index='1'] .sz-bis", "2026-12-24");
+  await page.fill(".sonder-zeile[data-index='0'] .sz-bis", "2026-12-24");
+  await page.fill(".sonder-zeile[data-index='0'] .sz-bis", "2026-07-20");
+  await page.click("#speichern-btn");
+  await page.waitForTimeout(250);
+  const gespSz = await page.evaluate(() => window.__gespeichertSz);
+  check(`Sonderzeiten: Speichern sendet die sortierte Liste samt Wochenzeiten (${JSON.stringify(gespSz?.sonderoeffnungszeiten)})`, JSON.stringify(gespSz?.sonderoeffnungszeiten) === JSON.stringify([{ datum_von: "2026-07-10", datum_bis: "2026-07-20", geschlossen: true }, { datum_von: "2026-12-24", datum_bis: "2026-12-24", geschlossen: false, beginn: "09:00", ende: "11:30" }]) && gespSz?.oeffnungszeiten?.length === 1);
+
+  // Löschen bis die Liste leer ist: es wird eine leere Liste gesendet (sonst bliebe die letzte Sonderzeit bestehen).
+  await page.evaluate(() => { window.__gespeichertSz = null; });
+  await gehe("#/hofladen/sz1/bearbeiten");
+  await page.waitForTimeout(250);
+  await page.evaluate(() => { document.querySelector("#gruppe-oeffnungszeiten").open = true; });
+  await page.click("[data-sz-remove='0']");
+  check("Sonderzeiten: Entfernen der letzten Zeile zeigt «Keine Sonderöffnungszeiten», Fokus wandert auf «+ Sonderzeit hinzufügen»", /Keine Sonderöffnungszeiten/.test(await page.textContent("#sonderzeiten-liste")) && (await page.evaluate(() => document.activeElement?.id)) === "sonder-plus" && (await page.isVisible("#ungespeichert")));
+  await page.click("#speichern-btn");
+  await page.waitForTimeout(250);
+  check("Sonderzeiten: leere Liste wird mitgesendet", JSON.stringify((await page.evaluate(() => window.__gespeichertSz))?.sonderoeffnungszeiten) === "[]");
+
+  // Mit Überschneidung: Hinweis sichtbar, Speichern trotzdem möglich.
+  await page.evaluate(() => {
+    const a = window.hofkarteApp;
+    a.state.hoflaeden = [{ id: "sz2", version: 1, name: "Doppelhof", oeffnungszeiten: [], sonderoeffnungszeiten: [{ datum_von: "2026-07-01", datum_bis: "2026-07-10", geschlossen: true }, { datum_von: "2026-07-05", datum_bis: "2026-07-06", geschlossen: false, beginn: "09:00", ende: "10:00" }], bilder: [], angebote: [], zahlungsarten: [] }];
+    window.__gespeichertSz = null;
+  });
+  await gehe("#/hofladen/sz2/bearbeiten");
+  await page.waitForTimeout(250);
+  await page.evaluate(() => { document.querySelector("#gruppe-oeffnungszeiten").open = true; });
+  check("Sonderzeiten: Überschneidung zeigt Hinweis an beiden Zeilen", (await page.$$eval(".sz-warnung", (w) => w.length)) === 2);
+  await page.fill("#f-name", "Doppelhof 2");
+  await page.click("#speichern-btn");
+  await page.waitForTimeout(250);
+  check("Sonderzeiten: Überschneidung blockiert das Speichern nicht", (await page.evaluate(() => window.__gespeichertSz))?.sonderoeffnungszeiten?.length === 2);
+
+  // --- 2.1.0-dev.2: Öffnungszeiten schneller erfassen ---------------------------------
+  const zt = await page.evaluate(async () => {
+    const m = await import("/src/zeittext.js");
+    const kurz = (t, l) => { const r = m.parseZeittext(t, l); return r.zeiten.map((z) => `${z.wochentag}${z.beginn}-${z.ende}`).join(" ") + "|" + r.geschlossen.join(",") + "|" + r.ungelesen.join(","); };
+    const moFr = [1, 2, 3, 4, 5].map((d) => `${d}08:00-12:00 ${d}14:00-18:00`).join(" ");
+    return {
+      de: kurz("Mo-Fr 8-12, 14-18") === moFr + "||",
+      de2: kurz("Mo–Fr: 08:00–12:00 / 14:00–18:00 Uhr") === moFr + "||",
+      fr: kurz("lun au ven 8h-12h 14h-18h", "fr") === moFr + "||",
+      it: kurz("lun-ven 8.00-12.00 e 14.00-18.00", "it") === moFr + "||",
+      en: kurz("Mon-Fri 8-12, 14-18", "en") === moFr + "||",
+      zu: kurz("Sa 9-12, So geschlossen") === "609:00-12:00|7|",
+      liste: kurz("Mo, Mi, Fr 8:30 bis 11:30") === "108:30-11:30 308:30-11:30 508:30-11:30||",
+      umlauf: kurz("Sa-Mo 8-12") === "108:00-12:00 608:00-12:00 708:00-12:00||",
+      taeglich: m.parseZeittext("täglich 7-20").zeiten.length === 7,
+      zweiZeilen: kurz("Montag Ruhetag\nDienstag - Freitag 9-18 Uhr") === "209:00-18:00 309:00-18:00 409:00-18:00 509:00-18:00|1|",
+      zweideutigDo: kurz("Do 8-12", "de") === "408:00-12:00||" && kurz("Do 8-12", "it") === "708:00-12:00||",
+      unvollstaendig: m.parseZeittext("Mo 8-").ungelesen.length > 0 && m.parseZeittext("Mo 8-").zeiten.length === 0,
+      unsinn: m.parseZeittext("Hofladen").zeiten.length === 0 && m.parseZeittext("").zeiten.length === 0,
+      nacht: kurz("Mo 22-02") === "122:00-02:00||",
+      ungueltig: m.parseZeittext("Mo 25-30").zeiten.length === 0,
+      uhr: m.liesUhrzeit("8h30") === "08:30" && m.liesUhrzeit("24") === "00:00" && m.liesUhrzeit("8:75") === null,
+      vorlagen: m.VORLAGEN.map((v) => m.zeitenAusVorlage(v).length).join(","),
+    };
+  });
+  check(`Zeittext: Parser DE/FR/IT/EN, geschlossen, Liste, Umlauf, Nachtzeit (${JSON.stringify(Object.entries(zt).filter(([, v]) => v === false).map(([k]) => k))})`, Object.entries(zt).every(([k, v]) => k === "vorlagen" || v === true));
+  check("Zeittext: Vorlagen ergeben 10, 6 und 7 Zeilen", zt.vorlagen === "10,6,7");
+
+  await setzeTesthof();
+  await page.evaluate(() => {
+    const a = window.hofkarteApp;
+    a.state.hoflaeden = [{ id: "zt1", version: 1, name: "Zeitenhof", oeffnungszeiten: [{ wochentag: 1, beginn: "08:00", ende: "12:00" }], sonderoeffnungszeiten: [], bilder: [], angebote: [], zahlungsarten: [] }];
+  });
+  await gehe("#/hofladen/zt1/bearbeiten");
+  await page.waitForTimeout(250);
+  await page.evaluate(() => { document.querySelector("#gruppe-oeffnungszeiten").open = true; });
+  const anzahlZeilen = () => page.$$eval(".oeffnungszeit-zeile", (z) => z.length);
+  check("Zeiten: «Wie Vortag» nur bei leerem Tag nach einem Tag mit Zeiten", (await page.$$(".oz-vortag")).length === 1 && (await page.getAttribute(".oz-vortag", "data-vortag")) === "2");
+  await page.click(".oz-vortag[data-vortag='2']");
+  check("Zeiten: «Wie Vortag» übernimmt die Zeiten, Fokus auf dem neuen Beginn-Feld, kein Rückfragedialog", (await anzahlZeilen()) === 2 && (await page.inputValue(".oz-tag[data-tag='2'] .oz-beginn")) === "08:00" && (await page.evaluate(() => document.activeElement?.className)) === "oz-beginn");
+  page.once("dialog", (d) => d.accept());
+  await page.click(".oz-alle[data-alle='1']");
+  await page.waitForTimeout(150);
+  check("Zeiten: «Auf alle Tage kopieren» füllt alle 7 Tage", (await anzahlZeilen()) === 7);
+  const alleBtn = await page.$eval(".oz-alle", (el) => el.getBoundingClientRect().height);
+  check("Zeiten: Kopier-Schaltflächen mindestens 44px hoch", alleBtn >= 44);
+
+  await page.click("[data-vorlage='mo-fr-geteilt']").catch(() => {});
+  page.once("dialog", (d) => d.accept());
+  await page.click("[data-vorlage='mo-fr-geteilt']");
+  await page.waitForTimeout(150);
+  check("Zeiten: Vorlage «Mo–Fr 8–12 / 14–18» ersetzt alles (10 Zeilen, Sa/So geschlossen) und meldet das (role=status)", (await anzahlZeilen()) === 10 && (await page.$$eval(".oz-tag[data-tag='6'] .oeffnungszeit-zeile", (z) => z.length)) === 0 && /Vorlage/.test(await page.textContent("#zeiten-status")));
+  let frage = 0;
+  page.once("dialog", (d) => { frage++; d.dismiss(); });
+  await page.click("[data-vorlage='taeglich']");
+  await page.waitForTimeout(100);
+  check("Zeiten: Abbrechen der Rückfrage lässt die Zeiten unverändert", frage === 1 && (await anzahlZeilen()) === 10);
+
+  check("Zeiten: Textfeld ist zu Beginn zugeklappt (aria-expanded=false)", (await page.getAttribute("#zeittext-auf", "aria-expanded")) === "false" && !(await page.isVisible("#zeittext")));
+  await page.click("#zeittext-auf");
+  check("Zeiten: Textfeld klappt auf und erhält den Fokus", (await page.getAttribute("#zeittext-auf", "aria-expanded")) === "true" && (await page.evaluate(() => document.activeElement?.id)) === "zeittext" && (await page.isDisabled("#zeittext-ok")));
+  await page.fill("#zeittext", "Mo-Fr 9-12, 14-17; Sa 9-12; So zu");
+  await page.dispatchEvent("#zeittext", "input");
+  const vorschau = await page.$$eval("#zeittext-vorschau li", (l) => l.map((x) => x.textContent));
+  check(`Zeiten: Vorschau zeigt je Wochentag die gelesenen Zeiten (${vorschau.length} Zeilen)`, vorschau.length === 7 && vorschau[0] === "Montag: 09:00–12:00, 14:00–17:00" && vorschau[6] === "Sonntag: geschlossen" && !(await page.isDisabled("#zeittext-ok")));
+  page.once("dialog", (d) => d.accept());
+  await page.click("#zeittext-ok");
+  await page.waitForTimeout(150);
+  check("Zeiten: «Zeiten übernehmen» ersetzt die Wochenzeiten (11 Zeilen), leert das Feld", (await anzahlZeilen()) === 11 && (await page.inputValue("#zeittext")) === "" && (await page.isDisabled("#zeittext-ok")) && (await page.inputValue(".oz-tag[data-tag='1'] .oz-beginn")) === "09:00");
+  await page.fill("#zeittext", "Hofladen");
+  await page.dispatchEvent("#zeittext", "input");
+  check("Zeiten: Text ohne Zeiten zeigt Hinweis und lässt nicht übernehmen", /Keine Zeiten/.test(await page.textContent("#zeittext-vorschau")) && (await page.isDisabled("#zeittext-ok")));
+  await page.fill("#zeittext", "<img src=x onerror=window.__xss=1> Mo 8-12");
+  await page.dispatchEvent("#zeittext", "input");
+  check("Zeiten: Text wird nicht als HTML ausgewertet", !(await page.evaluate(() => window.__xss)) && (await page.$$("#zeittext-vorschau img")).length === 0);
+  // 24h-Automat blendet die Schnellerfassung aus.
+  await page.click("#automat-schalter");
+  check("Zeiten: 24h-Automat blendet die Schnellerfassung aus", !(await page.isVisible("#zeiten-schnell")));
+  await page.click("#automat-schalter");
+  check("Zeiten: Schnellerfassung erscheint wieder, wenn der Automat aus ist", await page.isVisible("#zeiten-schnell"));
+
+  // --- 2.1.0-dev.3: OCR-Grundlage (Texterkennung im Browser) ---------------------------
+  const ausserhalb = [];
+  const merkeAnfrage = (r) => { if (!/^(http:\/\/127\.0\.0\.1|http:\/\/localhost|data:|blob:)/.test(r.url())) ausserhalb.push(r.url()); };
+  page.on("request", merkeAnfrage);
+  const ocr = await page.evaluate(async () => {
+    const m = await import("/src/ocr.js");
+    const c = document.createElement("canvas");
+    c.width = 900; c.height = 420;
+    const g = c.getContext("2d");
+    g.fillStyle = "#fff"; g.fillRect(0, 0, 900, 420);
+    g.fillStyle = "#000";
+    g.font = "bold 54px sans-serif"; g.fillText("Hofladen Müller", 40, 80);
+    g.font = "44px sans-serif";
+    g.fillText("Öffnungszeiten", 40, 170);
+    g.fillText("Mo-Fr 8.00-12.00 / 14.00-18.00", 40, 240);
+    g.fillText("Sa 8.00-12.00   So geschlossen", 40, 310);
+    g.fillText("Tel. 031 123 45 67", 40, 380);
+    const schritte = [];
+    const erg = await m.erkenneText(c, { sprachen: ["deu"], onFortschritt: (f) => schritte.push(f.status) });
+    const zeiten = (await import("/src/zeittext.js")).parseZeittext(erg.text, "de");
+    // Abbruch: sofort abgebrochen ergibt AbortError und lässt keinen Worker zurück.
+    const ac = new AbortController();
+    const abgebrochen = m.erkenneText(c, { signal: ac.signal }).then(() => "ok", (e) => e.name);
+    setTimeout(() => ac.abort(), 30);
+    const vorher = new AbortController(); vorher.abort();
+    return {
+      verfuegbar: m.ocrVerfuegbar(),
+      text: erg.text,
+      vertrauen: erg.vertrauen,
+      schritte: [...new Set(schritte)],
+      zeitenAnzahl: zeiten.zeiten.length,
+      zu: zeiten.geschlossen,
+      sa: zeiten.zeiten.filter((z) => z.wochentag === 6).map((z) => `${z.beginn}-${z.ende}`),
+      abgebrochen: await abgebrochen,
+      sofort: await m.erkenneText(c, { signal: vorher.signal }).then(() => "ok", (e) => e.name),
+      ohneSprache: await m.erkenneText(c, { sprachen: ["xx"] }).then(() => "ok", (e) => e.message),
+      sprachen: m.OCR_SPRACHEN.join(","),
+    };
+  });
+  page.off("request", merkeAnfrage);
+  check("OCR: im Browser verfügbar (Worker und WebAssembly)", ocr.verfuegbar === true);
+  check(`OCR: liest den Text eines Schildes (${JSON.stringify(ocr.text.slice(0, 60))})`, /Hofladen/.test(ocr.text) && /Mo.?Fr/.test(ocr.text) && /geschlossen/.test(ocr.text) && ocr.vertrauen > 60);
+  check("OCR: meldet den Fortschritt (Kern, Sprachdaten, Erkennung)", ["loading tesseract core", "loading language traineddata", "recognizing text"].every((s) => ocr.schritte.includes(s)));
+  check(`OCR → Zeittext: Mo–Fr zweimal, Samstag, Sonntag geschlossen (${ocr.zeitenAnzahl} Zeiten)`, ocr.zeitenAnzahl === 11 && JSON.stringify(ocr.zu) === "[7]" && JSON.stringify(ocr.sa) === JSON.stringify(["08:00-12:00"]));
+  check("OCR: Abbruch ergibt AbortError, auch wenn schon abgebrochen", ocr.abgebrochen === "AbortError" && ocr.sofort === "AbortError");
+  check("OCR: ungültige Sprache wird abgelehnt", /Sprache/.test(ocr.ohneSprache) && ocr.sprachen === "deu,fra,ita,eng");
+  check(`OCR: keine Anfrage an fremde Server (CDN) (${ausserhalb.join(", ")})`, ausserhalb.length === 0);
+  check("OCR: Bibliothek, Kern und Sprachdaten liegen lokal (vendor/)", await page.evaluate(async () => {
+    const dateien = ["tesseract/tesseract.min.js", "tesseract/worker.min.js", "tesseract-core/tesseract-core-lstm.wasm.js", "tesseract-core/tesseract-core-simd-lstm.wasm.js", "tesseract-core/tesseract-core-relaxedsimd-lstm.wasm.js", "tesseract-lang/deu.traineddata.gz", "tesseract-lang/fra.traineddata.gz", "tesseract-lang/ita.traineddata.gz", "tesseract-lang/eng.traineddata.gz"];
+    const antworten = await Promise.all(dateien.map((d) => fetch(`/vendor/${d}`, { method: "HEAD" }).then((r) => r.ok)));
+    return antworten.every(Boolean);
+  }));
+
+  // --- 2.1.0-dev.4: Schild lesen ----------------------------------------------------------
+  const st = await page.evaluate(async () => {
+    const m = await import("/src/schildtext.js");
+    const a = m.leseSchildtext("Hofladen Müller\nÖffnungszeiten\nMo-Fr 8.00-12.00 / 14.00-18.00\nSa 8.00-12.00 So geschlossen\nDorfstrasse 12\n3000 Bern\nTel. 031 123 45 67\ninfo@hof-mueller.ch www.hof-mueller.ch\nEier, Käse, Honig · TWINT und Bargeld", ["de"]);
+    const f = m.leseSchildtext("Ferme Dupont\nlun-ven 8h-12h 14h-18h\nRoute de Lausanne 5, 1700 Fribourg\n+41 79 123 45 67\nOeufs, fromage, miel", ["fr"]);
+    const leer = m.leseSchildtext("", ["de"]);
+    const fremd = m.leseSchildtext("Mo-Fr 8-12", ["fr"]).daten.oeffnungszeiten.length;
+    const gleich = m.leseSchildtext("Di 8-12", ["fr"]).daten.oeffnungszeiten[0].wochentag;
+    return {
+      de: { ...a.daten, oeffnungszeiten: a.daten.oeffnungszeiten.length, ge: a.hinweise.geschlossen, q: [...new Set(a.quellen.map((x) => x.quelle))].join() },
+      fr: { name: f.daten.name, adresse: f.daten.adresse, ort: f.daten.ort, tel: f.daten.mobilnummer, z: f.daten.oeffnungszeiten.length, ang: f.daten.angebote },
+      leer: Object.keys(leer.daten).length,
+      fremd,
+      gleich,
+      tel: [m.normalisiereTelefon("031 123 45 67"), m.normalisiereTelefon("+41 (0)31 123 45 67"), m.normalisiereTelefon("0041 79 123 45 67"), m.normalisiereTelefon("12345"), m.normalisiereTelefon("+49 30 123456")],
+      keinHtml: m.leseSchildtext("<b>Hof</b> Mo 8-12", ["de"]).daten.name,
+    };
+  });
+  check(`Schildtext: Deutsch (Name, Adresse, Telefon, E-Mail, Web, Zeiten, Angebote, Zahlung) (${JSON.stringify(st.de).slice(0, 80)}…)`, st.de.name === "Hofladen Müller" && st.de.adresse === "Dorfstrasse 12" && st.de.plz === "3000" && st.de.ort === "Bern" && st.de.mobilnummer === "031 123 45 67" && st.de.email === "info@hof-mueller.ch" && st.de.website === "https://www.hof-mueller.ch" && st.de.oeffnungszeiten === 11 && JSON.stringify(st.de.ge) === "[7]" && JSON.stringify(st.de.angebote) === JSON.stringify(["Eier", "Käse", "Honig"].sort((x, y) => ["Eier", "Kartoffeln", "Käse", "Honig"].indexOf(x) - ["Eier", "Kartoffeln", "Käse", "Honig"].indexOf(y))) && JSON.stringify(st.de.zahlungsarten) === JSON.stringify(["TWINT", "Bargeld"]) && st.de.q === "schild");
+  check("Schildtext: Französisch (Name, Adresse, Telefon +41, Zeiten, Angebote)", st.fr.name === "Ferme Dupont" && st.fr.adresse === "Route de Lausanne 5" && st.fr.ort === "Fribourg" && st.fr.tel === "+41 79 123 45 67" && st.fr.z === 10 && st.fr.ang.length === 3);
+  check("Schildtext: deutsches Schild bei gewählter Sprache Französisch wird trotzdem gelesen; bei Gleichstand gilt die gewählte Sprache", st.fremd === 5 && st.gleich === 7);
+  check("Schildtext: leerer Text ergibt nichts; Telefonnummern nur im Schweizer Format", st.leer === 0 && JSON.stringify(st.tel) === JSON.stringify(["031 123 45 67", "+41 31 123 45 67", "+41 79 123 45 67", null, null]));
+
+  const schildBild = await page.evaluate(() => {
+    const c = document.createElement("canvas");
+    c.width = 900; c.height = 520;
+    const g = c.getContext("2d");
+    g.fillStyle = "#fff"; g.fillRect(0, 0, 900, 520);
+    g.fillStyle = "#000";
+    g.font = "bold 54px sans-serif"; g.fillText("Hofladen Müller", 40, 70);
+    g.font = "44px sans-serif";
+    g.fillText("Öffnungszeiten", 40, 150);
+    g.fillText("Mo-Fr 8.00-12.00 / 14.00-18.00", 40, 220);
+    g.fillText("Sa 8.00-12.00   So geschlossen", 40, 290);
+    g.fillText("Dorfstrasse 12, 3000 Bern", 40, 360);
+    g.fillText("Tel. 031 123 45 67", 40, 430);
+    return c.toDataURL("image/png").split(",")[1];
+  });
+  const schildDatei = { name: "schild.png", mimeType: "image/png", buffer: Buffer.from(schildBild, "base64") };
+
+  await setzeTesthof();
+  await page.evaluate(() => {
+    const a = window.hofkarteApp;
+    a.state.hoflaeden = [{ id: "sc1", version: 1, name: "Schildhof", mobilnummer: "079 999 88 77", oeffnungszeiten: [], sonderoeffnungszeiten: [], bilder: [], angebote: [], zahlungsarten: [] }];
+  });
+  await gehe("#/hofladen/sc1");
+  await page.click("#aktionsmenue summary");
+  check("Schild: Menü des Hofladens hat «Schild lesen»", (await page.textContent("#schild-btn")).trim() === "Schild lesen");
+  await page.click("#schild-btn");
+  await page.waitForTimeout(300);
+  check("Schild: Startseite mit Kamera- und Mediathek-Knopf (≥44px), Sprachwahl, Datenschutzhinweis", (await page.$eval("#s-kamera-btn", (e) => e.getBoundingClientRect().height)) >= 44 && (await page.$$("[data-s-sprache]")).length === 4 && /nicht hochgeladen/.test(await page.textContent(".auslesen")) && (await page.getAttribute("#s-kamera", "capture")) === "environment");
+  check("Schild: genau eine Sprache vorgewählt (die der Oberfläche) und die letzte lässt sich nicht abwählen", await page.evaluate(() => {
+    const an = () => [...document.querySelectorAll("[data-s-sprache][aria-pressed='true']")].length;
+    const vorher = an();
+    document.querySelector("[data-s-sprache][aria-pressed='true']").click();
+    return vorher === 1 && an() === 1;
+  }));
+  await page.setInputFiles("#s-datei", schildDatei);
+  await page.waitForSelector("#s-uebernehmen-btn, .hinweis-leiste.fehler", { timeout: 60000 });
+  const zeilen = await page.$$eval(".ergaenzen-zeile", (z) => z.map((x) => x.dataset.zeile));
+  check(`Schild: Vergleich zeigt gelesene Angaben (${zeilen.join(", ")})`, ["adresse", "mobilnummer", "oeffnungszeiten"].every((k) => zeilen.includes(k)) && /Mo.?Fr/.test(await page.inputValue("#s-text")));
+  check("Schild: Lücken vorgewählt, Abweichung (andere Telefonnummer) nicht", (await page.isChecked("[data-feldwahl='oeffnungszeiten']")) && (await page.isChecked("[data-feldwahl='adresse']")) && !(await page.isChecked("[data-feldwahl='mobilnummer']")) && /Weicht ab/.test(await page.textContent("[data-zeile='mobilnummer']")));
+  check("Schild: Herkunft «Schild (Foto)» und Hinweis zur Fehlerquote sichtbar, Foto als Vorschau (data:)", /Schild \(Foto\)/.test(await page.textContent("[data-zeile='oeffnungszeiten']")) && /irren/.test(await page.textContent(".auslesen")) && (await page.getAttribute(".schild-vorschau", "src")).startsWith("data:image/"));
+  check("Schild: als geschlossen erkannter Sonntag wird gemeldet", /Sonntag/.test(await page.textContent("#s-geschlossen")));
+
+  // Text korrigieren und neu auswerten.
+  await page.fill("#s-text", "Mo-Fr 9-12\nTel. 031 123 45 67");
+  await page.click("#s-neu-btn");
+  check("Schild: «Neu auswerten» liest den korrigierten Text (5 Zeiten, Telefon)", (await page.textContent("[data-zeile='oeffnungszeiten']")).includes("Mo 09:00–12:00") && !!(await page.$("[data-zeile='mobilnummer']")));
+  await page.click("[data-feldwahl='mobilnummer']");
+
+  await page.click("#s-uebernehmen-btn");
+  await page.waitForTimeout(400);
+  check("Schild: Übernahme öffnet den Editor mit den gewählten Angaben, gespeichert wird nichts", /bearbeiten/.test(await page.evaluate(() => location.hash)) && (await page.$$eval(".oeffnungszeit-zeile", (z) => z.length)) === 5 && (await page.inputValue("#f-mobilnummer")) === "031 123 45 67" && (await page.isVisible("#ungespeichert")));
+
+  // Neuer Hofladen aus dem Schild; Abbruch; Fehlerfall.
+  await gehe("#/erfassen");
+  check("Schild: Einstieg «Schild lesen» unter «Erfassen»", !!(await page.$("#weg-schild")));
+  await page.click("#weg-schild");
+  await page.waitForTimeout(200);
+  check("Schild: neue Erfassung ohne bestehenden Hofladen (kein «Aktuell»)", /erfassen\/schild/.test(await page.evaluate(() => location.hash)));
+  await page.setInputFiles("#s-datei", schildDatei);
+  await page.click("#s-abbruch-btn").catch(() => {});
+  await page.waitForTimeout(300);
+  check("Schild: Abbrechen führt zurück zur Fotowahl", !!(await page.$("#s-datei-btn")) || !!(await page.$("#s-uebernehmen-btn")));
+  await page.setInputFiles("#s-datei", schildDatei).catch(() => {});
+  await page.waitForSelector("#s-uebernehmen-btn", { timeout: 60000 });
+  check("Schild: neuer Hofladen zeigt keine «Aktuell»-Spalte und erkennt den Namen", !/Aktuell:/.test(await page.textContent(".auslesen")) && !!(await page.$("[data-zeile='name']")));
+  await page.click("#s-uebernehmen-btn");
+  await page.waitForTimeout(400);
+  check("Schild: neuer Hofladen übernimmt Name und Zeiten ins Formular", /#\/neu/.test(await page.evaluate(() => location.hash)) && (await page.inputValue("#f-name")) === "Hofladen Müller" && (await page.$$eval(".oeffnungszeit-zeile", (z) => z.length)) === 11);
+
+  await gehe("#/hofladen/sc1/schild");
+  const leeresBild = await page.evaluate(() => {
+    const c = document.createElement("canvas");
+    c.width = 600; c.height = 300;
+    const g = c.getContext("2d");
+    g.fillStyle = "#fff"; g.fillRect(0, 0, 600, 300);
+    return c.toDataURL("image/png").split(",")[1];
+  });
+  await page.setInputFiles("#s-datei", { name: "leer.png", mimeType: "image/png", buffer: Buffer.from(leeresBild, "base64") });
+  await page.waitForSelector("#s-leer, .hinweis-leiste.fehler", { timeout: 60000 });
+  check("Schild: Foto ohne Text zeigt Hinweis und deaktiviert die Übernahme", /kein Text erkannt/.test(await page.textContent("#s-leer")) && (await page.isDisabled("#s-uebernehmen-btn")));
+  await page.fill("#s-text", "<img src=x onerror=window.__xss2=1> Mo 8-12");
+  await page.click("#s-neu-btn");
+  check("Schild: Text wird nicht als HTML ausgewertet", !(await page.evaluate(() => window.__xss2)) && (await page.$$(".auslesen img[src='x']")).length === 0);
+
   // Grosse Schrift (Dynamic Type simuliert): nichts läuft seitlich über den Rand.
   await setzeTesthof();
   await page.evaluate(() => document.documentElement.style.setProperty("font-size", "28px", "important"));
   const ueberlaeufe = [];
-  for (const route of ["#/", "#/hofladen/i1", "#/hofladen/i1/bearbeiten", "#/einstellungen", "#/erfassen", "#/erfassen/vorort", "#/erfassen/webseite"]) {
+  for (const route of ["#/", "#/hofladen/i1", "#/hofladen/i1/bearbeiten", "#/einstellungen", "#/erfassen", "#/erfassen/vorort", "#/erfassen/webseite", "#/erfassen/schild", "#/hofladen/i1/schild"]) {
     await gehe(route);
     const ueber = await page.evaluate(() => document.documentElement.scrollWidth > document.documentElement.clientWidth + 1);
     if (ueber) ueberlaeufe.push(route);

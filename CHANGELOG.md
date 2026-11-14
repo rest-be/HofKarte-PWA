@@ -11,7 +11,73 @@ Zuordnung zur Integration HofKarte-HA steht im README.
 
 ## [Unreleased]
 
-Noch keine Änderungen seit `2.0.0`.
+Noch keine Änderungen seit `2.1.0`.
+
+## [2.1.0] - 2026-11-14
+
+Produktiver Release. Gegenüber `2.1.0-rc.1` ändert sich nur die Versionsnummer
+(Startbild, `version.js`, Service Worker, Dokumentation). Neu in 2.1.0 gegenüber
+2.0.0: **Schild lesen** (Texterkennung im Browser, ohne KI und ohne Upload),
+**Öffnungszeiten schneller erfassen** (Vorlagen, «Wie Vortag», Kopieren,
+Texteingabe in vier Sprachen) und **Sonderöffnungszeiten bearbeiten**. Voraussetzung
+unverändert: HofKarte-HA ab 2026.10.1 (24h-Automat ab 2026.10.2). Überblick:
+`RELEASE_NOTES_2.1.0.md`; Entscheide und Phasen: `docs/umsetzungsplan-2.1.md`.
+Die Zwischenstände stehen unten.
+
+### 2.1.0-rc.1 - 2026-10-30
+
+Release Candidate. Funktionsstand wie `2.1.0-dev.4` (Sonderöffnungszeiten
+bearbeiten, Öffnungszeiten schneller erfassen, Schild lesen); Dokumentation
+(README, Benutzerhandbuch, Release Notes 2.1.0, Sicherheit, Tests) und
+Plan abgeschlossen. «Schild lesen» wurde auf einem iPhone ausprobiert.
+Zusätzlich: Ein deutsches Schild wird auch gelesen, wenn eine andere Sprache
+gewählt ist (Wochentage werden in allen vier Sprachen versucht; bei
+Gleichstand gilt die gewählte Sprache).
+
+### 2.1.0-dev.4 - 2026-10-30
+
+- Neu: «Schild lesen» (`src/views/schild.js`). Foto aufnehmen oder aus der
+  Mediathek wählen, Sprache(n) des Schildes wählen, Auswertung im Browser mit
+  Fortschritt und Abbruch. Einstiege: «Erfassen» → «Schild lesen» (neuer
+  Hofladen), Menü ⋯ eines Hofladens und «Vom Schild ergänzen» nach dem
+  Erfassen.
+- Vergleich wie bei «Angaben ergänzen»: Aktuell · Gefunden · Status, Lücken
+  vorgewählt, Abweichungen nie; die Übernahme öffnet den Editor, gespeichert
+  wird dort. Herkunft der Angaben: «Schild (Foto)» (`quelle: schild`, ohne
+  Änderung an Home Assistant).
+- Der erkannte Text bleibt sichtbar und ist korrigierbar («Neu auswerten»).
+- Gelesen werden Name, Adresse mit PLZ, Telefon (Schweizer Formate), E-Mail,
+  Webadresse, Öffnungszeiten, bekannte Angebote und Zahlungsarten
+  (`src/schildtext.js`).
+- Behoben: `src/ocr.js` fehlte in der Dateiliste des Service Workers.
+
+### 2.1.0-dev.3 - 2026-10-30
+
+- Neu (intern): Texterkennung im Browser (`src/ocr.js`) mit tesseract.js 7.0.0,
+  lokal unter `vendor/` (Rechenkern, Sprachdaten Deutsch/Französisch/Italienisch/
+  Englisch). Läuft in einem Web Worker, mit Fortschritt und Abbruch; das Foto
+  verlässt das Gerät nie. Der Service Worker lädt die Dateien erst bei der
+  ersten Nutzung in einen eigenen Cache (`hofkarte-ocr-v1`), danach auch offline.
+- `script-src` der CSP enthält zusätzlich `'wasm-unsafe-eval'` (nur WebAssembly),
+  siehe `SECURITY.md`.
+- Noch keine Bedienoberfläche; sie folgt in dev.4.
+
+### 2.1.0-dev.2 - 2026-10-30
+
+- Neu: Öffnungszeiten schneller erfassen («Schnell erfassen» im Editor):
+  drei Vorlagen, «Wie Vortag» bei leeren Tagen, «Auf alle Tage kopieren» und
+  Eingabe als Text mit Vorschau. Der Text wird in Deutsch, Französisch,
+  Italienisch und Englisch gelesen (`src/zeittext.js`); Unklares wird
+  gemeldet, nichts wird geraten. Vor dem Ersetzen bestehender Zeiten fragt
+  die App nach; gespeichert wird erst mit «Speichern».
+
+### 2.1.0-dev.1 - 2026-10-30
+
+- Neu: Sonderöffnungszeiten (Ferien, Feiertage) im Editor hinzufügen, ändern
+  und entfernen. Zeilen mit Von/Bis, Schalter «Geschlossen» und optionalen
+  Zeiten; Prüfung vor dem Speichern, Warnhinweis bei Überschneidungen.
+- Der Editor sendet die Liste immer mit, damit auch der letzte Eintrag
+  gelöscht werden kann. Datenmodell und HA-Schnittstelle unverändert.
 
 ## [2.0.0] - 2026-10-25
 

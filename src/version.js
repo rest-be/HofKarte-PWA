@@ -19,7 +19,7 @@
  * Vorgehensplan und im Startbild in index.html (`.splash-version`)
  * nachziehen; der Smoke-Test prüft die Übereinstimmung.
  */
-export const APP_VERSION = "2.0.0";
+export const APP_VERSION = "2.1.0";
 
 /**
  * Release Notes (neueste zuerst), angezeigt auf dem Einrichtungsbildschirm
@@ -27,6 +27,52 @@ export const APP_VERSION = "2.0.0";
  * ergänzen (und die Tabelle im README nachziehen).
  */
 export const RELEASE_NOTES = [
+  {
+    version: "2.1.0",
+    datum: "2026-11-14",
+    punkte: [
+      "Neu: «Schild lesen». Foto vom Hofladen-Schild auswerten, direkt auf dem Gerät, ohne KI und ohne Upload; Vergleich wie bei «Angaben ergänzen».",
+      "Öffnungszeiten schneller erfassen: Vorlagen, «Wie Vortag», auf alle Tage kopieren und Eingabe als Text.",
+      "Sonderöffnungszeiten (Ferien, Feiertage) lassen sich jetzt im Editor bearbeiten.",
+    ],
+  },
+  {
+    version: "2.1.0-rc.1",
+    datum: "2026-10-30",
+    punkte: [
+      "Release Candidate für 2.1.0: «Schild lesen» (Foto auswerten, ohne KI und ohne Upload), Öffnungszeiten schneller erfassen (Vorlagen, Kopieren, Texteingabe) und Sonderöffnungszeiten bearbeiten.",
+      "Neu in der Dokumentation: Release Notes 2.1.0, Benutzerhandbuch und Changelog ergänzt.",
+    ],
+  },
+  {
+    version: "2.1.0-dev.4",
+    datum: "2026-10-30",
+    punkte: [
+      "Neu: «Schild lesen». Ein Foto vom Hofladen-Schild wird direkt auf dem Gerät ausgewertet (ohne KI, ohne Upload). Zu finden unter «Erfassen» → «Schild lesen» (neuer Hofladen) und im Menü (⋯) eines Hofladens (ergänzen).",
+      "Der Vergleich funktioniert wie bei «Angaben ergänzen»: Lücken sind vorgewählt, Abweichungen nie; Herkunft «Schild (Foto)». Der erkannte Text ist sichtbar und lässt sich korrigieren.",
+    ],
+  },
+  {
+    version: "2.1.0-dev.3",
+    datum: "2026-10-30",
+    punkte: [
+      "Grundlage für das Lesen von Hofladen-Schildern: Texterkennung (OCR) direkt im Browser, ohne KI und ohne Upload. Die Dateien liegen lokal und werden erst bei der ersten Nutzung geladen; danach funktioniert die Erkennung auch offline. Noch ohne Bedienoberfläche (folgt in dev.4).",
+    ],
+  },
+  {
+    version: "2.1.0-dev.2",
+    datum: "2026-10-30",
+    punkte: [
+      "Öffnungszeiten schneller erfassen: Vorlagen (Mo–Fr 8–12 / 14–18, Mo–Sa 8–18, Täglich 7–20), «Wie Vortag», «Auf alle Tage kopieren» und Eingabe als Text, z. B. «Mo-Fr 8-12, 14-18; Sa 8-12; So geschlossen» (Deutsch, Französisch, Italienisch, Englisch).",
+    ],
+  },
+  {
+    version: "2.1.0-dev.1",
+    datum: "2026-10-30",
+    punkte: [
+      "Sonderöffnungszeiten (Ferien, Feiertage) lassen sich im Editor erfassen, ändern und löschen; mit Prüfung der Eingaben und Hinweis bei Überschneidungen.",
+    ],
+  },
   {
     version: "2.0.0",
     datum: "2026-10-25",

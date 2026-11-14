@@ -54,6 +54,7 @@ export const FINDEN_QUELLEN_LABEL = uebersetzt({
   website_ki: "Website (KI-gestützt)",
   ki: "KI-Vermutung, nicht belegt",
   angabe: "Eigene Angabe",
+  schild: "Schild (Foto)",
 });
 
 export const FINDEN_ZEILEN = [

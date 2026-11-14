@@ -95,6 +95,11 @@ export function renderErfassenEinstieg(container, app) {
       <span class="weg-text"><strong>${escapeHtml(t("Von der Webseite"))}</strong><span>${escapeHtml(t("Du hast die Adresse der Webseite oder den Namen: Angaben werden ausgelesen."))}</span></span>
       <span class="weg-pfeil">${icon("weiter")}</span>
     </a>
+    <a class="weg-karte" href="#/erfassen/schild" id="weg-schild">
+      <span class="weg-icon">${icon("kamera")}</span>
+      <span class="weg-text"><strong>${escapeHtml(t("Schild lesen"))}</strong><span>${escapeHtml(t("Du hast das Schild des Hofladens fotografiert: Name, Adresse, Telefon und Öffnungszeiten werden gelesen."))}</span></span>
+      <span class="weg-pfeil">${icon("weiter")}</span>
+    </a>
     <a class="weg-karte" href="#/neu" id="weg-hand">
       <span class="weg-icon">${icon("stift")}</span>
       <span class="weg-text"><strong>${escapeHtml(t("Von Hand"))}</strong><span>${escapeHtml(t("Leeres Formular mit allen Angaben."))}</span></span>
@@ -511,6 +516,7 @@ export function renderGespeichert(container, app, hofladenId) {
     <div class="aktions-reihe aktions-stapel">
       <button type="button" class="primaer" id="weiterer-btn">${escapeHtml(t("Weiteren Hofladen erfassen"))}</button>
       ${h.website && app.haClient ? `<button type="button" id="ergaenzen-btn">${escapeHtml(t("Von der Webseite ergänzen"))}</button>` : ""}
+      <button type="button" id="schild-btn">${escapeHtml(t("Vom Schild ergänzen"))}</button>
       <button type="button" id="ansehen-btn">${escapeHtml(t("Hofladen ansehen"))}</button>
       <button type="button" id="fertig-btn">${escapeHtml(t("Fertig"))}</button>
     </div>
@@ -524,6 +530,7 @@ export function renderGespeichert(container, app, hofladenId) {
   );
   container.querySelector("#weiterer-btn").addEventListener("click", () => app.navigate("#/erfassen/vorort"));
   container.querySelector("#ergaenzen-btn")?.addEventListener("click", () => app.navigate(`#/hofladen/${encodeURIComponent(h.id)}/ergaenzen`));
+  container.querySelector("#schild-btn")?.addEventListener("click", () => app.navigate(`#/hofladen/${encodeURIComponent(h.id)}/schild`));
   container.querySelector("#ansehen-btn").addEventListener("click", () => app.navigate(`#/hofladen/${encodeURIComponent(h.id)}`));
   container.querySelector("#fertig-btn").addEventListener("click", () => app.navigate("#/"));
 }

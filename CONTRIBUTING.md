@@ -35,7 +35,7 @@ IT «negozio agricolo», EN «farm shop»; FR in der «vous»-Form.
 ```bash
 npm install
 npx playwright install chromium --with-deps
-npm run test:smoke      # inkl. Sprachtest; aktuell 305 Tests
+npm run test:smoke      # inkl. Sprachtest; aktuell 367 Tests
 ```
 
 Jede Änderung bekommt Tests. Der Test schlägt bei jedem Konsolenfehler fehl –

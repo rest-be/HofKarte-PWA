@@ -247,6 +247,7 @@ export function renderDetail(container, app, hofladenId) {
           <div class="menue-liste">
             <button type="button" id="teilen-btn">${escapeHtml(t("Teilen"))}</button>
             <button type="button" id="ergaenzen-btn">${escapeHtml(t("Angaben ergänzen"))}</button>
+            <button type="button" id="schild-btn">${escapeHtml(t("Schild lesen"))}</button>
             <button type="button" class="gefahr" id="loeschen-btn">${escapeHtml(t("Löschen …"))}</button>
           </div>
         </details>
@@ -300,6 +301,9 @@ export function renderDetail(container, app, hofladenId) {
       fehler: t("Teilen ist auf diesem Gerät nicht möglich."),
     }[ergebnis];
     container.querySelector("#teilen-status").textContent = meldung || "";
+  });
+  container.querySelector("#schild-btn").addEventListener("click", () => {
+    app.navigate(`#/hofladen/${encodeURIComponent(h.id)}/schild`);
   });
   container.querySelector("#ergaenzen-btn").addEventListener("click", () => {
     app.navigate(`#/hofladen/${encodeURIComponent(h.id)}/ergaenzen`);

@@ -21,7 +21,16 @@
  * diese liegen ausschliesslich in IndexedDB (siehe src/storage.js).
  */
 
-const CACHE_VERSION = "hofkarte-pwa-v33";
+const CACHE_VERSION = "hofkarte-pwa-v39";
+
+/**
+ * Eigener Cache für die Texterkennung (OCR, vendor/tesseract*): rund 10 MB,
+ * werden erst beim ersten Gebrauch geladen und nicht beim Installieren der
+ * App. Danach läuft die Erkennung auch offline. Bei einer neuen Version der
+ * Bibliotheken den Namen erhöhen (der alte Cache wird beim Aktivieren gelöscht).
+ */
+const OCR_CACHE = "hofkarte-ocr-v1";
+const OCR_PFAD = /\/vendor\/tesseract(-core|-lang)?\//;
 
 const APP_SHELL_DATEIEN = [
   "./",
@@ -51,6 +60,10 @@ const APP_SHELL_DATEIEN = [
   "./src/suche.js",
   "./src/navigation.js",
   "./src/leerzustand.js",
+  "./src/sonderzeiten.js",
+  "./src/zeittext.js",
+  "./src/schildtext.js",
+  "./src/ocr.js",
   "./src/bilder.js",
   "./src/views/setup.js",
   "./src/views/list.js",
@@ -61,6 +74,7 @@ const APP_SHELL_DATEIEN = [
   "./src/views/finden.js",
   "./src/views/erfassen.js",
   "./src/views/auslesen.js",
+  "./src/views/schild.js",
   "./src/views/map.js",
   // Drittbibliotheken (lokal, siehe vendor/README.md)
   "./vendor/home-assistant-js-websocket/auth.js",
@@ -106,11 +120,7 @@ self.addEventListener("activate", (event) => {
       .then((namen) =>
         Promise.all(
           namen
-            .filter(
-  (name) =>
-    name.startsWith(CACHE_PREFIX) &&
-    name !== CACHE_VERSION
-)
+            .filter((name) => name !== CACHE_VERSION && name !== OCR_CACHE)
             .map((name) => caches.delete(name))
         )
       )
@@ -136,6 +146,20 @@ self.addEventListener("fetch", (event) => {
 
   // Versionsabfrage der App (src/update.js): immer ans Netz, nie aus dem Cache.
   if (url.searchParams.has("nocache")) {
+    return;
+  }
+
+  // OCR-Dateien: beim ersten Gebrauch laden und in den eigenen Cache legen.
+  if (OCR_PFAD.test(url.pathname)) {
+    event.respondWith(
+      caches.open(OCR_CACHE).then(async (cache) => {
+        const treffer = await cache.match(event.request, { ignoreSearch: true });
+        if (treffer) return treffer;
+        const antwort = await fetch(event.request);
+        if (antwort.ok && antwort.status === 200) cache.put(event.request, antwort.clone()).catch(() => {});
+        return antwort;
+      })
+    );
     return;
   }
 
